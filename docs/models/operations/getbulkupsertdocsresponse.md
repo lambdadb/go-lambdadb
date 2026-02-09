@@ -1,0 +1,9 @@
+# GetBulkUpsertDocsResponse
+
+
+## Fields
+
+| Field                                                                                                 | Type                                                                                                  | Required                                                                                              | Description                                                                                           |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `HTTPMeta`                                                                                            | [components.HTTPMetadata](../../models/components/httpmetadata.md)                                    | :heavy_check_mark:                                                                                    | N/A                                                                                                   |
+| `Object`                                                                                              | [*operations.GetBulkUpsertDocsResponseBody](../../models/operations/getbulkupsertdocsresponsebody.md) | :heavy_minus_sign:                                                                                    | Required info to upload documents.                                                                    |

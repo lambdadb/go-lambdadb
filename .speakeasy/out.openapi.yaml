@@ -1,0 +1,1401 @@
+openapi: "3.1.1"
+info:
+  title: "LambdaDB API"
+  summary: "LambdaDB Open API Spec"
+  version: "1.1.1"
+tags:
+  - name: "collections"
+  - name: "collections.docs"
+servers:
+  - url: "https://{projectHost}"
+    description: "LambdaDB API endpoints"
+    variables:
+      "projectHost":
+        description: "The project URL of the API"
+        default: "api.lambdadb.com/projects/default"
+x-speakeasy-retries: {"strategy": "backoff", "backoff": {"initialInterval": 500, "maxInterval": 60000, "maxElapsedTime": 3600000, "exponent": 1.5}, "statusCodes": ["429", "5XX"], "retryConnectionErrors": true}
+components:
+  parameters:
+    "CollectionName":
+      in: "path"
+      name: "collectionName"
+      description: "Collection name."
+      required: true
+      schema:
+        type: "string"
+  securitySchemes:
+    "ProjectApiKey":
+      type: "apiKey"
+      in: "header"
+      name: "x-api-key"
+      description: "Project API Key."
+      x-speakeasy-example: "<YOUR_PROJECT_API_KEY>"
+  schemas:
+    "Status":
+      title: "Status"
+      type: "string"
+      description: "Status"
+      enum:
+        - "CREATING"
+        - "ACTIVE"
+        - "DELETING"
+    "IndexConfigs":
+      title: "IndexConfigs"
+      type: "object"
+      additionalProperties:
+        type: "object"
+        oneOf:
+          - properties:
+              "type":
+                type: "string"
+                enum:
+                  - "text"
+              "analyzers":
+                type: "array"
+                description: "Analyzers."
+                items:
+                  type: "string"
+                  enum:
+                    - "standard"
+                    - "korean"
+                    - "japanese"
+                    - "english"
+                default: "standard"
+            additionalProperties: false
+            required:
+              - "type"
+          - properties:
+              "type":
+                type: "string"
+                enum:
+                  - "vector"
+              "dimensions":
+                type: "integer"
+                description: "Vector dimensions."
+              "similarity":
+                type: "string"
+                description: "Vector similarity metric."
+                enum:
+                  - "cosine"
+                  - "euclidean"
+                  - "dot_product"
+                  - "max_inner_product"
+                default: "cosine"
+            additionalProperties: false
+            required:
+              - "type"
+              - "dimensions"
+          - properties:
+              "type":
+                type: "string"
+                enum:
+                  - "keyword"
+                  - "long"
+                  - "double"
+                  - "datetime"
+                  - "boolean"
+                  - "sparseVector"
+            description: "Types that do not need additional parameters."
+            additionalProperties: false
+            required:
+              - "type"
+          - properties:
+              "type":
+                type: "string"
+                enum:
+                  - "object"
+              "objectIndexConfigs":
+                type: "object"
+                additionalProperties: true
+            additionalProperties: false
+            required:
+              - "type"
+              - "objectIndexConfigs"
+    "PartitionConfig":
+      title: "PartitionConfig"
+      type: "object"
+      properties:
+        "fieldName":
+          type: "string"
+          description: "Partition field name."
+        "dataType":
+          type: "string"
+          description: "Partition field data type."
+          enum:
+            - "keyword"
+        "numPartitions":
+          type: "integer"
+          description: "The number of partitions."
+          minimum: 2
+          maximum: 1024
+    "FieldsSelector":
+      type: "object"
+      description: "An object to specify a list of field names to include and/or exclude in the result."
+      properties:
+        "include":
+          type: "array"
+          description: "List of field names to include in the result."
+          items:
+            type: "string"
+        "exclude":
+          type: "array"
+          description: "List of field names to exclude in the result."
+          items:
+            type: "string"
+      anyOf:
+        - required:
+            - "include"
+        - required:
+            - "exclude"
+    "PartitionFilter":
+      title: "PartitionFilter"
+      type: "object"
+      properties:
+        "field":
+          type: "string"
+          description: "Partition field name."
+        "in":
+          type: "array"
+          description: "Partition values to filter."
+          items:
+            type: "string"
+      required:
+        - "field"
+        - "in"
+    "CollectionResponse":
+      title: "CollectionResponse"
+      type: "object"
+      properties:
+        "projectName":
+          type: "string"
+          description: "Project name."
+        "collectionName":
+          type: "string"
+          description: "Collection name."
+        "indexConfigs": {"$ref": "#/components/schemas/IndexConfigs"}
+        "partitionConfig": {"$ref": "#/components/schemas/PartitionConfig"}
+        "numPartitions":
+          type: "integer"
+          description: "Total number of partitions including the default partition."
+        "numDocs":
+          type: "integer"
+          description: "Total number of documents."
+        "sourceProjectName":
+          type: "string"
+          description: "Source project name."
+        "sourceCollectionName":
+          type: "string"
+          description: "Source collection name."
+        "sourceCollectionVersionId":
+          type: "string"
+          description: "Source collection version."
+        "collectionStatus": {"$ref": "#/components/schemas/Status"}
+      required:
+        - "projectName"
+        - "collectionName"
+        - "indexConfigs"
+        - "numDocs"
+        - "collectionStatus"
+        - "numPartitions"
+    "MessageResponse":
+      type: "object"
+      properties:
+        "message":
+          type: "string"
+      required:
+        - "message"
+    "ConsistentRead":
+      title: "ConsistentRead"
+      type: "boolean"
+      default: false
+      description: "If your application requires a strongly consistent read, set consistentRead to true. Although a strongly consistent read might take more time than an eventually consistent read, it always returns the last updated value."
+    "IncludeVectors":
+      title: "IncludeVectors"
+      type: "boolean"
+      default: false
+      description: "If your application need to include vector values in the response, set includeVectors to true."
+    "BadRequest":
+      title: "BadRequest"
+      type: "object"
+      properties:
+        "message":
+          type: "string"
+    "Unauthenticated":
+      title: "Unauthenticated"
+      type: "object"
+      properties:
+        "message":
+          type: "string"
+    "ResourceNotFound":
+      title: "ResourceNotFound"
+      type: "object"
+      properties:
+        "message":
+          type: "string"
+    "ResourceAlreadyExists":
+      title: "ResourceAlreadyExists"
+      type: "object"
+      properties:
+        "message":
+          type: "string"
+    "TooManyRequests":
+      title: "TooManyRequests"
+      type: "object"
+      properties:
+        "message":
+          type: "string"
+    "InternalServerError":
+      title: "InternalServerError"
+      type: "object"
+      properties:
+        "message":
+          type: "string"
+paths:
+  "/collections":
+    get:
+      tags:
+        - "collections"
+      operationId: "listCollections"
+      description: "List all collections in an existing project."
+      security:
+        - ProjectApiKey: []
+      responses:
+        "200":
+          description: "A list of collections matched with a projectName."
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  "collections":
+                    type: "array"
+                    items: {"$ref": "#/components/schemas/CollectionResponse"}
+                required:
+                  - "collections"
+              examples:
+                "normalCollection":
+                  summary: "Example response for a list of normal collections"
+                  value: {"collections": [{"projectName": "example-project-name", "collectionName": "example-collection-name", "indexConfigs": {"example-field1": {"type": "text", "analyzers": ["standard"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}}, "numDocs": 10000, "collectionStatus": "ACTIVE"}]}
+                "forkedCollection":
+                  summary: "Example response for a list of forked collections"
+                  value: {"collections": [{"projectName": "example-project-name", "collectionName": "example-collection-name", "indexConfigs": {"example-field1": {"type": "text", "analyzers": ["standard"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}}, "numDocs": 10000, "sourceProjectName": "example-source-project-name", "sourceCollectionName": "example-source-collection-name", "sourceCollectionVersionId": "example-source-collection-version-id", "collectionStatus": "ACTIVE"}]}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-name-override: "list"
+    post:
+      tags:
+        - "collections"
+      operationId: "createCollection"
+      description: "Create a collection."
+      security:
+        - ProjectApiKey: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                "collectionName":
+                  type: "string"
+                  description: "Collection name must be unique within a project and the supported maximum length is 52."
+                "indexConfigs": {"$ref": "#/components/schemas/IndexConfigs"}
+                "partitionConfig": {"$ref": "#/components/schemas/PartitionConfig"}
+                "sourceProjectName":
+                  type: "string"
+                "sourceCollectionName":
+                  type: "string"
+                "sourceDatetime":
+                  type: "string"
+                "sourceProjectApiKey":
+                  type: "string"
+              required:
+                - "collectionName"
+            examples:
+              "normalCollection":
+                summary: "Example request body for normal collection creation"
+                value: {"collectionName": "example-collection-name", "indexConfigs": {"example-field1": {"type": "text", "analyzers": ["english"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}}}
+              "forkedCollection":
+                summary: "Example request body for collection fork"
+                value: {"collectionName": "example-collection-name", "sourceProjectName": "example-source-project-name", "sourceCollectionName": "example-source-collection-name", "sourceProjectApiKey": "example-source-project-api-key", "sourceDatetime": "2023-10-01T12:00:00Z"}
+      responses:
+        "202":
+          description: "Created collection"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  "collection": {"$ref": "#/components/schemas/CollectionResponse"}
+                required:
+                  - "collection"
+              examples:
+                "example":
+                  summary: "Example response for a created collection"
+                  value: {"projectName": "example-project-name", "collectionName": "example-collection-name", "indexConfigs": {"example-field1": {"type": "text", "analyzers": ["english"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}}, "numDocs": 0, "collectionStatus": "CREATING"}
+        "400":
+          description: "Bad request"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/BadRequest"}
+              examples:
+                "example":
+                  summary: "Example response for bad request"
+                  value: {"message": "Invalid request"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "409":
+          description: "Resource already exists"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceAlreadyExists"}
+              examples:
+                "example":
+                  summary: "Example response for resource already exists"
+                  value: {"message": "Resource already exists"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-name-override: "create"
+  "/collections/{collectionName}":
+    delete:
+      tags:
+        - "collections"
+      operationId: "deleteCollection"
+      description: "Delete an existing collection."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+      responses:
+        "202":
+          description: "Collection delete request accepted."
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/MessageResponse"}
+              examples:
+                "example":
+                  summary: "Example response for a deleted collection"
+                  value: {"message": "Collection example-collection-name is queued for deletion"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-name-override: "delete"
+    get:
+      tags:
+        - "collections"
+      operationId: "getCollection"
+      description: "Get metadata of an existing collection."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+      responses:
+        "200":
+          description: "Describe collection success."
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  "collection": {"$ref": "#/components/schemas/CollectionResponse"}
+                required:
+                  - "collection"
+              examples:
+                "normalCollection":
+                  summary: "Example response for an existing collection"
+                  value: {"projectName": "example-project-name", "collectionName": "example-collection-name", "indexConfigs": {"example-field1": {"type": "text", "analyzers": ["english"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}}, "numDocs": 1000, "collectionStatus": "ACTIVE"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-name-override: "get"
+    patch:
+      tags:
+        - "collections"
+      operationId: "updateCollection"
+      description: "Configure a collection."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                "indexConfigs": {"$ref": "#/components/schemas/IndexConfigs"}
+              required:
+                - "indexConfigs"
+            examples:
+              "example":
+                summary: "Example request body for collection configuration"
+                value: {"indexConfigs": {"example-field1": {"type": "text", "analyzers": ["english"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}, "example-field3": {"type": "keyword"}}}
+      responses:
+        "200":
+          description: "Updated collection"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  "collection": {"$ref": "#/components/schemas/CollectionResponse"}
+                required:
+                  - "collection"
+              examples:
+                "normalCollection":
+                  summary: "Example response for an updated collection"
+                  value: {"projectName": "example-project-name", "collectionName": "example-collection-name", "indexConfigs": {"example-field1": {"type": "text", "analyzers": ["english"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}, "example-field3": {"type": "keyword"}}, "numDocs": 1000, "collectionStatus": "ACTIVE"}
+        "400":
+          description: "Bad request"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/BadRequest"}
+              examples:
+                "example":
+                  summary: "Example response for bad request"
+                  value: {"message": "Invalid request"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-name-override: "update"
+  "/collections/{collectionName}/docs":
+    get:
+      tags:
+        - "collections.docs"
+      operationId: "listDocs"
+      description: "List documents in a collection."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+        - in: "query"
+          name: "size"
+          description: "Max number of documents to return at once."
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 100
+        - in: "query"
+          name: "pageToken"
+          description: "Next page token."
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "Documents list."
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  "total":
+                    type: "integer"
+                  "docs":
+                    type: "array"
+                    items:
+                      type: "object"
+                      additionalProperties: true
+                    description: "A list of documents."
+                  "nextPageToken":
+                    type: "string"
+                required:
+                  - "total"
+                  - "docs"
+              examples:
+                "example":
+                  summary: "Example response for documents list"
+                  value: {"total": 2, "docs": [{"collection": "example-collection-name", "doc": {"example-field1": "example-value1", "example-field2": [0.1, 0.2, 0.3]}}, {"collection": "example-collection-name", "doc": {"example-field1": "example-value2", "example-field2": [0.4, 0.5, 0.6]}}], "nextPageToken": "eyJpZCI6ICJhYmMiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTExLTA1VDE0OjI3OjU2KzAwOjAwIn0="}
+        "400":
+          description: "Bad request"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/BadRequest"}
+              examples:
+                "example":
+                  summary: "Example response for bad request"
+                  value: {"message": "Invalid request"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-group: "docs"
+      x-speakeasy-name-override: "list"
+  "/collections/{collectionName}/docs/upsert":
+    post:
+      tags:
+        - "collections.docs"
+      operationId: "upsertDocs"
+      description: "Upsert documents into a collection. Note that the maximum supported payload size is 6MB."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                "docs":
+                  type: "array"
+                  items:
+                    type: "object"
+                    additionalProperties: true
+                  description: "A list of documents to upsert."
+              required:
+                - "docs"
+            examples:
+              "example":
+                summary: "Example request body for documents upsert"
+                value: {"docs": [{"example-field1": "example-value1", "example-field2": [0.1, 0.2, 0.3]}, {"example-field1": "example-value2", "example-field2": [0.4, 0.5, 0.6]}]}
+      responses:
+        "202":
+          description: "Upsert request accepted."
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/MessageResponse"}
+              examples:
+                "example":
+                  summary: "Example response for documents upsert`"
+                  value: {"message": "Upsert request is accepted"}
+        "400":
+          description: "Bad request"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/BadRequest"}
+              examples:
+                "example":
+                  summary: "Example response for bad request"
+                  value: {"message": "Invalid request"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-group: "docs"
+      x-speakeasy-name-override: "upsert"
+  "/collections/{collectionName}/docs/bulk-upsert":
+    get:
+      tags:
+        - "collections.docs"
+      operationId: "getBulkUpsertDocs"
+      description: "Request required info to upload documents."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+      responses:
+        "200":
+          description: "Required info to upload documents."
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  "url":
+                    type: "string"
+                    description: "Presigned URL."
+                  "type":
+                    type: "string"
+                    description: "Content type that must be specified when uploading documents."
+                    default: "application/json"
+                    enum:
+                      - "application/json"
+                  "httpMethod":
+                    type: "string"
+                    description: "HTTP method that must be specified when uploading documents."
+                    default: "PUT"
+                    enum:
+                      - "PUT"
+                  "objectKey":
+                    type: "string"
+                    description: "Object key that must be specified when uploading documents."
+                  "sizeLimitBytes":
+                    type: "integer"
+                    description: "Object size limit in bytes."
+                    default: 209715200
+                required:
+                  - "url"
+                  - "type"
+                  - "httpMethod"
+                  - "objectKey"
+                  - "sizeLimitBytes"
+              examples:
+                "example":
+                  summary: "Example response for bulk upsert info"
+                  value: {"url": "<S3 presigned URL>", "type": "application/json", "httpMethod": "PUT", "objectKey": "example-object-key", "sizeLimitBytes": 209715200}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-group: "docs"
+      x-speakeasy-name-override: "getBulkUpsertInfo"
+    post:
+      tags:
+        - "collections.docs"
+      operationId: "bulkUpsertDocs"
+      description: "Bulk upsert documents into a collection. Note that the maximum supported object size is 200MB."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                "objectKey":
+                  type: "string"
+                  description: "Object key uploaded based on bulk upsert info."
+              required:
+                - "objectKey"
+            examples:
+              "example":
+                summary: "Example request body for bulk upsert"
+                value: {"objectKey": "example-object-key"}
+      responses:
+        "202":
+          description: "Bulk upsert request accepted."
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/MessageResponse"}
+              examples:
+                "example":
+                  summary: "Example response for bulk upsert`"
+                  value: {"message": "Bulk upsert request is accepted"}
+        "400":
+          description: "Bad request"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/BadRequest"}
+              examples:
+                "example":
+                  summary: "Example response for bad request"
+                  value: {"message": "Invalid request"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-group: "docs"
+      x-speakeasy-name-override: "bulkUpsert"
+  "/collections/{collectionName}/docs/update":
+    post:
+      tags:
+        - "collections.docs"
+      operationId: "updateDocs"
+      description: "Update documents in a collection. Note that the maximum supported payload size is 6MB."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                "docs":
+                  type: "array"
+                  items:
+                    type: "object"
+                    additionalProperties: true
+                  description: "A list of documents to update. Each document must contain 'id' field to be updated."
+              required:
+                - "docs"
+            examples:
+              "example":
+                summary: "Example request body for documents update"
+                value: {"docs": [{"id": "example-id1", "example-field1": "example-value1", "example-field2": [0.1, 0.2, 0.3]}, {"id": "example-id2", "example-field1": "example-value2", "example-field2": [0.4, 0.5, 0.6]}]}
+      responses:
+        "202":
+          description: "Update request accepted."
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/MessageResponse"}
+              examples:
+                "example":
+                  summary: "Example response for documents update`"
+                  value: {"message": "Update request is accepted"}
+        "400":
+          description: "Bad request"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/BadRequest"}
+              examples:
+                "example":
+                  summary: "Example response for bad request"
+                  value: {"message": "Invalid request"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-group: "docs"
+      x-speakeasy-name-override: "update"
+  "/collections/{collectionName}/docs/delete":
+    post:
+      tags:
+        - "collections.docs"
+      operationId: "deleteDocs"
+      description: "Delete documents by document IDs or query filter from a collection."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                "ids":
+                  type: "array"
+                  items:
+                    type: "string"
+                  description: "A list of document IDs."
+                "filter":
+                  type: "object"
+                  additionalProperties: true
+                  description: "Query filter."
+                "partitionFilter": {"$ref": "#/components/schemas/PartitionFilter"}
+            examples:
+              "deleteByIds":
+                summary: "Example request body for documents deletion by IDs"
+                value: {"ids": ["example-doc-id-1", "example-doc-id-2"]}
+              "deleteByQuery":
+                summary: "Example request body for documents deletion by query"
+                value: {"filter": {"queryString": {"query": "example-field1:example-value"}}}
+      responses:
+        "202":
+          description: "Delete request accepted."
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/MessageResponse"}
+              examples:
+                "example":
+                  summary: "Example response for documents deletion"
+                  value: {"message": "Delete request is accepted"}
+        "400":
+          description: "Bad request"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/BadRequest"}
+              examples:
+                "example":
+                  summary: "Example response for bad request"
+                  value: {"message": "Invalid request"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-group: "docs"
+      x-speakeasy-name-override: "delete"
+  "/collections/{collectionName}/docs/fetch":
+    post:
+      tags:
+        - "collections.docs"
+      operationId: "fetchDocs"
+      description: "Lookup and return documents by document IDs from a collection."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                "ids":
+                  type: "array"
+                  items:
+                    type: "string"
+                  description: "A list of document IDs to fetch. Note that the maximum number of document IDs is 100."
+                "consistentRead": {"$ref": "#/components/schemas/ConsistentRead"}
+                "includeVectors": {"$ref": "#/components/schemas/IncludeVectors"}
+                "fields": {"$ref": "#/components/schemas/FieldsSelector"}
+                "partitionFilter": {"$ref": "#/components/schemas/PartitionFilter"}
+              required:
+                - "ids"
+            examples:
+              "example":
+                summary: "Example request body for documents fetch"
+                value: {"ids": ["example-doc-id-1", "example-doc-id-2"]}
+      responses:
+        "200":
+          description: "Fetched documents."
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  "total":
+                    type: "integer"
+                    description: "Total number of documents returned."
+                  "took":
+                    type: "integer"
+                    description: "Elapsed time in milliseconds."
+                  "docs":
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        "collection":
+                          type: "string"
+                        "doc":
+                          type: "object"
+                          additionalProperties: true
+                      required:
+                        - "collection"
+                        - "doc"
+                  "isDocsInline":
+                    type: "boolean"
+                    description: "Whether the list of documents is included."
+                  "docsUrl":
+                    type: "string"
+                    description: "Download URL for the list of documents."
+                required:
+                  - "total"
+                  - "took"
+                  - "docs"
+                  - "isDocsInline"
+              examples:
+                "example":
+                  summary: "Example response for documents fetch"
+                  value: {"total": 2, "took": 10, "docs": [{"collection": "example-collection-name", "doc": {"example-field1": "example-value1", "example-field2": [0.1, 0.2, 0.3]}}, {"collection": "example-collection-name", "doc": {"example-field1": "example-value2", "example-field2": [0.4, 0.5, 0.6]}}], "isDocsInline": true}
+        "400":
+          description: "Bad request"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/BadRequest"}
+              examples:
+                "example":
+                  summary: "Example response for bad request"
+                  value: {"message": "Invalid request"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-group: "docs"
+      x-speakeasy-name-override: "fetch"
+  "/collections/{collectionName}/query":
+    post:
+      tags:
+        - "collections"
+      operationId: "queryCollection"
+      description: "Search a collection with a query and return the most similar documents."
+      security:
+        - ProjectApiKey: []
+      parameters:
+        - {"$ref": "#/components/parameters/CollectionName"}
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                "size":
+                  type: "integer"
+                  description: "Number of documents to return. Note that the maximum number of documents is 100."
+                "query":
+                  type: "object"
+                  additionalProperties: true
+                  description: "Query object."
+                "consistentRead": {"$ref": "#/components/schemas/ConsistentRead"}
+                "includeVectors": {"$ref": "#/components/schemas/IncludeVectors"}
+                "sort":
+                  type: "array"
+                  description: "List of field name, sort direction pairs."
+                  items:
+                    type: "object"
+                    additionalProperties: true
+                "fields": {"$ref": "#/components/schemas/FieldsSelector"}
+                "partitionFilter": {"$ref": "#/components/schemas/PartitionFilter"}
+              required:
+                - "query"
+            examples:
+              "example":
+                summary: "Example request body for query collection"
+                value: {"size": 2, "query": {"queryString": {"query": "example-field1:example-value"}}}
+      responses:
+        "200":
+          description: "Documents selected by query."
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  "took":
+                    type: "integer"
+                    description: "Elapsed time in milliseconds."
+                  "maxScore":
+                    type: "number"
+                    description: "Maximum score."
+                  "total":
+                    type: "integer"
+                    description: "Total number of documents returned."
+                  "docs":
+                    type: "array"
+                    description: "List of documents."
+                    items:
+                      type: "object"
+                      properties:
+                        "collection":
+                          type: "string"
+                          description: "Collection name."
+                        "score":
+                          type: "number"
+                          description: "Document similarity score."
+                        "doc":
+                          type: "object"
+                          additionalProperties: true
+                      required:
+                        - "collection"
+                        - "doc"
+                  "isDocsInline":
+                    type: "boolean"
+                    description: "Whether the list of documents is included."
+                  "docsUrl":
+                    type: "string"
+                    description: "Optional download URL for the list of documents."
+                required:
+                  - "took"
+                  - "total"
+                  - "docs"
+                  - "isDocsInline"
+              examples:
+                "example":
+                  summary: "Example response for documents query"
+                  value: {"took": 10, "maxScore": 1, "total": 2, "docs": [{"collection": "example-collection-name", "score": 1, "doc": {"example-field1": "example-value1", "example-field2": [0.1, 0.2, 0.3]}}, {"collection": "example-collection-name", "score": 0.9, "doc": {"example-field1": "example-value2", "example-field2": [0.4, 0.5, 0.6]}}], "isDocsInline": true}
+        "400":
+          description: "Bad request"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/BadRequest"}
+              examples:
+                "example":
+                  summary: "Example response for bad request"
+                  value: {"message": "Invalid request"}
+        "401":
+          description: "Unauthenticated"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/Unauthenticated"}
+              examples:
+                "example":
+                  summary: "Example response for authentication failure"
+                  value: {"message": "Authentication failed"}
+        "404":
+          description: "Resource not found"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/ResourceNotFound"}
+              examples:
+                "example":
+                  summary: "Example response for resource not found"
+                  value: {"message": "Resource not found"}
+        "429":
+          description: "Too many requests"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/TooManyRequests"}
+              examples:
+                "example":
+                  summary: "Example response for too many requests"
+                  value: {"message": "Too many requests"}
+        "500":
+          description: "Internal server error"
+          content:
+            "application/json":
+              schema: {"$ref": "#/components/schemas/InternalServerError"}
+              examples:
+                "example":
+                  summary: "Example response for internal server error"
+                  value: {"message": "Internal server error"}
+      x-speakeasy-name-override: "query"

@@ -1,0 +1,905 @@
+lockVersion: 2.0.0
+id: c68194e4-f8a9-48ea-895a-f6809744d3b0
+management:
+  docChecksum: 27103a97afda890b2acf72afffe06fbd
+  docVersion: 1.1.1
+  speakeasyVersion: 1.709.1
+  generationVersion: 2.812.2
+  releaseVersion: 0.1.2
+  configChecksum: 54d13e192a79f5f231e40598dd9d02ea
+persistentEdits:
+  generation_id: a5811da1-999f-42f8-aec1-958ecabb2a13
+  pristine_commit_hash: 0550ade5c16e3715912e1335d2301f9aae28878d
+  pristine_tree_hash: 9c599f2f197040491a138360956c63b8bc155b62
+features:
+  go:
+    additionalDependencies: 0.1.0
+    constsAndDefaults: 0.1.13
+    core: 3.13.12
+    defaultEnabledRetries: 0.2.0
+    devContainers: 2.90.0
+    envVarSecurityUsage: 0.3.2
+    examples: 2.81.5
+    flattening: 2.81.1
+    globalSecurity: 2.82.13
+    globalSecurityCallbacks: 0.1.0
+    globalSecurityFlattening: 0.1.0
+    globalServerURLs: 2.83.0
+    groups: 2.81.3
+    intellisenseMarkdownSupport: 0.1.0
+    nameOverrides: 2.81.2
+    responseFormat: 0.1.2
+    retries: 2.84.2
+    sdkHooks: 0.3.0
+    unions: 2.87.3
+trackedFiles:
+  .devcontainer/README.md:
+    id: b170c0f184ac
+    last_write_checksum: sha1:be2627d96bcc7a331cdb1b53ab5136930ae7febc
+    pristine_git_object: 4e23f7c445b045c4ea707e94e73fbd906f0c2b62
+  .devcontainer/devcontainer.json:
+    id: b34062a34eb1
+    last_write_checksum: sha1:a518b2fc2f92e998593a1dcb935db4ca1eb2e2f1
+    pristine_git_object: 92f5ba5b54156225322fb4b09d2acf4abde9abc9
+  .devcontainer/setup.sh:
+    id: 5f1dfbfeb8eb
+    last_write_checksum: sha1:0443cc8beac352499afd25be90adf28d3736dbe0
+    pristine_git_object: 9003242ad92f98da28b1e4dad2129b5b1dabab59
+  .gitattributes:
+    id: 24139dae6567
+    last_write_checksum: sha1:84b0115789fc3ea52e31df701d8a27f76077e29f
+    pristine_git_object: e6a994416d0f527912d2d272e2583458f4fc9bcb
+  USAGE.md:
+    id: 3aed33ce6e6f
+    last_write_checksum: sha1:200b8d79e7f3b9d8dfcef763ded5cd5924d9a964
+    pristine_git_object: 4b73d94e98454838ab2b1bfdf13f985efbd932aa
+  collections.go:
+    id: cb16c63710b4
+    last_write_checksum: sha1:02b01bc39e450c2be5c13f805dfb3fcb01946280
+    pristine_git_object: d92637d284cb137bc8550f1d059600b1e869a99a
+  docs.go:
+    id: c0ba03b2c082
+    last_write_checksum: sha1:aa19ec4c4fac31c1eb6a385c10c93732256497ac
+    pristine_git_object: 02a26b5860bd622846c7bce600bd9f873a4a78d3
+  docs/models/apierrors/badrequesterror.md:
+    id: fdf908c95e30
+    last_write_checksum: sha1:e9f82ec2cce7653c201718489930def84644ee49
+    pristine_git_object: 721bfd24212499a2477b70d4bdcacdae43eba6c1
+  docs/models/apierrors/internalservererror.md:
+    id: 7a7cb4efafe1
+    last_write_checksum: sha1:2519f341a60a3a624e177aeec040266e819339a1
+    pristine_git_object: 655026a93cb5f3c7ecee32b8bb53da1388984628
+  docs/models/apierrors/resourcealreadyexistserror.md:
+    id: e0ad9a3143fd
+    last_write_checksum: sha1:0c482dc8afba017a31c4be35e940508b2fb7de69
+    pristine_git_object: 1fbb5f4d9e48312b6d381015d78455217017f032
+  docs/models/apierrors/resourcenotfounderror.md:
+    id: 6e8221f74498
+    last_write_checksum: sha1:ca36f9355d07cac13e5930946b14fd0bdac9dafa
+    pristine_git_object: 0873470037cadae75b18a912279127394613d2e4
+  docs/models/apierrors/toomanyrequestserror.md:
+    id: ed2acfd8643d
+    last_write_checksum: sha1:cf4cd5c05c93fbf67868ac977592ee5c3d3e72e1
+    pristine_git_object: f31193012f032542b4ddba960cd924c596fe7e6e
+  docs/models/apierrors/unauthenticatederror.md:
+    id: daeaa0e918f2
+    last_write_checksum: sha1:ee81901f6ebbac0a79955c039cdcb6faa56bae66
+    pristine_git_object: a3ec3b881711d0f974d03fa6fac3c14eb395dcc4
+  docs/models/components/analyzer.md:
+    id: f4350acaa2b5
+    last_write_checksum: sha1:c40eeece63f64a4df62c831d332d14060f020f65
+    pristine_git_object: b7261703afa078ecac318f7d24ee3b7653fa5903
+  docs/models/components/collectionresponse.md:
+    id: cea7ac815396
+    last_write_checksum: sha1:79736a04a5dc2d99362b472fa3461cdc2d30a551
+    pristine_git_object: e276d0b22d4e9f22fe802fd4a68c69972f6a711e
+  docs/models/components/datatype.md:
+    id: dd75bf30e17c
+    last_write_checksum: sha1:caf93226face30b3e15b0471992b13594234ad74
+    pristine_git_object: 74ed81d2a08141e1b40dc98dee03a0aa096de3e2
+  docs/models/components/fieldsselector1.md:
+    id: ad48c66f39b9
+    last_write_checksum: sha1:a54a2b236c18b5ede5a42fabdd6f818a29b2b5ed
+    pristine_git_object: 1fe8f63ecf2e874f12c3abe57816242bbbf1906d
+  docs/models/components/fieldsselector2.md:
+    id: fb3cdafb994d
+    last_write_checksum: sha1:6103ac12b2a51930dceb1740afe40e5317f3c8da
+    pristine_git_object: 61befbebfa63696774afe83861cefc330c334649
+  docs/models/components/fieldsselectorunion.md:
+    id: 92a86894d5b5
+    last_write_checksum: sha1:b4b6ae37bca66239732750754763976588e908f5
+    pristine_git_object: b158a53852e7fb8201a30814ff09c88b8c9acc66
+  docs/models/components/httpmetadata.md:
+    id: 728948c70168
+    last_write_checksum: sha1:7c40945dac218ce5e5e11e7c907d27a3ea14c417
+    pristine_git_object: df1fdd59f3c85e4ba70573ff7954b12ac1d33d08
+  docs/models/components/indexconfigs.md:
+    id: 29ca7c09c662
+    last_write_checksum: sha1:1a2f7db4ed42173a9504ba5b0cdeb4d2e2d5d37d
+    pristine_git_object: 175232fbcd1bdeafffccc4b0949b31641c231b24
+  docs/models/components/indexconfigsobject.md:
+    id: 1bb576116ffe
+    last_write_checksum: sha1:27e71db7b3c085b677e628d148e0e468f675e137
+    pristine_git_object: 80882d4f172c6713780e34c6a3cf475c6700b4fd
+  docs/models/components/indexconfigstext.md:
+    id: 661bf772d252
+    last_write_checksum: sha1:4651d7317781dd059d3501667d379ea19d9b8118
+    pristine_git_object: 6748be986b5c9c2da25ff3f6b26814c883be4ff5
+  docs/models/components/indexconfigsunion.md:
+    id: 96eeabe0b0d5
+    last_write_checksum: sha1:6158aa3428df7144e947deb0927c80348e579d86
+    pristine_git_object: 6c91e3a33b433ab161952868d1bc8d2788861c98
+  docs/models/components/indexconfigsvector.md:
+    id: 32cdb07da330
+    last_write_checksum: sha1:b41fc86d543717c916f9a94bb743b7c24f1030ab
+    pristine_git_object: 49d8dd68a43cf94d2071ee92dc698d37a662bad3
+  docs/models/components/messageresponse.md:
+    id: ef7d3fb6b1a2
+    last_write_checksum: sha1:e705c57232586e82731c4d1469dc2772a8c2ed5c
+    pristine_git_object: 1b3b93e3f3df5d1f2da483eeb4dd20023afe8313
+  docs/models/components/partitionconfig.md:
+    id: 7fe4963b4244
+    last_write_checksum: sha1:a090d788f2b3a211350c56d52a4702f1588b3486
+    pristine_git_object: e285f8675af2dcff2641508283cb3125fa1ab7b8
+  docs/models/components/partitionfilter.md:
+    id: 98a36ef789ff
+    last_write_checksum: sha1:7b800cdb6e3ad1f62c398a6c9bff9da46c9426e2
+    pristine_git_object: b4dde21a6166e98c8ea649f6101b4515d18ded01
+  docs/models/components/security.md:
+    id: 54906b49ea28
+    last_write_checksum: sha1:1f31caac795daecc9033f97e5779a5c7c2aa080e
+    pristine_git_object: 6df08832a22fabcc65dafcf87928da108367433b
+  docs/models/components/similarity.md:
+    id: 9ef546ed9921
+    last_write_checksum: sha1:173781aaaf046477a1a7d69c24742a42bb53d494
+    pristine_git_object: 58720e4a2d52b7e2b54d342e71cb004298673541
+  docs/models/components/status.md:
+    id: e26b2fe7f53e
+    last_write_checksum: sha1:e5d14561f7b6c73c3cc0f6627af44c2e2ffb3fab
+    pristine_git_object: 06adf1c2a566dca309f20f255b8151661b7e809e
+  docs/models/components/type.md:
+    id: 9f07f2d18a9f
+    last_write_checksum: sha1:edd416e201416f2652f38993818f6704e2f1a41f
+    pristine_git_object: 72a0fd31e09bc39919401248ec3a99316bbf02bb
+  docs/models/components/typeobject.md:
+    id: 2a8770959ccf
+    last_write_checksum: sha1:fe7d9557e257594f89a8a49a052ef0e933e72695
+    pristine_git_object: 8565259520272d4ad4aedeab5a48bb28a3550204
+  docs/models/components/typetext.md:
+    id: 893a1d554dd2
+    last_write_checksum: sha1:0b160cb0e9fd5d7d2b2b6bb723c54d4dcf7c87ae
+    pristine_git_object: d1d22acd5cb99b86e73c0d4196aa7b8295f1e5a5
+  docs/models/components/typevector.md:
+    id: 61a1848fc027
+    last_write_checksum: sha1:1bde59c12fd3af764a8a92eef458a1ad18ffd3e1
+    pristine_git_object: 51c374193ac2b6995acaf61f217b42189c4a1a4b
+  docs/models/operations/bulkupsertdocsrequest.md:
+    id: 84ab4476a3e7
+    last_write_checksum: sha1:0439795b710adb3ada28141ca3b0e386ac179689
+    pristine_git_object: 2b8ebe129b2a77fce0748d23dafa6619703782da
+  docs/models/operations/bulkupsertdocsrequestbody.md:
+    id: e3ecd835a29c
+    last_write_checksum: sha1:bf8a10b96da7aaeaa4ce42426f1118642f499aa2
+    pristine_git_object: b6025f109afcc1e89b9ff8254c507e13e769a55e
+  docs/models/operations/bulkupsertdocsresponse.md:
+    id: 603d1d96e55d
+    last_write_checksum: sha1:4437e143623d2befc35122da2fe7ce790b389cca
+    pristine_git_object: 08f6ca8a59fe2fa3acfb0bc55edf051cf90e68fc
+  docs/models/operations/createcollectionrequest.md:
+    id: 72692092210d
+    last_write_checksum: sha1:92242df51e8a7d01df592b3387b8126b8554c928
+    pristine_git_object: e955f6381fdfbe3a76b89ce452041b986ad02325
+  docs/models/operations/createcollectionresponse.md:
+    id: bc72aa07eb9e
+    last_write_checksum: sha1:2f12504f327c16aec474593fbbdd44cadf038bda
+    pristine_git_object: baa7fc516c37478523a57fb28da493087d4af380
+  docs/models/operations/createcollectionresponsebody.md:
+    id: 8a44bdfdad0f
+    last_write_checksum: sha1:f966c0a9ae61c84a6093eb01d451481077f5bcf0
+    pristine_git_object: 98a38355578fe07dfe63c23d36ce51ab8b29bc7f
+  docs/models/operations/deletecollectionrequest.md:
+    id: c43ac0f890fd
+    last_write_checksum: sha1:c01ff49cfe9729ca94f617ae207e32bbea1c802b
+    pristine_git_object: 3beb032b686559d493cfd3adfaab2d4f9454d061
+  docs/models/operations/deletecollectionresponse.md:
+    id: d7f05e19045d
+    last_write_checksum: sha1:bf8a6eeb541b9ca37df172e48b78efb5ade8d2f2
+    pristine_git_object: bd5ff387ea3cbbf1f8724a5426f2f71d3aa3d0ab
+  docs/models/operations/deletedocsrequest.md:
+    id: ca3473be8abb
+    last_write_checksum: sha1:39e5d4e6d8c74954457f24669f211a889ea36fc1
+    pristine_git_object: 49abc0d8e26072b1f90fd19c729e547fbeaadae7
+  docs/models/operations/deletedocsrequestbody.md:
+    id: 004ae1720184
+    last_write_checksum: sha1:4b3aef6c19673007ee9c9bae66e1ac767c9f9531
+    pristine_git_object: 0f28a8ce716bb68fda85c32e932f8d7f1252c76a
+  docs/models/operations/deletedocsresponse.md:
+    id: 7c339cc2bf4c
+    last_write_checksum: sha1:c725d9a6dd3b4f710efa26b2213898bb7bf85dde
+    pristine_git_object: 18c2aa82b442d415281f721a602b88bdcc5768fb
+  docs/models/operations/fetchdocsdoc.md:
+    id: 2d7c6cc60b6e
+    last_write_checksum: sha1:234f25d4beee49b23869486173fb4f05dfa03918
+    pristine_git_object: e27c23804534894a5671b486684730248f23001f
+  docs/models/operations/fetchdocsrequest.md:
+    id: 05dbeb3974c0
+    last_write_checksum: sha1:520513335702d92ba3a48ad4019a7979ab7e1a0b
+    pristine_git_object: 8700ec843087eb8b56433f2cf2c2d28f07e2ee53
+  docs/models/operations/fetchdocsrequestbody.md:
+    id: 89fc3c407f11
+    last_write_checksum: sha1:0e4cb5978ccf7d0d227425d41d8565bc5260aa91
+    pristine_git_object: 9b6e88e549ee678c77fefea5104ba66fe5e04f1f
+  docs/models/operations/fetchdocsresponse.md:
+    id: f395584d5988
+    last_write_checksum: sha1:13e5c4cde046e05c0c5696b3b88d3a5eee4bfbac
+    pristine_git_object: 081be6747693034c354e88b8b3b8413d52ff891b
+  docs/models/operations/fetchdocsresponsebody.md:
+    id: 5e8c8b07ef98
+    last_write_checksum: sha1:4f69dc3643059c03cdd16b2f98fc06299393c8fe
+    pristine_git_object: 1112514f7fe884245bd3bda40fff9054103d0e3c
+  docs/models/operations/getbulkupsertdocsrequest.md:
+    id: 87b34833252a
+    last_write_checksum: sha1:0060fe59e2f70792d2fb3f30d7183c1dafb3d4a1
+    pristine_git_object: 12809b84c64215636afac2171413560374119346
+  docs/models/operations/getbulkupsertdocsresponse.md:
+    id: 5d8b32d8cf2d
+    last_write_checksum: sha1:682c62564dcd32e8b93879c723468ad7d9b95f25
+    pristine_git_object: 548745ccdb60e81a99440150b01c1a997013b84e
+  docs/models/operations/getbulkupsertdocsresponsebody.md:
+    id: adf5a64ae85e
+    last_write_checksum: sha1:1b6313fa4a9f9c37d5078f4347bfd47b840de378
+    pristine_git_object: f6916c630329e0f411a75a87410b6120ffe9bb0f
+  docs/models/operations/getcollectionrequest.md:
+    id: b4df0384ce7f
+    last_write_checksum: sha1:b41256292ea98f71b031856208dbff819a72bdae
+    pristine_git_object: c3fd0bef3eac0d1aa986dc4b40847959daf2c5ff
+  docs/models/operations/getcollectionresponse.md:
+    id: 62007304603c
+    last_write_checksum: sha1:62673b4c74a06b3ba159d16f4934ff50f6512830
+    pristine_git_object: 60495eccbda84ec4eb10ffbce0bd3cc8624f1450
+  docs/models/operations/getcollectionresponsebody.md:
+    id: 6d1e20de37cd
+    last_write_checksum: sha1:03eeb56e4a071ac27f010b7d69ad46aee8eb1d2b
+    pristine_git_object: 39c851287150fed01a49a3967cdd20d423346ee2
+  docs/models/operations/httpmethod.md:
+    id: ded3a14ee9ef
+    last_write_checksum: sha1:bf500f4f86e5ad0302fc97a724897353c37ae180
+    pristine_git_object: e4a357b1f1a0e98af8832132fac4e92d04b007ea
+  docs/models/operations/listcollectionsresponse.md:
+    id: b417782541fc
+    last_write_checksum: sha1:ada09e71b89e2b66be6c3c88299b56ee66f14bd6
+    pristine_git_object: bc0fd0a788ab9af228eaf6a881e5f0f00b0274ef
+  docs/models/operations/listcollectionsresponsebody.md:
+    id: dd3e4198677e
+    last_write_checksum: sha1:d20b09c562bfc96fb71ca4b9baf5a45df440dbec
+    pristine_git_object: ea09669ef1a58a1d0038d572be76adf15255a373
+  docs/models/operations/listdocsrequest.md:
+    id: 072d793ec33c
+    last_write_checksum: sha1:89ac01c7bacb3a3b2faed4a7e53961476a3e1b60
+    pristine_git_object: 196cc9fef60821fd5230850772168e168829e34f
+  docs/models/operations/listdocsresponse.md:
+    id: c621a08ec715
+    last_write_checksum: sha1:537475a6287f417d1f9260b03d9d00d5e4a4733e
+    pristine_git_object: 332643801e13d70aa7c40b11588faa97ff0233d3
+  docs/models/operations/listdocsresponsebody.md:
+    id: 07b5b1573c59
+    last_write_checksum: sha1:981b7655f2b375c1afb43f3ff8f70079d2b300a3
+    pristine_git_object: b7ff1ef6a03b7c9d8d138ef5e9f41a4cd05ac763
+  docs/models/operations/option.md:
+    id: 2ac1bd52a5fb
+    last_write_checksum: sha1:08cfee5d266c9d82987e448f6c98a143aa42c5f8
+    pristine_git_object: 35d8a1e2ad48a64702c6a654ac8880dabec053b0
+  docs/models/operations/querycollectiondoc.md:
+    id: f2cc469dde88
+    last_write_checksum: sha1:c80e1a33d942c9e1dbce63c9a5c425cc7d37ff2f
+    pristine_git_object: abedca6302b515e9932863636ee6ce9334912a58
+  docs/models/operations/querycollectionrequest.md:
+    id: cd94ea291576
+    last_write_checksum: sha1:7508ca58786df95ef4e759209251924f6dd5cbd6
+    pristine_git_object: 1adbda69fd02835b81428c2906744185a396153c
+  docs/models/operations/querycollectionrequestbody.md:
+    id: 5d250768348c
+    last_write_checksum: sha1:d169bef84c5278446a63199a6425548a0c2e0b9c
+    pristine_git_object: e23171ae46babc8028a01739f1990c7a636a99be
+  docs/models/operations/querycollectionresponse.md:
+    id: 99b0ead136d5
+    last_write_checksum: sha1:fc5ab6e7795177a9542506b764af6967b73b4dbd
+    pristine_git_object: ac3a473a0ebeb6a008a72fb39a5bad9e8cbee26f
+  docs/models/operations/querycollectionresponsebody.md:
+    id: 3d5d369d03cf
+    last_write_checksum: sha1:886e3ec6c134faf9739d66a9a36eb95e679753a5
+    pristine_git_object: 57b19de5858c0e4950017784ac6428d71a9fca3f
+  docs/models/operations/type.md:
+    id: 8e39682ca85e
+    last_write_checksum: sha1:d9f78f6379eda8bbfbbcd0a49b184101ad254999
+    pristine_git_object: a320d9851a8b2e964fdfb201383470b8c7a540ba
+  docs/models/operations/updatecollectionrequest.md:
+    id: ca86f70d208a
+    last_write_checksum: sha1:0426783cc4e2d33cb5c82cac2cc0127ed3f296ac
+    pristine_git_object: cdcd19cfaec171a29dbbc4089e958bf813b7a973
+  docs/models/operations/updatecollectionrequestbody.md:
+    id: 063817341bef
+    last_write_checksum: sha1:4688a9db09dacef7458a7e6aa1c081d955f41b64
+    pristine_git_object: 40a4f1e837fe278c3e20f2eb8d6d32824e25fa09
+  docs/models/operations/updatecollectionresponse.md:
+    id: 843e0a0aa60b
+    last_write_checksum: sha1:6cf321671c763c63db6066bf413cbbf2c8f0a483
+    pristine_git_object: 88497f1e7b1513e8282e71f7a0cbd101a6c9f77d
+  docs/models/operations/updatecollectionresponsebody.md:
+    id: cfe039b95632
+    last_write_checksum: sha1:4173abe6454ec9886789907ab5854f32bd5fcf0d
+    pristine_git_object: b55bfc16c419a05684c39b69feb2ace7e1c48ce5
+  docs/models/operations/updatedocsrequest.md:
+    id: 4773af8ec1e2
+    last_write_checksum: sha1:1d72db7860ae3d44963e3c4fa4267407ca69b92b
+    pristine_git_object: e378dbbdd82e5e2273e570d81edbb6bbac32f997
+  docs/models/operations/updatedocsrequestbody.md:
+    id: f7ad9a72e7ad
+    last_write_checksum: sha1:d868ebef859b193f8f1b167e355e63a386dbaa66
+    pristine_git_object: 905f90610961a4e713ed589663b1b05ead448f99
+  docs/models/operations/updatedocsresponse.md:
+    id: 6bdebddbca3d
+    last_write_checksum: sha1:1d21eb984c707aa070394704e1a7f442d642e475
+    pristine_git_object: bec2339b0dff02374c7431999e6443b7b7981cb7
+  docs/models/operations/upsertdocsrequest.md:
+    id: 149fc1a17402
+    last_write_checksum: sha1:500e301dcc4658c4536b28cc15468ec5e3ff69ab
+    pristine_git_object: 5f30f857c21f0faf96ea7a2b20a598c6e4af8888
+  docs/models/operations/upsertdocsrequestbody.md:
+    id: 0ea6c826e5e0
+    last_write_checksum: sha1:cc7dd3d15830d05f6743904ebaccec5b68be2ff3
+    pristine_git_object: 99ef8344ee8e90e04f3a5994eda54cd1d086ca7d
+  docs/models/operations/upsertdocsresponse.md:
+    id: 4420d98d3643
+    last_write_checksum: sha1:824b9adfd12ecd5b03d02127bf133d038532f933
+    pristine_git_object: 17b27808c1c7c6c9ebc07e7569fc6c331cdb8d73
+  docs/sdks/collections/README.md:
+    id: 7985e64efccf
+    last_write_checksum: sha1:cfd8106429d1594661dd1fab4f48d8da919e21fc
+    pristine_git_object: e800a0335566930abb37a678fc36329eab68d082
+  docs/sdks/docs/README.md:
+    id: 38e21ef377d8
+    last_write_checksum: sha1:82014247ada4a5b905cc81b295e84edc0f3fb7c5
+    pristine_git_object: 7415caef180f2049228754459a201894159b367d
+  go.mod:
+    id: c47645c391ad
+    last_write_checksum: sha1:c863198a4e9bab964b5e9899de7319cbc29d8e5c
+    pristine_git_object: dacc1a26f33f963da4202f4917be665e2908b308
+  internal/config/sdkconfiguration.go:
+    id: 33b8bfac5265
+    last_write_checksum: sha1:8a30847121b2e27b49a6fdf7709dd2360212c115
+    pristine_git_object: 11729eeb8600c52c2860b31143c3599a38a7fe71
+  internal/hooks/hooks.go:
+    id: 336be70ed5c0
+    last_write_checksum: sha1:817516db673d7809e7805a878a6b9bbe4bb0c5cb
+    pristine_git_object: 7b73eb78fdb11ea85383f57b172750adf4aa03a4
+  internal/utils/contenttype.go:
+    id: 928a56fe6755
+    last_write_checksum: sha1:ab5cfd860d02c6e6a37f89e2b5649a9859947fb1
+    pristine_git_object: f6487e01eb987c0aa49e7aa50b5ff24830314c63
+  internal/utils/env.go:
+    id: ac8bab30c73d
+    last_write_checksum: sha1:1e0bcb2d2caed9f3657f1dbc99b55811bed0298c
+    pristine_git_object: 110d464eacf2387b347bad1cb903666354a339e9
+  internal/utils/form.go:
+    id: 8ea133d76535
+    last_write_checksum: sha1:add8d9950b4df56e4894361fd061dd30e85640be
+    pristine_git_object: dbe7da02e7c0cde13b438bb74affa7c1bc619cc1
+  internal/utils/headers.go:
+    id: 90d4f18d4adf
+    last_write_checksum: sha1:78bb778712c4cdab2195eaaf714de3f1f0b5b167
+    pristine_git_object: fff0c2eba72ee577f1e75addfe2e27ba5827f0fe
+  internal/utils/json.go:
+    id: ad03e3c502d8
+    last_write_checksum: sha1:745987eedb5f31aa8b557e00114332c74d73f99d
+    pristine_git_object: dc2899767f32348ee5e7bdf545801e4b3dab0d8a
+  internal/utils/pathparams.go:
+    id: 1f3e0c30fd90
+    last_write_checksum: sha1:3a7e1fad7a1f4c6bf504e8b41372cdd9dd4f3617
+    pristine_git_object: d3a88468e5f4cae589d7ba03188117cf4ccc6a64
+  internal/utils/queryparams.go:
+    id: e7f604e65a58
+    last_write_checksum: sha1:78776bc9da4e0cafba70127ceb8118fa39f00b28
+    pristine_git_object: 780e95ca3de89439495913e554c8b5cd5850e2f8
+  internal/utils/requestbody.go:
+    id: 22445ec1c044
+    last_write_checksum: sha1:8ffa069ea2a8b2f54462181da7cfa9efd5385ff7
+    pristine_git_object: 34012ae955424a46ef0c3b4a454fee6deb4f9a9d
+  internal/utils/retries.go:
+    id: b5e011d15c2d
+    last_write_checksum: sha1:0be8992866625d4aa593b8cbafc386df9d4a736d
+    pristine_git_object: 9a29a955c5f9ce6436c868f0b9f37dd4a1774a24
+  internal/utils/security.go:
+    id: eeb54c55241b
+    last_write_checksum: sha1:52cefded5223c60fcac5bd56574370e27a4bc3d5
+    pristine_git_object: ce2e1c0cffe3bbd3f111eace502f895175daad22
+  internal/utils/union.go:
+    id: db86c85746b6
+    last_write_checksum: sha1:005266f19657fd2f73799437b99c6f504ad1ef65
+    pristine_git_object: 83278b157d131f170dbed6c1c7a7ebb95b62de43
+  internal/utils/union_test.go:
+    id: 4b56247171bd
+    last_write_checksum: sha1:83ac73c1901de4c6db90f65cf5879163f3d47a00
+    pristine_git_object: f66814c73ace94d8e71d785fd6161fb405745754
+  internal/utils/utils.go:
+    id: 1133b2a27019
+    last_write_checksum: sha1:66b0ef3c302e2edad3496775a6e5b452caceefd6
+    pristine_git_object: ee4300f7b7469c4e66572ada7b95f7ff7f2e506a
+  lambdadb.go:
+    id: 8265f366072a
+    last_write_checksum: sha1:f92c30ebdb9ed30a6b017d60b76deda86a8d1cbd
+    pristine_git_object: f9f0fd1b0a8f3e32781188c0298dedc740664e3e
+  models/apierrors/apierror.go:
+    id: 4cecf27a5a54
+    last_write_checksum: sha1:e699d3325ea82ea2b0d29656396210f0513c3391
+    pristine_git_object: 61a9628a6533548245be5af929f1d4f96dd780b5
+  models/apierrors/badrequesterror.go:
+    id: 7906828547bf
+    last_write_checksum: sha1:fc567a47cb161d5e52ac304bfbcdcf381f127a23
+    pristine_git_object: c45addd8d214be485497b39438d43ee06081cc89
+  models/apierrors/internalservererror.go:
+    id: 67f9cabb9e17
+    last_write_checksum: sha1:dd2e6623ecff45da7d51e75e4cec447e2e61cd83
+    pristine_git_object: 848ea6857a9aa88a9af470312464590b3b7977a0
+  models/apierrors/resourcealreadyexistserror.go:
+    id: 2f4d5d05cf61
+    last_write_checksum: sha1:ed88d7060ca51cd687100cbb40de6abcc201f5ae
+    pristine_git_object: 0b38ee5ff466a5a149420f2ae9db2e21683df765
+  models/apierrors/resourcenotfounderror.go:
+    id: f6667a360a49
+    last_write_checksum: sha1:a4bc809d4476806f1cbce62e52da3b18ca1e1dec
+    pristine_git_object: 01f4146406eb2a284381c66861e6d9cd26404851
+  models/apierrors/toomanyrequestserror.go:
+    id: 77aa1fb7899d
+    last_write_checksum: sha1:4a11afab71e3cf2a73c79159896fcdbd0b9c1e24
+    pristine_git_object: 403eb1f927efbfa56fc069829dfcec3eddf891a1
+  models/apierrors/unauthenticatederror.go:
+    id: edb4c3e763cf
+    last_write_checksum: sha1:dcbc6f7d4453ce9dfef16325a19cdaf0bc9f6d32
+    pristine_git_object: 72dff1729a16d3b63941030e7fa1f04354b19bca
+  models/components/collectionresponse.go:
+    id: c7bf2727c469
+    last_write_checksum: sha1:1d56e676664e63cf63145a75931a29f5f50c0454
+    pristine_git_object: c2e22a993601f1145ea7a375f4a098d20129254c
+  models/components/fieldsselectorunion.go:
+    id: 6399973e76c0
+    last_write_checksum: sha1:87a8dc693e7a0fc23f26f81ae2b3e5857a45d24c
+    pristine_git_object: 3ac3b7fd17b64b78548e573e52bed70ce8d961c7
+  models/components/httpmetadata.go:
+    id: 790bad4a7abb
+    last_write_checksum: sha1:01a20fcff33179809ff9920ee431c7adabbd98f1
+    pristine_git_object: 148ec47fb2dea6c188ec68eb3532d93169608168
+  models/components/indexconfigsunion.go:
+    id: 34d299281ba2
+    last_write_checksum: sha1:f51903953c7ff8f6338d3c7b338598e815361ca2
+    pristine_git_object: c0f40391dca814a524784752995709617eef4e20
+  models/components/messageresponse.go:
+    id: 56bab89d44c8
+    last_write_checksum: sha1:bf72a5a795e30dd2924bb2ecb32d7e5b158af2d8
+    pristine_git_object: a8edc0c7ba1537aaa91ac218c52bd396bb786cfe
+  models/components/partitionconfig.go:
+    id: 5cac9923a4a7
+    last_write_checksum: sha1:58c45d9642dacaab8023c975cc643c9eab2a82bb
+    pristine_git_object: b742c9b8a03a57cce2cb325a482cc7aaca219293
+  models/components/partitionfilter.go:
+    id: 73fc71905b3e
+    last_write_checksum: sha1:f093ea8f905bf7211d6a90e9b0b987a7c171fb22
+    pristine_git_object: 1e83ac782e13e6ce890b35186738cdd9ce6a2d87
+  models/components/security.go:
+    id: 3a5eba5fe9e0
+    last_write_checksum: sha1:bc03692e614e0170a948ed44e15fab2ba0c6b373
+    pristine_git_object: b766f2ea4f7c63cb311dc1cdbd5090457f82c35c
+  models/components/status.go:
+    id: 3931e1b1e90a
+    last_write_checksum: sha1:56494786e7fb4b3e4cbe6b423570a0817075f4c4
+    pristine_git_object: da7157b325366cf1a80741048d2cc8bfb4f71cd6
+  models/operations/bulkupsertdocs.go:
+    id: cc7e02e118df
+    last_write_checksum: sha1:28bc64fac425bf7b5a9cab9cfc99e537e1940dc3
+    pristine_git_object: c98cab78a8341bce3e0bcd5dcc84f634afa4f1de
+  models/operations/createcollection.go:
+    id: 571593131beb
+    last_write_checksum: sha1:86710f699baee92b3f8d8121c454f279c3c15d23
+    pristine_git_object: 75b1a0fcfa15769c1f933ccbb79dea4f4a23a5e5
+  models/operations/deletecollection.go:
+    id: f9caa5de8e56
+    last_write_checksum: sha1:0b1aea410fc8612375ba611eae28765912db4b50
+    pristine_git_object: 59c7fcf153004ce83292c34e80ab2fc092f78206
+  models/operations/deletedocs.go:
+    id: 576341a0d908
+    last_write_checksum: sha1:c2a190c6050e44c665315d63b7f6402554631446
+    pristine_git_object: 4c21ef0907f26e233ed4f7dcab0fa3bfa1bcf131
+  models/operations/fetchdocs.go:
+    id: c44c432d353e
+    last_write_checksum: sha1:9289e40eaf718aeaa564f37b18a0880436846843
+    pristine_git_object: 4b4df4cd5e9320c391ced70a51eeb5384ef6f493
+  models/operations/getbulkupsertdocs.go:
+    id: 29c0ea19227f
+    last_write_checksum: sha1:3502438840f0a9f4b3938cb478e0873232f86866
+    pristine_git_object: bba242fb25c9ffe61a8def1802822cd5ad6511b6
+  models/operations/getcollection.go:
+    id: 12de1188eee1
+    last_write_checksum: sha1:0ebc6b135df9a90c6ddb80b4d15ee3158e5b79b7
+    pristine_git_object: f9f5ba4b09452c82c4cbf0dab31e82204c4c1a2b
+  models/operations/listcollections.go:
+    id: a4c265c23a2e
+    last_write_checksum: sha1:b2de1bedae99bc4f1350b6d90b1525a64bbd8209
+    pristine_git_object: 857be183df47191a6acd17e19954adbde3282074
+  models/operations/listdocs.go:
+    id: bfa1258fdba7
+    last_write_checksum: sha1:1ecbce62ddc3a0295486b3a77455189bc9110bd9
+    pristine_git_object: bd699ff6d88b461cf46a31ff90d5090c82cae7e6
+  models/operations/options.go:
+    id: d20dd4db9865
+    last_write_checksum: sha1:78e95047b185c44865ffcb3164227b7fb93c9562
+    pristine_git_object: 01af213a5bd5b2f5ec0d205bb8f8efbd70910c9a
+  models/operations/querycollection.go:
+    id: 94999b6477b6
+    last_write_checksum: sha1:814913544d722f2cb9d9aa696531a62dc9670fea
+    pristine_git_object: 2900612c0f4490b6070439fa678f9bb9e8da3e67
+  models/operations/updatecollection.go:
+    id: ba51cfb382fc
+    last_write_checksum: sha1:aa7fd43aa01fb4dabc3bdac2132efd8e9a7be105
+    pristine_git_object: 77d69bbdc2de66910976f510429a29f121293d51
+  models/operations/updatedocs.go:
+    id: 8074cfac6270
+    last_write_checksum: sha1:cc59650a81bb38d9c0ef561a218d96067a247116
+    pristine_git_object: 4e3108455cff691cb3742e5950cfe679af9d691a
+  models/operations/upsertdocs.go:
+    id: 07cf505bde43
+    last_write_checksum: sha1:e544834db0f7248f0e1d56b6224c6fd57a540f78
+    pristine_git_object: c51a0ea24244becdd9af0931650a6a1f08b1edb8
+  optionalnullable/optionalnullable.go:
+    id: ce60f259ead3
+    last_write_checksum: sha1:d6aff1a420c31e025ea21d46cf056e305ae76fe8
+    pristine_git_object: c6739be0619b6726565e0f11855ffe44b0e5607e
+  optionalnullable/optionalnullable_test.go:
+    id: ad67101ebca3
+    last_write_checksum: sha1:2e9433eff1651ac77d6678ea76880d9a4980cbc2
+    pristine_git_object: e6e5a01c6e721e879e24a38a1f97e3e27d4686d4
+  retry/config.go:
+    id: 82d673cb0389
+    last_write_checksum: sha1:f565273be789ffe0e3c160de1ac72a63cfe67fbe
+    pristine_git_object: aa809fccb3445b1e2530a979dad620512f50e70f
+  types/bigint.go:
+    id: 6f911e1a03c3
+    last_write_checksum: sha1:49b004005d0461fb04b846eca062b070b0360b31
+    pristine_git_object: 9c6a086d51595888a6ff787ebcb8693559afee95
+  types/date.go:
+    id: 231a623ce1b7
+    last_write_checksum: sha1:3036a2e1ed15a1d484c093367eba000c38f384d0
+    pristine_git_object: 5b2782f219efe6bfbce46fc2dec68998eb759438
+  types/datetime.go:
+    id: 5023aac30a47
+    last_write_checksum: sha1:196d050af6450669214e9ae4fd28e56263ae2b5d
+    pristine_git_object: 3eff332daa04e34cec5ffb10add670bafd8ac454
+  types/pointers.go:
+    id: 6d0d0a6cb6f3
+    last_write_checksum: sha1:fc2275ea006257ba9ba4ff6f2a2cdb6205371eef
+    pristine_git_object: 35c439d2661e08fcb6a854096fd7b9a8561b3938
+examples:
+  listCollections:
+    normalCollection:
+      responses:
+        "200":
+          application/json: {"collections": [{"projectName": "example-project-name", "collectionName": "example-collection-name", "indexConfigs": {"example-field1": {"type": "text", "analyzers": ["standard"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}}, "numPartitions": 468555, "numDocs": 10000, "collectionStatus": "ACTIVE"}]}
+    forkedCollection:
+      responses:
+        "200":
+          application/json: {"collections": [{"projectName": "example-project-name", "collectionName": "example-collection-name", "indexConfigs": {"example-field1": {"type": "text", "analyzers": ["standard"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}}, "numPartitions": 306696, "numDocs": 10000, "sourceProjectName": "example-source-project-name", "sourceCollectionName": "example-source-collection-name", "sourceCollectionVersionId": "example-source-collection-version-id", "collectionStatus": "ACTIVE"}]}
+    example:
+      responses:
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  createCollection:
+    normalCollection:
+      requestBody:
+        application/json: {"collectionName": "example-collection-name", "indexConfigs": {"example-field1": {"type": "text", "analyzers": ["english"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}}}
+      responses:
+        "202":
+          application/json: {"collection": {"projectName": "<value>", "collectionName": "<value>", "indexConfigs": {}, "numPartitions": 595485, "numDocs": 482879, "collectionStatus": "CREATING"}}
+        "400":
+          application/json: {}
+        "401":
+          application/json: {}
+        "409":
+          application/json: {}
+        "429":
+          application/json: {}
+        "500":
+          application/json: {}
+    forkedCollection:
+      requestBody:
+        application/json: {"collectionName": "example-collection-name", "sourceProjectName": "example-source-project-name", "sourceCollectionName": "example-source-collection-name", "sourceDatetime": "2023-10-01T12:00:00Z", "sourceProjectApiKey": "example-source-project-api-key"}
+      responses:
+        "202":
+          application/json: {"collection": {"projectName": "<value>", "collectionName": "<value>", "indexConfigs": {}, "numPartitions": 595485, "numDocs": 482879, "collectionStatus": "CREATING"}}
+        "400":
+          application/json: {}
+        "401":
+          application/json: {}
+        "409":
+          application/json: {}
+        "429":
+          application/json: {}
+        "500":
+          application/json: {}
+    example:
+      requestBody:
+        application/json: {"collectionName": "<value>"}
+      responses:
+        "202":
+          application/json: {"collection": {"projectName": "<value>", "collectionName": "<value>", "indexConfigs": {}, "numPartitions": 595485, "numDocs": 482879, "collectionStatus": "CREATING"}}
+        "400":
+          application/json: {"message": "Invalid request"}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "409":
+          application/json: {"message": "Resource already exists"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  deleteCollection:
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      responses:
+        "202":
+          application/json: {"message": "Collection example-collection-name is queued for deletion"}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  getCollection:
+    normalCollection:
+      parameters:
+        path:
+          collectionName: "<value>"
+      responses:
+        "200":
+          application/json: {"collection": {"projectName": "<value>", "collectionName": "<value>", "indexConfigs": {}, "numPartitions": 592208, "numDocs": 635811, "collectionStatus": "ACTIVE"}}
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      responses:
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  updateCollection:
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      requestBody:
+        application/json: {"indexConfigs": {"example-field1": {"type": "text", "analyzers": ["english"]}, "example-field2": {"type": "vector", "dimensions": 128, "similarity": "cosine"}, "example-field3": {"type": "keyword"}}}
+      responses:
+        "400":
+          application/json: {"message": "Invalid request"}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+    normalCollection:
+      parameters:
+        path:
+          collectionName: "<value>"
+      requestBody:
+        application/json: {"indexConfigs": {"key": {"type": "object", "objectIndexConfigs": {}}}}
+      responses:
+        "200":
+          application/json: {"collection": {"projectName": "<value>", "collectionName": "<value>", "indexConfigs": {"key": {"type": "datetime"}}, "numPartitions": 884939, "numDocs": 365, "collectionStatus": "CREATING"}}
+  queryCollection:
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      requestBody:
+        application/json: {"size": 2, "query": {"queryString": {"query": "example-field1:example-value"}}, "consistentRead": false, "includeVectors": false}
+      responses:
+        "200":
+          application/json: {"took": 10, "maxScore": 1, "total": 2, "docs": [{"collection": "example-collection-name", "score": 1, "doc": {"example-field1": "example-value1", "example-field2": [0.1, 0.2, 0.3]}}, {"collection": "example-collection-name", "score": 0.9, "doc": {"example-field1": "example-value2", "example-field2": [0.4, 0.5, 0.6]}}], "isDocsInline": true}
+        "400":
+          application/json: {"message": "Invalid request"}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  listDocs:
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      responses:
+        "200":
+          application/json: {"total": 2, "docs": [{"collection": "example-collection-name", "doc": {"example-field1": "example-value1", "example-field2": [0.1, 0.2, 0.3]}}, {"collection": "example-collection-name", "doc": {"example-field1": "example-value2", "example-field2": [0.4, 0.5, 0.6]}}], "nextPageToken": "eyJpZCI6ICJhYmMiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTExLTA1VDE0OjI3OjU2KzAwOjAwIn0="}
+        "400":
+          application/json: {"message": "Invalid request"}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  upsertDocs:
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      requestBody:
+        application/json: {"docs": [{"example-field1": "example-value1", "example-field2": [0.1, 0.2, 0.3]}, {"example-field1": "example-value2", "example-field2": [0.4, 0.5, 0.6]}]}
+      responses:
+        "202":
+          application/json: {"message": "Upsert request is accepted"}
+        "400":
+          application/json: {"message": "Invalid request"}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  getBulkUpsertDocs:
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      responses:
+        "200":
+          application/json: {"url": "<S3 presigned URL>", "type": "application/json", "httpMethod": "PUT", "objectKey": "example-object-key", "sizeLimitBytes": 209715200}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  bulkUpsertDocs:
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      requestBody:
+        application/json: {"objectKey": "example-object-key"}
+      responses:
+        "202":
+          application/json: {"message": "Bulk upsert request is accepted"}
+        "400":
+          application/json: {"message": "Invalid request"}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  updateDocs:
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      requestBody:
+        application/json: {"docs": [{"id": "example-id1", "example-field1": "example-value1", "example-field2": [0.1, 0.2, 0.3]}, {"id": "example-id2", "example-field1": "example-value2", "example-field2": [0.4, 0.5, 0.6]}]}
+      responses:
+        "202":
+          application/json: {"message": "Update request is accepted"}
+        "400":
+          application/json: {"message": "Invalid request"}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  deleteDocs:
+    deleteByIds:
+      parameters:
+        path:
+          collectionName: "<value>"
+      requestBody:
+        application/json: {"ids": ["example-doc-id-1", "example-doc-id-2"]}
+      responses:
+        "202":
+          application/json: {"message": "<value>"}
+        "400":
+          application/json: {}
+        "401":
+          application/json: {}
+        "404":
+          application/json: {}
+        "429":
+          application/json: {}
+        "500":
+          application/json: {}
+    deleteByQuery:
+      parameters:
+        path:
+          collectionName: "<value>"
+      requestBody:
+        application/json: {"filter": {"queryString": {"query": "example-field1:example-value"}}}
+      responses:
+        "202":
+          application/json: {"message": "<value>"}
+        "400":
+          application/json: {}
+        "401":
+          application/json: {}
+        "404":
+          application/json: {}
+        "429":
+          application/json: {}
+        "500":
+          application/json: {}
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      requestBody:
+        application/json: {}
+      responses:
+        "202":
+          application/json: {"message": "Delete request is accepted"}
+        "400":
+          application/json: {"message": "Invalid request"}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+  fetchDocs:
+    example:
+      parameters:
+        path:
+          collectionName: "<value>"
+      requestBody:
+        application/json: {"ids": ["example-doc-id-1", "example-doc-id-2"], "consistentRead": false, "includeVectors": false}
+      responses:
+        "200":
+          application/json: {"total": 2, "took": 10, "docs": [{"collection": "example-collection-name", "doc": {"example-field1": "example-value1", "example-field2": [0.1, 0.2, 0.3]}}, {"collection": "example-collection-name", "doc": {"example-field1": "example-value2", "example-field2": [0.4, 0.5, 0.6]}}], "isDocsInline": true}
+        "400":
+          application/json: {"message": "Invalid request"}
+        "401":
+          application/json: {"message": "Authentication failed"}
+        "404":
+          application/json: {"message": "Resource not found"}
+        "429":
+          application/json: {"message": "Too many requests"}
+        "500":
+          application/json: {"message": "Internal server error"}
+examplesVersion: 1.0.2

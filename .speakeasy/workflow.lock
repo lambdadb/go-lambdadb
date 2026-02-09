@@ -1,0 +1,39 @@
+speakeasyVersion: 1.709.1
+sources:
+    lambdadb-OAS:
+        sourceNamespace: lambdadb-oas
+        sourceRevisionDigest: sha256:989ae49f6cff123e2f24c3a20f7090e394144381ca00bf460638c9f7712a13fc
+        sourceBlobDigest: sha256:5ee176871ec23863ec9059586c2978b8c1e50eb488a7fd7e21df480b61739251
+        tags:
+            - latest
+            - 1.1.1
+targets:
+    lambdadb:
+        source: lambdadb-OAS
+        sourceNamespace: lambdadb-oas
+        sourceRevisionDigest: sha256:989ae49f6cff123e2f24c3a20f7090e394144381ca00bf460638c9f7712a13fc
+        sourceBlobDigest: sha256:5ee176871ec23863ec9059586c2978b8c1e50eb488a7fd7e21df480b61739251
+        codeSamplesNamespace: lambdadb-oas-code-samples
+        codeSamplesRevisionDigest: sha256:938339145e7395c64e5264720fa431d85a5c10d566de78268d6b72f921597583
+workflow:
+    workflowVersion: 1.0.0
+    speakeasyVersion: latest
+    sources:
+        lambdadb-OAS:
+            inputs:
+                - location: https://raw.githubusercontent.com/lambdadb/docs/main/reference/api/openapi.json
+            overlays:
+                - location: .speakeasy/speakeasy-modifications-overlay.yaml
+            output: .speakeasy/out.openapi.yaml
+            registry:
+                location: registry.speakeasyapi.dev/lambdadb/go/lambdadb-oas
+    targets:
+        lambdadb:
+            target: go
+            source: lambdadb-OAS
+            codeSamples:
+                registry:
+                    location: registry.speakeasyapi.dev/lambdadb/go/lambdadb-oas-code-samples
+                labelOverride:
+                    fixedValue: Go (SDK)
+                blocking: false

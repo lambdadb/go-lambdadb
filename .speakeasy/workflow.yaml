@@ -1,0 +1,21 @@
+workflowVersion: 1.0.0
+speakeasyVersion: latest
+sources:
+    lambdadb-OAS:
+        inputs:
+            - location: https://raw.githubusercontent.com/lambdadb/docs/main/reference/api/openapi.json
+        overlays:
+            - location: .speakeasy/speakeasy-modifications-overlay.yaml
+        output: .speakeasy/out.openapi.yaml
+        registry:
+            location: registry.speakeasyapi.dev/lambdadb/go/lambdadb-oas
+targets:
+    lambdadb:
+        target: go
+        source: lambdadb-OAS
+        codeSamples:
+            registry:
+                location: registry.speakeasyapi.dev/lambdadb/go/lambdadb-oas-code-samples
+            labelOverride:
+                fixedValue: Go (SDK)
+            blocking: false
