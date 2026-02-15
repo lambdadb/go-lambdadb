@@ -1,16 +1,18 @@
 lockVersion: 2.0.0
 id: c68194e4-f8a9-48ea-895a-f6809744d3b0
 management:
-  docChecksum: 27103a97afda890b2acf72afffe06fbd
+  docChecksum: 629e20fabb1665862231e3e95b7c4f22
   docVersion: 1.1.1
-  speakeasyVersion: 1.709.1
-  generationVersion: 2.812.2
-  releaseVersion: 0.1.2
-  configChecksum: 54d13e192a79f5f231e40598dd9d02ea
+  speakeasyVersion: 1.717.0
+  generationVersion: 2.824.1
+  releaseVersion: 0.1.3
+  configChecksum: c1ef0359172732aa1cb59db65dc57ac7
+  repoURL: https://github.com/lambdadb/go-lambdadb.git
+  installationURL: https://github.com/lambdadb/go-lambdadb
 persistentEdits:
-  generation_id: a5811da1-999f-42f8-aec1-958ecabb2a13
-  pristine_commit_hash: 0550ade5c16e3715912e1335d2301f9aae28878d
-  pristine_tree_hash: 9c599f2f197040491a138360956c63b8bc155b62
+  generation_id: 9602c0c7-42f2-453c-a417-4c3e8f4d1b1e
+  pristine_commit_hash: 8fe09841e73b4d821b5395be9d295928db299e9c
+  pristine_tree_hash: 280c504d3478279301484387b1a488ae89966b83
 features:
   go:
     additionalDependencies: 0.1.0
@@ -31,12 +33,12 @@ features:
     responseFormat: 0.1.2
     retries: 2.84.2
     sdkHooks: 0.3.0
-    unions: 2.87.3
+    unions: 2.87.4
 trackedFiles:
   .devcontainer/README.md:
     id: b170c0f184ac
-    last_write_checksum: sha1:be2627d96bcc7a331cdb1b53ab5136930ae7febc
-    pristine_git_object: 4e23f7c445b045c4ea707e94e73fbd906f0c2b62
+    last_write_checksum: sha1:3ee26cd719707c908f2c95686e18ec32a52da0df
+    pristine_git_object: d3e0ec289e9b5aecf6c73b8b9d0333da5b7a3909
   .devcontainer/devcontainer.json:
     id: b34062a34eb1
     last_write_checksum: sha1:a518b2fc2f92e998593a1dcb935db4ca1eb2e2f1
@@ -427,8 +429,8 @@ trackedFiles:
     pristine_git_object: ee4300f7b7469c4e66572ada7b95f7ff7f2e506a
   lambdadb.go:
     id: 8265f366072a
-    last_write_checksum: sha1:f92c30ebdb9ed30a6b017d60b76deda86a8d1cbd
-    pristine_git_object: f9f0fd1b0a8f3e32781188c0298dedc740664e3e
+    last_write_checksum: sha1:87eb58b0d01ea4c7a17015d7781350ac0c6be83c
+    pristine_git_object: 89ab88c268e380e16829e415449f7af276429531
   models/apierrors/apierror.go:
     id: 4cecf27a5a54
     last_write_checksum: sha1:e699d3325ea82ea2b0d29656396210f0513c3391
@@ -903,3 +905,31 @@ examples:
         "500":
           application/json: {"message": "Internal server error"}
 examplesVersion: 1.0.2
+releaseNotes: |
+  ## Go SDK Changes:
+  * `Lambdadb.Collections.List()`: **Added**
+  * `Lambdadb.Collections.Create()`: **Added**
+  * `Lambdadb.Collections.Delete()`: **Added**
+  * `Lambdadb.Collections.Get()`: **Added**
+  * `Lambdadb.Collections.Update()`: **Added**
+  * `Lambdadb.Collections.Query()`: **Added**
+  * `Lambdadb.Docs.List()`: **Added**
+  * `Lambdadb.Docs.Upsert()`: **Added**
+  * `Lambdadb.Docs.GetBulkUpsertInfo()`: **Added**
+  * `Lambdadb.Docs.BulkUpsert()`: **Added**
+  * `Lambdadb.Docs.Update()`: **Added**
+  * `Lambdadb.Docs.Delete()`: **Added**
+  * `Lambdadb.Docs.Fetch()`: **Added**
+  * `Lambdadb.Collections.ListCollections()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.CreateCollection()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.GetCollection()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.DeleteCollection()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.UpdateCollection()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.QueryCollection()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.ListDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.UpsertDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.GetBulkUpsertDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.BulkUpsertDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.UpdateDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.DeleteDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.FetchDocs()`: **Removed** (Breaking ⚠️)
