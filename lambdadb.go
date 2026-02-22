@@ -2,7 +2,7 @@
 
 package lambdadb
 
-// Generated from OpenAPI doc version 1.1.1 and generator version 2.812.2
+// Generated from OpenAPI doc version 1.1.1 and generator version 2.835.2
 
 import (
 	"context"
@@ -142,9 +142,9 @@ func WithTimeout(timeout time.Duration) SDKOption {
 // New creates a new instance of the SDK with the provided options
 func New(opts ...SDKOption) *Lambdadb {
 	sdk := &Lambdadb{
-		SDKVersion: "0.1.2",
+		SDKVersion: "0.1.3",
 		sdkConfiguration: config.SDKConfiguration{
-			UserAgent:  "speakeasy-sdk/go 0.1.2 2.812.2 1.1.1 github.com/lambdadb/go-lambdadb",
+			UserAgent:  "speakeasy-sdk/go 0.1.3 2.835.2 1.1.1 github.com/lambdadb/go-lambdadb",
 			ServerList: ServerList,
 			ServerVariables: []map[string]string{
 				{
