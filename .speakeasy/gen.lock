@@ -1,21 +1,23 @@
 lockVersion: 2.0.0
 id: c68194e4-f8a9-48ea-895a-f6809744d3b0
 management:
-  docChecksum: 27103a97afda890b2acf72afffe06fbd
+  docChecksum: 629e20fabb1665862231e3e95b7c4f22
   docVersion: 1.1.1
-  speakeasyVersion: 1.709.1
-  generationVersion: 2.812.2
-  releaseVersion: 0.1.2
-  configChecksum: 54d13e192a79f5f231e40598dd9d02ea
+  speakeasyVersion: 1.723.0
+  generationVersion: 2.835.2
+  releaseVersion: 0.1.3
+  configChecksum: caaa876c7b55110b31cf4af9e461ea5b
+  repoURL: https://github.com/lambdadb/go-lambdadb.git
+  installationURL: https://github.com/lambdadb/go-lambdadb
 persistentEdits:
-  generation_id: a5811da1-999f-42f8-aec1-958ecabb2a13
-  pristine_commit_hash: 0550ade5c16e3715912e1335d2301f9aae28878d
-  pristine_tree_hash: 9c599f2f197040491a138360956c63b8bc155b62
+  generation_id: c2e8eaf6-cccd-4677-a635-7ce52e3b87ab
+  pristine_commit_hash: 8e931decec8ba4f85fc04f1a9c11d1dcb7739661
+  pristine_tree_hash: 75f8187b54a6264eb089e16bd37a35af32ea67af
 features:
   go:
     additionalDependencies: 0.1.0
     constsAndDefaults: 0.1.13
-    core: 3.13.12
+    core: 3.13.15
     defaultEnabledRetries: 0.2.0
     devContainers: 2.90.0
     envVarSecurityUsage: 0.3.2
@@ -27,16 +29,16 @@ features:
     globalServerURLs: 2.83.0
     groups: 2.81.3
     intellisenseMarkdownSupport: 0.1.0
-    nameOverrides: 2.81.2
+    nameOverrides: 2.81.4
     responseFormat: 0.1.2
     retries: 2.84.2
     sdkHooks: 0.3.0
-    unions: 2.87.3
+    unions: 2.87.4
 trackedFiles:
   .devcontainer/README.md:
     id: b170c0f184ac
-    last_write_checksum: sha1:be2627d96bcc7a331cdb1b53ab5136930ae7febc
-    pristine_git_object: 4e23f7c445b045c4ea707e94e73fbd906f0c2b62
+    last_write_checksum: sha1:3ee26cd719707c908f2c95686e18ec32a52da0df
+    pristine_git_object: d3e0ec289e9b5aecf6c73b8b9d0333da5b7a3909
   .devcontainer/devcontainer.json:
     id: b34062a34eb1
     last_write_checksum: sha1:a518b2fc2f92e998593a1dcb935db4ca1eb2e2f1
@@ -107,8 +109,8 @@ trackedFiles:
     pristine_git_object: 61befbebfa63696774afe83861cefc330c334649
   docs/models/components/fieldsselectorunion.md:
     id: 92a86894d5b5
-    last_write_checksum: sha1:b4b6ae37bca66239732750754763976588e908f5
-    pristine_git_object: b158a53852e7fb8201a30814ff09c88b8c9acc66
+    last_write_checksum: sha1:6deb58e6cdf2c4d8c9258bf3a7e603b2302fc140
+    pristine_git_object: 4aa0e2f185f5ac645489505da8f1fa85eaebe599
   docs/models/components/httpmetadata.md:
     id: 728948c70168
     last_write_checksum: sha1:7c40945dac218ce5e5e11e7c907d27a3ea14c417
@@ -127,8 +129,8 @@ trackedFiles:
     pristine_git_object: 6748be986b5c9c2da25ff3f6b26814c883be4ff5
   docs/models/components/indexconfigsunion.md:
     id: 96eeabe0b0d5
-    last_write_checksum: sha1:6158aa3428df7144e947deb0927c80348e579d86
-    pristine_git_object: 6c91e3a33b433ab161952868d1bc8d2788861c98
+    last_write_checksum: sha1:2ae40f108a322bee9c5c37d212ca9f3f1c7326aa
+    pristine_git_object: 39af87abdbbf34ea278ce91d5d9a4f5f30bb0f32
   docs/models/components/indexconfigsvector.md:
     id: 32cdb07da330
     last_write_checksum: sha1:b41fc86d543717c916f9a94bb743b7c24f1030ab
@@ -423,12 +425,12 @@ trackedFiles:
     pristine_git_object: f66814c73ace94d8e71d785fd6161fb405745754
   internal/utils/utils.go:
     id: 1133b2a27019
-    last_write_checksum: sha1:66b0ef3c302e2edad3496775a6e5b452caceefd6
-    pristine_git_object: ee4300f7b7469c4e66572ada7b95f7ff7f2e506a
+    last_write_checksum: sha1:9604f4dc11014d690e29293d336952af02a5fdfe
+    pristine_git_object: c7f17a634bb0a3f9d63bd38656ef39860d28b081
   lambdadb.go:
     id: 8265f366072a
-    last_write_checksum: sha1:f92c30ebdb9ed30a6b017d60b76deda86a8d1cbd
-    pristine_git_object: f9f0fd1b0a8f3e32781188c0298dedc740664e3e
+    last_write_checksum: sha1:c280a87adbc339110dba3e911162d6b24bf2aaff
+    pristine_git_object: cd65e14291875d6bbd25545a4bf62ac1c89b84f1
   models/apierrors/apierror.go:
     id: 4cecf27a5a54
     last_write_checksum: sha1:e699d3325ea82ea2b0d29656396210f0513c3391
@@ -903,3 +905,31 @@ examples:
         "500":
           application/json: {"message": "Internal server error"}
 examplesVersion: 1.0.2
+releaseNotes: |
+  ## Go SDK Changes:
+  * `Lambdadb.Collections.List()`: **Added**
+  * `Lambdadb.Collections.Create()`: **Added**
+  * `Lambdadb.Collections.Delete()`: **Added**
+  * `Lambdadb.Collections.Get()`: **Added**
+  * `Lambdadb.Collections.Update()`: **Added**
+  * `Lambdadb.Collections.Query()`: **Added**
+  * `Lambdadb.Docs.List()`: **Added**
+  * `Lambdadb.Docs.Upsert()`: **Added**
+  * `Lambdadb.Docs.GetBulkUpsertInfo()`: **Added**
+  * `Lambdadb.Docs.BulkUpsert()`: **Added**
+  * `Lambdadb.Docs.Update()`: **Added**
+  * `Lambdadb.Docs.Delete()`: **Added**
+  * `Lambdadb.Docs.Fetch()`: **Added**
+  * `Lambdadb.Collections.ListCollections()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.CreateCollection()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.GetCollection()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.DeleteCollection()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.UpdateCollection()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.QueryCollection()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.ListDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.UpsertDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.GetBulkUpsertDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.BulkUpsertDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.UpdateDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.DeleteDocs()`: **Removed** (Breaking ⚠️)
+  * `Lambdadb.Collections.Docs.FetchDocs()`: **Removed** (Breaking ⚠️)

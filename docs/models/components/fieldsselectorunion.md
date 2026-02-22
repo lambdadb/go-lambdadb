@@ -17,3 +17,15 @@ fieldsSelectorUnion := components.CreateFieldsSelectorUnionFieldsSelector1(compo
 fieldsSelectorUnion := components.CreateFieldsSelectorUnionFieldsSelector2(components.FieldsSelector2{/* values here */})
 ```
 
+## Union Discrimination
+
+Use the `Type` field to determine which variant is active, then access the corresponding field:
+
+```go
+switch fieldsSelectorUnion.Type {
+	case components.FieldsSelectorUnionTypeFieldsSelector1:
+		// fieldsSelectorUnion.FieldsSelector1 is populated
+	case components.FieldsSelectorUnionTypeFieldsSelector2:
+		// fieldsSelectorUnion.FieldsSelector2 is populated
+}
+```
