@@ -31,11 +31,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Docs.List(ctx, "<value>", nil, nil)
+    res, err := client.Collection("my-collection").Docs().List(ctx, nil)
     if err != nil {
         log.Fatal(err)
     }
@@ -50,10 +52,10 @@ func main() {
 | Parameter                                                | Type                                                     | Required                                                 | Description                                              |
 | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
-| `collectionName`                                         | *string*                                                 | :heavy_check_mark:                                       | Collection name.                                         |
-| `size`                                                   | **int64*                                                 | :heavy_minus_sign:                                       | Max number of documents to return at once.               |
-| `pageToken`                                              | **string*                                                | :heavy_minus_sign:                                       | Next page token.                                         |
+| `listOpts`                                               | *[ListDocsOpts](../../../options.go)                     | :heavy_minus_sign:                                       | Optional: Size, PageToken. Pass nil for defaults.        |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
+
+Use `client.Collection("name").Docs().List(ctx, nil)` or `List(ctx, &lambdadb.ListDocsOpts{...})`.
 
 ### Response
 
@@ -90,11 +92,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Docs.Upsert(ctx, "<value>", operations.UpsertDocsRequestBody{
+    res, err := client.Collection("my-collection").Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
         Docs: []map[string]any{
             map[string]any{
                 "example-field1": "example-value1",
@@ -128,8 +132,7 @@ func main() {
 | Parameter                                                                            | Type                                                                                 | Required                                                                             | Description                                                                          |
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | `ctx`                                                                                | [context.Context](https://pkg.go.dev/context#Context)                                | :heavy_check_mark:                                                                   | The context to use for the request.                                                  |
-| `collectionName`                                                                     | *string*                                                                             | :heavy_check_mark:                                                                   | Collection name.                                                                     |
-| `body`                                                                               | [operations.UpsertDocsRequestBody](../../models/operations/upsertdocsrequestbody.md) | :heavy_check_mark:                                                                   | N/A                                                                                  |
+| `body`                                                                               | [UpsertDocsInput](../../../options.go) (alias of UpsertDocsRequestBody)              | :heavy_check_mark:                                                                   | Documents to upsert.                                                                  |
 | `opts`                                                                               | [][operations.Option](../../models/operations/option.md)                             | :heavy_minus_sign:                                                                   | The options for this request.                                                        |
 
 ### Response
@@ -166,11 +169,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Docs.GetBulkUpsertInfo(ctx, "<value>")
+    res, err := client.Collection("my-collection").Docs().GetBulkUpsertInfo(ctx)
     if err != nil {
         log.Fatal(err)
     }
@@ -185,8 +190,9 @@ func main() {
 | Parameter                                                | Type                                                     | Required                                                 | Description                                              |
 | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
-| `collectionName`                                         | *string*                                                 | :heavy_check_mark:                                       | Collection name.                                         |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
+
+Collection is specified via `client.Collection("name")`.
 
 ### Response
 
@@ -222,11 +228,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Docs.BulkUpsert(ctx, "<value>", operations.BulkUpsertDocsRequestBody{
+    res, err := client.Collection("my-collection").Docs().BulkUpsert(ctx, lambdadb.BulkUpsertInput{
         ObjectKey: "example-object-key",
     })
     if err != nil {
@@ -243,8 +251,7 @@ func main() {
 | Parameter                                                                                    | Type                                                                                         | Required                                                                                     | Description                                                                                  |
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `ctx`                                                                                        | [context.Context](https://pkg.go.dev/context#Context)                                        | :heavy_check_mark:                                                                           | The context to use for the request.                                                          |
-| `collectionName`                                                                             | *string*                                                                                     | :heavy_check_mark:                                                                           | Collection name.                                                                             |
-| `body`                                                                                       | [operations.BulkUpsertDocsRequestBody](../../models/operations/bulkupsertdocsrequestbody.md) | :heavy_check_mark:                                                                           | N/A                                                                                          |
+| `body`                                                                                       | [BulkUpsertInput](../../../options.go) (alias of BulkUpsertDocsRequestBody)                 | :heavy_check_mark:                                                                           | Bulk upsert payload.                                                                         |
 | `opts`                                                                                       | [][operations.Option](../../models/operations/option.md)                                     | :heavy_minus_sign:                                                                           | The options for this request.                                                                |
 
 ### Response
@@ -282,11 +289,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Docs.Update(ctx, "<value>", operations.UpdateDocsRequestBody{
+    res, err := client.Collection("my-collection").Docs().Update(ctx, lambdadb.UpdateDocsInput{
         Docs: []map[string]any{
             map[string]any{
                 "id": "example-id1",
@@ -322,8 +331,7 @@ func main() {
 | Parameter                                                                            | Type                                                                                 | Required                                                                             | Description                                                                          |
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | `ctx`                                                                                | [context.Context](https://pkg.go.dev/context#Context)                                | :heavy_check_mark:                                                                   | The context to use for the request.                                                  |
-| `collectionName`                                                                     | *string*                                                                             | :heavy_check_mark:                                                                   | Collection name.                                                                     |
-| `body`                                                                               | [operations.UpdateDocsRequestBody](../../models/operations/updatedocsrequestbody.md) | :heavy_check_mark:                                                                   | N/A                                                                                  |
+| `body`                                                                               | [UpdateDocsInput](../../../options.go) (alias of UpdateDocsRequestBody)               | :heavy_check_mark:                                                                   | Documents to update.                                                                  |
 | `opts`                                                                               | [][operations.Option](../../models/operations/option.md)                             | :heavy_minus_sign:                                                                   | The options for this request.                                                        |
 
 ### Response
@@ -361,11 +369,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Docs.Delete(ctx, "<value>", operations.DeleteDocsRequestBody{
+    res, err := client.Collection("my-collection").Docs().Delete(ctx, lambdadb.DeleteDocsInput{
         Ids: []string{
             "example-doc-id-1",
             "example-doc-id-2",
@@ -395,11 +405,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Docs.Delete(ctx, "<value>", operations.DeleteDocsRequestBody{
+    res, err := client.Collection("my-collection").Docs().Delete(ctx, lambdadb.DeleteDocsInput{
         Filter: map[string]any{
             "queryString": map[string]any{
                 "query": "example-field1:example-value",
@@ -430,11 +442,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Docs.Delete(ctx, "<value>", operations.DeleteDocsRequestBody{})
+    res, err := client.Collection("my-collection").Docs().Delete(ctx, lambdadb.DeleteDocsInput{})
     if err != nil {
         log.Fatal(err)
     }
@@ -449,8 +463,7 @@ func main() {
 | Parameter                                                                            | Type                                                                                 | Required                                                                             | Description                                                                          |
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | `ctx`                                                                                | [context.Context](https://pkg.go.dev/context#Context)                                | :heavy_check_mark:                                                                   | The context to use for the request.                                                  |
-| `collectionName`                                                                     | *string*                                                                             | :heavy_check_mark:                                                                   | Collection name.                                                                     |
-| `body`                                                                               | [operations.DeleteDocsRequestBody](../../models/operations/deletedocsrequestbody.md) | :heavy_check_mark:                                                                   | N/A                                                                                  |
+| `body`                                                                               | [DeleteDocsInput](../../../options.go) (alias of DeleteDocsRequestBody)               | :heavy_check_mark:                                                                   | IDs or filter for deletion.                                                            |
 | `opts`                                                                               | [][operations.Option](../../models/operations/option.md)                             | :heavy_minus_sign:                                                                   | The options for this request.                                                        |
 
 ### Response
@@ -488,11 +501,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Docs.Fetch(ctx, "<value>", operations.FetchDocsRequestBody{
+    res, err := client.Collection("my-collection").Docs().Fetch(ctx, lambdadb.FetchDocsInput{
         Ids: []string{
             "example-doc-id-1",
             "example-doc-id-2",
@@ -512,8 +527,7 @@ func main() {
 | Parameter                                                                          | Type                                                                               | Required                                                                           | Description                                                                        |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `ctx`                                                                              | [context.Context](https://pkg.go.dev/context#Context)                              | :heavy_check_mark:                                                                 | The context to use for the request.                                                |
-| `collectionName`                                                                   | *string*                                                                           | :heavy_check_mark:                                                                 | Collection name.                                                                   |
-| `body`                                                                             | [operations.FetchDocsRequestBody](../../models/operations/fetchdocsrequestbody.md) | :heavy_check_mark:                                                                 | N/A                                                                                |
+| `body`                                                                             | [FetchDocsInput](../../../options.go) (alias of FetchDocsRequestBody)               | :heavy_check_mark:                                                                 | Document IDs to fetch.                                                               |
 | `opts`                                                                             | [][operations.Option](../../models/operations/option.md)                           | :heavy_minus_sign:                                                                 | The options for this request.                                                      |
 
 ### Response

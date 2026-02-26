@@ -30,11 +30,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Collections.List(ctx)
+    res, err := client.Collections.List(ctx)
     if err != nil {
         log.Fatal(err)
     }
@@ -58,11 +60,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Collections.List(ctx)
+    res, err := client.Collections.List(ctx)
     if err != nil {
         log.Fatal(err)
     }
@@ -113,11 +117,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Collections.Create(ctx, operations.CreateCollectionRequest{
+    res, err := client.Collections.Create(ctx, lambdadb.CreateCollectionOptions{
         CollectionName: "<value>",
     })
     if err != nil {
@@ -144,11 +150,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Collections.Create(ctx, operations.CreateCollectionRequest{
+    res, err := client.Collections.Create(ctx, lambdadb.CreateCollectionOptions{
         CollectionName: "example-collection-name",
         SourceProjectName: lambdadb.Pointer("example-source-project-name"),
         SourceCollectionName: lambdadb.Pointer("example-source-collection-name"),
@@ -180,11 +188,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Collections.Create(ctx, operations.CreateCollectionRequest{
+    res, err := client.Collections.Create(ctx, lambdadb.CreateCollectionOptions{
         CollectionName: "example-collection-name",
         IndexConfigs: map[string]components.IndexConfigsUnion{
             "example-field1": components.CreateIndexConfigsUnionText(
@@ -217,7 +227,7 @@ func main() {
 | Parameter                                                                                | Type                                                                                     | Required                                                                                 | Description                                                                              |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `ctx`                                                                                    | [context.Context](https://pkg.go.dev/context#Context)                                    | :heavy_check_mark:                                                                       | The context to use for the request.                                                      |
-| `request`                                                                                | [operations.CreateCollectionRequest](../../models/operations/createcollectionrequest.md) | :heavy_check_mark:                                                                       | The request object to use for the request.                                               |
+| `request`                                                                                | [CreateCollectionOptions](../../../options.go) (alias of CreateCollectionRequest)         | :heavy_check_mark:                                                                       | The request object to use for the request.                                               |
 | `opts`                                                                                   | [][operations.Option](../../models/operations/option.md)                                 | :heavy_minus_sign:                                                                       | The options for this request.                                                            |
 
 ### Response
@@ -254,11 +264,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Collections.Delete(ctx, "<value>")
+    res, err := client.Collection("my-collection").Delete(ctx)
     if err != nil {
         log.Fatal(err)
     }
@@ -273,8 +285,9 @@ func main() {
 | Parameter                                                | Type                                                     | Required                                                 | Description                                              |
 | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
-| `collectionName`                                         | *string*                                                 | :heavy_check_mark:                                       | Collection name.                                         |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
+
+Collection is specified via `client.Collection("name")`.
 
 ### Response
 
@@ -309,11 +322,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Collections.Get(ctx, "<value>")
+    res, err := client.Collection("my-collection").Get(ctx)
     if err != nil {
         log.Fatal(err)
     }
@@ -328,8 +343,9 @@ func main() {
 | Parameter                                                | Type                                                     | Required                                                 | Description                                              |
 | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
-| `collectionName`                                         | *string*                                                 | :heavy_check_mark:                                       | Collection name.                                         |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
+
+Collection is specified via `client.Collection("name")`.
 
 ### Response
 
@@ -366,11 +382,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Collections.Update(ctx, "<value>", operations.UpdateCollectionRequestBody{
+    res, err := client.Collection("my-collection").Update(ctx, lambdadb.UpdateCollectionOptions{
         IndexConfigs: map[string]components.IndexConfigsUnion{
             "example-field1": components.CreateIndexConfigsUnionText(
                 components.IndexConfigsText{
@@ -418,11 +436,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Collections.Update(ctx, "<value>", operations.UpdateCollectionRequestBody{
+    res, err := client.Collection("my-collection").Update(ctx, lambdadb.UpdateCollectionOptions{
         IndexConfigs: map[string]components.IndexConfigsUnion{
             "key": components.CreateIndexConfigsUnionObject(
                 components.IndexConfigsObject{
@@ -448,8 +468,7 @@ func main() {
 | Parameter                                                                                        | Type                                                                                             | Required                                                                                         | Description                                                                                      |
 | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
 | `ctx`                                                                                            | [context.Context](https://pkg.go.dev/context#Context)                                            | :heavy_check_mark:                                                                               | The context to use for the request.                                                              |
-| `collectionName`                                                                                 | *string*                                                                                         | :heavy_check_mark:                                                                               | Collection name.                                                                                 |
-| `body`                                                                                           | [operations.UpdateCollectionRequestBody](../../models/operations/updatecollectionrequestbody.md) | :heavy_check_mark:                                                                               | N/A                                                                                              |
+| `body`                                                                                           | [UpdateCollectionOptions](../../../options.go) (alias of UpdateCollectionRequestBody)           | :heavy_check_mark:                                                                               | Configuration to update.                                                                        |
 | `opts`                                                                                           | [][operations.Option](../../models/operations/option.md)                                         | :heavy_minus_sign:                                                                               | The options for this request.                                                                    |
 
 ### Response
@@ -487,11 +506,13 @@ import(
 func main() {
     ctx := context.Background()
 
-    s := lambdadb.New(
-        lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+    client := lambdadb.New(
+        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+        lambdadb.WithProjectName("playground"),
+        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := s.Collections.Query(ctx, "<value>", operations.QueryCollectionRequestBody{
+    res, err := client.Collection("my-collection").Query(ctx, lambdadb.QueryInput{
         Size: lambdadb.Pointer[int64](2),
         Query: map[string]any{
             "queryString": map[string]any{
@@ -513,8 +534,7 @@ func main() {
 | Parameter                                                                                      | Type                                                                                           | Required                                                                                       | Description                                                                                    |
 | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `ctx`                                                                                          | [context.Context](https://pkg.go.dev/context#Context)                                          | :heavy_check_mark:                                                                             | The context to use for the request.                                                            |
-| `collectionName`                                                                               | *string*                                                                                       | :heavy_check_mark:                                                                             | Collection name.                                                                               |
-| `body`                                                                                         | [operations.QueryCollectionRequestBody](../../models/operations/querycollectionrequestbody.md) | :heavy_check_mark:                                                                             | N/A                                                                                            |
+| `input`                                                                                         | [QueryInput](../../../options.go) (alias of QueryCollectionRequestBody)                         | :heavy_check_mark:                                                                             | Query body.                                                                                     |
 | `opts`                                                                                         | [][operations.Option](../../models/operations/option.md)                                       | :heavy_minus_sign:                                                                             | The options for this request.                                                                  |
 
 ### Response
