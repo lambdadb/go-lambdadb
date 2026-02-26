@@ -141,7 +141,7 @@ func main() {
 Use `client.Collection("name")` for operations on a single collection (no need to pass the collection name on every call):
 
 * **Collection**: Get, Update, Delete, Query (metadata and search).
-* **Collection.Docs()**: List, Upsert, Fetch, Update, Delete, GetBulkUpsertInfo, BulkUpsert (document operations). See [docs API](docs/sdks/docs/README.md) for details.
+* **Collection.Docs()**: List, Upsert, Fetch, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
 
 </details>
 <!-- End Available Resources and Operations [operations] -->

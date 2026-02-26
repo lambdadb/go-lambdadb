@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -345,5 +346,65 @@ func TestNilOption_DoesNotPanic(t *testing.T) {
 	}
 	if res == nil {
 		t.Fatal("List returned nil response")
+	}
+}
+
+func TestBulkUpsertDocuments_Flow(t *testing.T) {
+	// Server that receives the PUT upload (presigned URL target).
+	uploadReceived := false
+	uploadServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("upload server: expected PUT, got %s", r.Method)
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		uploadReceived = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer uploadServer.Close()
+
+	// SDK client mock: GET bulk-upsert -> info with presigned URL; POST bulk-upsert -> success.
+	callCount := 0
+	rt := &mockRoundTripper{
+		doFunc: func(req *http.Request) (*http.Response, error) {
+			callCount++
+			if callCount == 1 {
+				// GetBulkUpsertInfo (GET)
+				body := []byte(`{"url":"` + uploadServer.URL + `","type":"application/json","httpMethod":"PUT","objectKey":"test-key","sizeLimitBytes":209715200}`)
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": {"application/json"}},
+					Body:       io.NopCloser(bytes.NewReader(body)),
+				}, nil
+			}
+			// BulkUpsert (POST) - API returns 202 Accepted
+			return &http.Response{
+				StatusCode: http.StatusAccepted,
+				Header:     http.Header{"Content-Type": {"application/json"}},
+				Body:       io.NopCloser(bytes.NewReader([]byte(`{"message":"accepted"}`))),
+			}, nil
+		},
+	}
+	client := New(
+		WithAPIKey("key"),
+		WithBaseURL("https://api.lambdadb.ai"),
+		WithProjectName("p1"),
+		WithClient(rt),
+	)
+	ctx := context.Background()
+
+	body := UpsertDocsInput{Docs: []map[string]any{{"id": "1", "name": "a"}}}
+	res, err := client.Collection("my-coll").Docs().BulkUpsertDocuments(ctx, body)
+	if err != nil {
+		t.Fatalf("BulkUpsertDocuments err = %v", err)
+	}
+	if res == nil {
+		t.Fatal("BulkUpsertDocuments returned nil response")
+	}
+	if !uploadReceived {
+		t.Error("upload server did not receive PUT request")
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 API calls (GetBulkUpsertInfo + BulkUpsert), got %d", callCount)
 	}
 }

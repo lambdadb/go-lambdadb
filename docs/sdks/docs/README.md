@@ -6,8 +6,9 @@
 
 * [List](#list) - List documents in a collection.
 * [Upsert](#upsert) - Upsert documents into a collection. Note that the maximum supported payload size is 6MB.
-* [GetBulkUpsertInfo](#getbulkupsertinfo) - Request required info to upload documents.
-* [BulkUpsert](#bulkupsert) - Bulk upsert documents into a collection. Note that the maximum supported object size is 200MB.
+* [GetBulkUpsertInfo](#getbulkupsertinfo) - Request required info to upload documents (presigned URL, object key; payload limit 200MB).
+* [BulkUpsert](#bulkupsert) - Bulk upsert documents into a collection. Payload must not exceed 200MB (`lambdadb.MaxBulkUpsertPayloadBytes`).
+* **BulkUpsertDocuments** (on `Collection.Docs()`) - One-step bulk upload: get presigned URL, upload docs, complete. Same 200MB payload limit.
 * [Update](#update) - Update documents in a collection. Note that the maximum supported payload size is 6MB.
 * [Delete](#delete) - Delete documents by document IDs or query filter from a collection.
 * [Fetch](#fetch) - Lookup and return documents by document IDs from a collection.
@@ -210,7 +211,7 @@ Collection is specified via `client.Collection("name")`.
 
 ## BulkUpsert
 
-Bulk upsert documents into a collection. Note that the maximum supported object size is 200MB.
+Bulk upsert documents into a collection. The uploaded object (via presigned URL) must not exceed **200MB**; use `lambdadb.MaxBulkUpsertPayloadBytes` when validating payload size.
 
 ### Example Usage
 

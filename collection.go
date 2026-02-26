@@ -1,7 +1,13 @@
 package lambdadb
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
 
 	"github.com/lambdadb/go-lambdadb/models/components"
 	"github.com/lambdadb/go-lambdadb/models/operations"
@@ -223,14 +229,65 @@ func (d *CollectionDocs) Upsert(ctx context.Context, body UpsertDocsInput, opts 
 	return d.client.docs.Upsert(ctx, d.name, body, opts...)
 }
 
-// GetBulkUpsertInfo returns info required for bulk upload.
+// GetBulkUpsertInfo returns info required for bulk upload (presigned URL, object key, and optionally sizeLimitBytes).
+// When sizeLimitBytes is present, the upload payload must not exceed it (e.g. LambdaDB uses 200MB).
 func (d *CollectionDocs) GetBulkUpsertInfo(ctx context.Context, opts ...operations.Option) (*operations.GetBulkUpsertDocsResponse, error) {
 	return d.client.docs.GetBulkUpsertInfo(ctx, d.name, opts...)
 }
 
+// MaxBulkUpsertPayloadBytes is the typical LambdaDB bulk upsert payload limit (200MB). The actual limit is returned by GetBulkUpsertInfo (sizeLimitBytes); use this constant only for reference or when validating before calling the API.
+const MaxBulkUpsertPayloadBytes = 200 * 1024 * 1024
+
 // BulkUpsert bulk upserts documents into the collection.
+// The uploaded object (via presigned URL) must not exceed the size limit returned by GetBulkUpsertInfo (e.g. 200MB).
 func (d *CollectionDocs) BulkUpsert(ctx context.Context, body BulkUpsertInput, opts ...operations.Option) (*operations.BulkUpsertDocsResponse, error) {
 	return d.client.docs.BulkUpsert(ctx, d.name, body, opts...)
+}
+
+// BulkUpsertDocuments runs the full bulk upsert flow: obtains a presigned URL, uploads the documents as JSON, and completes the bulk upsert.
+// It is a convenience over calling GetBulkUpsertInfo, uploading to the presigned URL, and BulkUpsert separately.
+// The body format is the same as Upsert (docs array). When the API returns sizeLimitBytes in GetBulkUpsertInfo, payload size is validated against it before uploading.
+func (d *CollectionDocs) BulkUpsertDocuments(ctx context.Context, body UpsertDocsInput, opts ...operations.Option) (*operations.BulkUpsertDocsResponse, error) {
+	infoRes, err := d.client.docs.GetBulkUpsertInfo(ctx, d.name, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("get bulk upsert info: %w", err)
+	}
+	if infoRes == nil || infoRes.Object == nil {
+		return nil, fmt.Errorf("get bulk upsert info: empty response")
+	}
+	info := infoRes.Object
+
+	payload := operations.UpsertDocsRequestBody{Docs: body.Docs}
+	jsonBody, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshal documents: %w", err)
+	}
+
+	if info.SizeLimitBytes != nil && *info.SizeLimitBytes > 0 && int64(len(jsonBody)) > *info.SizeLimitBytes {
+		return nil, fmt.Errorf("upload size %d bytes exceeds limit %d bytes (from API)", len(jsonBody), *info.SizeLimitBytes)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "PUT", info.URL, bytes.NewReader(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("create upload request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if info.HTTPMethod != nil && *info.HTTPMethod != "" {
+		req.Method = string(*info.HTTPMethod)
+	}
+
+	uploadClient := &http.Client{Timeout: 10 * time.Minute}
+	resp, err := uploadClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("upload to presigned URL: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("upload failed: status %d, body: %s", resp.StatusCode, string(respBody))
+	}
+
+	return d.client.docs.BulkUpsert(ctx, d.name, operations.BulkUpsertDocsRequestBody{ObjectKey: info.ObjectKey}, opts...)
 }
 
 // Update updates documents in the collection.
