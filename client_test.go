@@ -111,8 +111,8 @@ func TestCollectionsList_RequestURLAndHeaders(t *testing.T) {
 }
 
 func TestCollectionGet_RequestURL(t *testing.T) {
-	// Get collection returns 200 with a single collection body
-	body := `{"collection":{"projectName":"playground","collectionName":"my-coll","indexConfigs":{},"numPartitions":1,"numDocs":0,"collectionStatus":"ACTIVE"}}`
+	// Get collection returns 200 with a single collection body (createdAt/updatedAt/dataUpdatedAt are Unix seconds in API)
+	body := `{"collection":{"projectName":"playground","collectionName":"my-coll","indexConfigs":{},"numPartitions":1,"numDocs":0,"collectionStatus":"ACTIVE","createdAt":1700000000,"updatedAt":1700000100,"dataUpdatedAt":1700000200}}`
 	rt := &mockRoundTripper{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -144,6 +144,19 @@ func TestCollectionGet_RequestURL(t *testing.T) {
 	}
 	if res.CollectionName != "my-coll" {
 		t.Errorf("collection name = %q", res.CollectionName)
+	}
+	// Timestamps are exposed as time.Time (API sends Unix epoch seconds)
+	if !res.CreatedAt.Time.Equal(res.GetCreatedAt()) {
+		t.Error("CreatedAt and GetCreatedAt() should match")
+	}
+	if res.GetCreatedAt().Unix() != 1700000000 {
+		t.Errorf("CreatedAt = %v (unix %d), want unix 1700000000", res.GetCreatedAt(), res.GetCreatedAt().Unix())
+	}
+	if res.GetUpdatedAt().Unix() != 1700000100 {
+		t.Errorf("UpdatedAt unix = %d, want 1700000100", res.GetUpdatedAt().Unix())
+	}
+	if res.GetDataUpdatedAt().Unix() != 1700000200 {
+		t.Errorf("DataUpdatedAt unix = %d, want 1700000200", res.GetDataUpdatedAt().Unix())
 	}
 }
 

@@ -333,7 +333,8 @@ func main() {
         log.Fatal(err)
     }
     if res != nil {
-        // handle response
+        // res is *components.CollectionResponse; timestamps are time values (CreatedAt, UpdatedAt, DataUpdatedAt)
+        // Use res.GetCreatedAt(), res.GetUpdatedAt(), res.GetDataUpdatedAt() for time.Time, or res.CreatedAt.Time
     }
 }
 ```
@@ -345,11 +346,11 @@ func main() {
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
 
-Collection is specified via `client.Collection("name")`.
+Collection is specified via `client.Collection("name")`. The returned [CollectionResponse](../../models/components/collectionresponse.md) includes `CreatedAt`, `UpdatedAt`, and `DataUpdatedAt` (API sends Unix epoch seconds; SDK exposes them as [types.UnixTime](https://pkg.go.dev/github.com/lambdadb/go-lambdadb/types#UnixTime) / `time.Time` via getters).
 
 ### Response
 
-**[*operations.GetCollectionResponse](../../models/operations/getcollectionresponse.md), error**
+**[*components.CollectionResponse](../../models/components/collectionresponse.md), error** — the public API returns the collection object directly; see [GetCollectionResponse](../../models/operations/getcollectionresponse.md) for the raw operation type.
 
 ### Errors
 

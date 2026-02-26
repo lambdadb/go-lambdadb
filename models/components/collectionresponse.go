@@ -1,7 +1,10 @@
 package components
 
 import (
+	"time"
+
 	"github.com/lambdadb/go-lambdadb/internal/utils"
+	"github.com/lambdadb/go-lambdadb/types"
 )
 
 type CollectionResponse struct {
@@ -23,6 +26,12 @@ type CollectionResponse struct {
 	SourceCollectionVersionID *string `json:"sourceCollectionVersionId,omitzero"`
 	// Status
 	CollectionStatus Status `json:"collectionStatus"`
+	// Collection creation time (seconds since Unix epoch in API; exposed as time).
+	CreatedAt types.UnixTime `json:"createdAt"`
+	// Collection last update time (seconds since Unix epoch in API; exposed as time).
+	UpdatedAt types.UnixTime `json:"updatedAt"`
+	// Collection data last update time (seconds since Unix epoch in API; exposed as time).
+	DataUpdatedAt types.UnixTime `json:"dataUpdatedAt"`
 }
 
 func (c CollectionResponse) MarshalJSON() ([]byte, error) {
@@ -104,4 +113,28 @@ func (c *CollectionResponse) GetCollectionStatus() Status {
 		return Status("")
 	}
 	return c.CollectionStatus
+}
+
+// GetCreatedAt returns the collection creation time.
+func (c *CollectionResponse) GetCreatedAt() time.Time {
+	if c == nil {
+		return time.Time{}
+	}
+	return c.CreatedAt.Time
+}
+
+// GetUpdatedAt returns the collection last update time.
+func (c *CollectionResponse) GetUpdatedAt() time.Time {
+	if c == nil {
+		return time.Time{}
+	}
+	return c.UpdatedAt.Time
+}
+
+// GetDataUpdatedAt returns the collection data last update time.
+func (c *CollectionResponse) GetDataUpdatedAt() time.Time {
+	if c == nil {
+		return time.Time{}
+	}
+	return c.DataUpdatedAt.Time
 }
