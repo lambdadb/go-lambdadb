@@ -21,8 +21,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if res.Object != nil {
-		// handle response
+	if res != nil {
+		// handle response (e.g. res.Collections)
 	}
 
 	// Collection-scoped: no need to pass collection name every time

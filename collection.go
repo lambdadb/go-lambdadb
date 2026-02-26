@@ -20,13 +20,30 @@ type ProjectCollections struct {
 
 // List returns a page of collections in the project.
 // Pass nil for listOpts to use defaults (no size/page token).
-func (p *ProjectCollections) List(ctx context.Context, listOpts *ListCollectionsOpts, opts ...operations.Option) (*operations.ListCollectionsResponse, error) {
-	return p.client.collections.List(ctx, listOpts, opts...)
+func (p *ProjectCollections) List(ctx context.Context, listOpts *ListCollectionsOpts, opts ...operations.Option) (*ListCollectionsResult, error) {
+	res, err := p.client.collections.List(ctx, listOpts, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil || res.Object == nil {
+		return &ListCollectionsResult{Collections: nil, NextPageToken: nil}, nil
+	}
+	return &ListCollectionsResult{
+		Collections:   res.Object.Collections,
+		NextPageToken: res.Object.NextPageToken,
+	}, nil
 }
 
-// Create creates a new collection.
-func (p *ProjectCollections) Create(ctx context.Context, request CreateCollectionOptions, callOpts ...operations.Option) (*operations.CreateCollectionResponse, error) {
-	return p.client.collections.Create(ctx, request, callOpts...)
+// Create creates a new collection and returns the created collection metadata.
+func (p *ProjectCollections) Create(ctx context.Context, request CreateCollectionOptions, callOpts ...operations.Option) (*components.CollectionResponse, error) {
+	res, err := p.client.collections.Create(ctx, request, callOpts...)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil || res.Object == nil {
+		return nil, nil
+	}
+	return &res.Object.Collection, nil
 }
 
 // CollectionListIterator iterates over collection list pages without managing page tokens manually.
@@ -56,8 +73,8 @@ func (p *ProjectCollections) ListIterator(ctx context.Context, listOpts *ListCol
 	return it
 }
 
-// Next fetches the next page. It returns (response, nil), (nil, error), or (nil, nil) when there are no more pages.
-func (it *CollectionListIterator) Next(ctx context.Context) (*operations.ListCollectionsResponse, error) {
+// Next fetches the next page. It returns (result, nil), (nil, error), or (nil, nil) when there are no more pages.
+func (it *CollectionListIterator) Next(ctx context.Context) (*ListCollectionsResult, error) {
 	if it.done {
 		return nil, nil
 	}
@@ -71,14 +88,17 @@ func (it *CollectionListIterator) Next(ctx context.Context) (*operations.ListCol
 	}
 	if res == nil || res.Object == nil {
 		it.done = true
-		return res, nil
+		return &ListCollectionsResult{Collections: nil, NextPageToken: nil}, nil
 	}
 	if res.Object.NextPageToken == nil || *res.Object.NextPageToken == "" {
 		it.done = true
 	} else {
 		it.nextToken = res.Object.NextPageToken
 	}
-	return res, nil
+	return &ListCollectionsResult{
+		Collections:   res.Object.Collections,
+		NextPageToken: res.Object.NextPageToken,
+	}, nil
 }
 
 // ListAll fetches all collection pages and returns a single slice. Use with care on projects with many collections.
@@ -93,8 +113,8 @@ func (p *ProjectCollections) ListAll(ctx context.Context, listOpts *ListCollecti
 		if page == nil {
 			break
 		}
-		if page.Object != nil && len(page.Object.Collections) > 0 {
-			out = append(out, page.Object.Collections...)
+		if len(page.Collections) > 0 {
+			out = append(out, page.Collections...)
 		}
 	}
 	return out, nil
@@ -108,13 +128,27 @@ type Collection struct {
 }
 
 // Get returns metadata for the collection.
-func (c *Collection) Get(ctx context.Context, opts ...operations.Option) (*operations.GetCollectionResponse, error) {
-	return c.client.collections.Get(ctx, c.name, opts...)
+func (c *Collection) Get(ctx context.Context, opts ...operations.Option) (*components.CollectionResponse, error) {
+	res, err := c.client.collections.Get(ctx, c.name, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil || res.Object == nil {
+		return nil, nil
+	}
+	return &res.Object.Collection, nil
 }
 
-// Update updates the collection configuration.
-func (c *Collection) Update(ctx context.Context, body UpdateCollectionOptions, opts ...operations.Option) (*operations.UpdateCollectionResponse, error) {
-	return c.client.collections.Update(ctx, c.name, body, opts...)
+// Update updates the collection configuration and returns the updated collection metadata.
+func (c *Collection) Update(ctx context.Context, body UpdateCollectionOptions, opts ...operations.Option) (*components.CollectionResponse, error) {
+	res, err := c.client.collections.Update(ctx, c.name, body, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil || res.Object == nil {
+		return nil, nil
+	}
+	return &res.Object.Collection, nil
 }
 
 // Delete deletes the collection.
@@ -123,18 +157,27 @@ func (c *Collection) Delete(ctx context.Context, opts ...operations.Option) (*op
 }
 
 // Query runs a search query on the collection.
-// When the API returns isDocsInline=false and docsUrl, the SDK fetches docs from the presigned URL automatically so res.Object.Docs is always populated.
-func (c *Collection) Query(ctx context.Context, input QueryInput, opts ...operations.Option) (*operations.QueryCollectionResponse, error) {
+// When the API returns isDocsInline=false and docsUrl, the SDK fetches docs from the presigned URL automatically so result.Docs is always populated.
+func (c *Collection) Query(ctx context.Context, input QueryInput, opts ...operations.Option) (*QueryResult, error) {
 	res, err := c.client.collections.Query(ctx, c.name, input, opts...)
 	if err != nil {
 		return nil, err
 	}
-	if res != nil && res.Object != nil && !res.Object.IsDocsInline && res.Object.DocsURL != nil && *res.Object.DocsURL != "" {
-		if err := fetchJSONFromURL(ctx, *res.Object.DocsURL, &res.Object.Docs); err != nil {
+	if res == nil || res.Object == nil {
+		return &QueryResult{Docs: nil, Took: 0, Total: 0, MaxScore: nil}, nil
+	}
+	obj := res.Object
+	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
+		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch query docs from URL: %w", err)
 		}
 	}
-	return res, nil
+	return &QueryResult{
+		Docs:     obj.Docs,
+		Took:     obj.Took,
+		Total:    obj.Total,
+		MaxScore: obj.MaxScore,
+	}, nil
 }
 
 // Docs returns a handle for document operations on this collection.
@@ -148,16 +191,27 @@ type CollectionDocs struct {
 	name   string
 }
 
-// List lists documents in the collection.
+// List lists documents in the collection (one page).
 // Pass nil for listOpts to use defaults (no size limit, no page token).
-func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts ...operations.Option) (*operations.ListDocsResponse, error) {
+func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts ...operations.Option) (*ListDocsResult, error) {
 	var size *int64
 	var pageToken *string
 	if listOpts != nil {
 		size = listOpts.Size
 		pageToken = listOpts.PageToken
 	}
-	return d.client.docs.List(ctx, d.name, size, pageToken, opts...)
+	res, err := d.client.docs.List(ctx, d.name, size, pageToken, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil || res.Object == nil {
+		return &ListDocsResult{Docs: nil, Total: 0, NextPageToken: nil}, nil
+	}
+	return &ListDocsResult{
+		Docs:          res.Object.Docs,
+		Total:         res.Object.Total,
+		NextPageToken: res.Object.NextPageToken,
+	}, nil
 }
 
 // DocListIterator iterates over document list pages without managing page tokens manually.
@@ -190,9 +244,8 @@ func (d *CollectionDocs) ListIterator(ctx context.Context, listOpts *ListDocsOpt
 	return it
 }
 
-// Next fetches the next page. It returns (response, nil), (nil, error), or (nil, nil) when there are no more pages.
-// When the response is non-nil, use res.Object.Docs and res.Object.NextPageToken as needed.
-func (it *DocListIterator) Next(ctx context.Context) (*operations.ListDocsResponse, error) {
+// Next fetches the next page. It returns (result, nil), (nil, error), or (nil, nil) when there are no more pages.
+func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 	if it.done {
 		return nil, nil
 	}
@@ -202,14 +255,19 @@ func (it *DocListIterator) Next(ctx context.Context) (*operations.ListDocsRespon
 	}
 	if res == nil || res.Object == nil {
 		it.done = true
-		return res, nil
+		return &ListDocsResult{Docs: nil, Total: 0, NextPageToken: nil}, nil
 	}
-	if res.Object.NextPageToken == nil || *res.Object.NextPageToken == "" {
+	obj := res.Object
+	if obj.NextPageToken == nil || *obj.NextPageToken == "" {
 		it.done = true
 	} else {
-		it.nextToken = res.Object.NextPageToken
+		it.nextToken = obj.NextPageToken
 	}
-	return res, nil
+	return &ListDocsResult{
+		Docs:          obj.Docs,
+		Total:         obj.Total,
+		NextPageToken: obj.NextPageToken,
+	}, nil
 }
 
 // ListAll fetches all document pages and returns a single slice of docs. Use with care on large collections.
@@ -227,8 +285,8 @@ func (d *CollectionDocs) ListAll(ctx context.Context, listOpts *ListDocsOpts, op
 		if page == nil {
 			break
 		}
-		if page.Object != nil && len(page.Object.Docs) > 0 {
-			out = append(out, page.Object.Docs...)
+		if len(page.Docs) > 0 {
+			out = append(out, page.Docs...)
 		}
 	}
 	return out, nil
@@ -241,8 +299,22 @@ func (d *CollectionDocs) Upsert(ctx context.Context, body UpsertDocsInput, opts 
 
 // GetBulkUpsertInfo returns info required for bulk upload (presigned URL, object key, and optionally sizeLimitBytes).
 // When sizeLimitBytes is present, the upload payload must not exceed it (e.g. LambdaDB uses 200MB).
-func (d *CollectionDocs) GetBulkUpsertInfo(ctx context.Context, opts ...operations.Option) (*operations.GetBulkUpsertDocsResponse, error) {
-	return d.client.docs.GetBulkUpsertInfo(ctx, d.name, opts...)
+func (d *CollectionDocs) GetBulkUpsertInfo(ctx context.Context, opts ...operations.Option) (*GetBulkUpsertInfoResult, error) {
+	res, err := d.client.docs.GetBulkUpsertInfo(ctx, d.name, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil || res.Object == nil {
+		return nil, nil
+	}
+	o := res.Object
+	return &GetBulkUpsertInfoResult{
+		URL:            o.URL,
+		ObjectKey:      o.ObjectKey,
+		Type:           o.Type,
+		HTTPMethod:     o.HTTPMethod,
+		SizeLimitBytes: o.SizeLimitBytes,
+	}, nil
 }
 
 // MaxBulkUpsertPayloadBytes is the typical LambdaDB bulk upsert payload limit (200MB). The actual limit is returned by GetBulkUpsertInfo (sizeLimitBytes); use this constant only for reference or when validating before calling the API.
@@ -258,14 +330,13 @@ func (d *CollectionDocs) BulkUpsert(ctx context.Context, body BulkUpsertInput, o
 // It is a convenience over calling GetBulkUpsertInfo, uploading to the presigned URL, and BulkUpsert separately.
 // The body format is the same as Upsert (docs array). When the API returns sizeLimitBytes in GetBulkUpsertInfo, payload size is validated against it before uploading.
 func (d *CollectionDocs) BulkUpsertDocuments(ctx context.Context, body UpsertDocsInput, opts ...operations.Option) (*operations.BulkUpsertDocsResponse, error) {
-	infoRes, err := d.client.docs.GetBulkUpsertInfo(ctx, d.name, opts...)
+	info, err := d.GetBulkUpsertInfo(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("get bulk upsert info: %w", err)
 	}
-	if infoRes == nil || infoRes.Object == nil {
+	if info == nil {
 		return nil, fmt.Errorf("get bulk upsert info: empty response")
 	}
-	info := infoRes.Object
 
 	payload := operations.UpsertDocsRequestBody{Docs: body.Docs}
 	jsonBody, err := json.Marshal(payload)
@@ -282,7 +353,7 @@ func (d *CollectionDocs) BulkUpsertDocuments(ctx context.Context, body UpsertDoc
 		return nil, fmt.Errorf("create upload request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if info.HTTPMethod != nil && *info.HTTPMethod != "" {
+	if info.HTTPMethod != nil && string(*info.HTTPMethod) != "" {
 		req.Method = string(*info.HTTPMethod)
 	}
 
@@ -311,18 +382,26 @@ func (d *CollectionDocs) Delete(ctx context.Context, body DeleteDocsInput, opts 
 }
 
 // Fetch fetches documents by IDs from the collection.
-// When the API returns isDocsInline=false and docsUrl, the SDK fetches docs from the presigned URL automatically so res.Object.Docs is always populated.
-func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ...operations.Option) (*operations.FetchDocsResponse, error) {
+// When the API returns isDocsInline=false and docsUrl, the SDK fetches docs from the presigned URL automatically so result.Docs is always populated.
+func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ...operations.Option) (*FetchResult, error) {
 	res, err := d.client.docs.Fetch(ctx, d.name, body, opts...)
 	if err != nil {
 		return nil, err
 	}
-	if res != nil && res.Object != nil && !res.Object.IsDocsInline && res.Object.DocsURL != nil && *res.Object.DocsURL != "" {
-		if err := fetchJSONFromURL(ctx, *res.Object.DocsURL, &res.Object.Docs); err != nil {
+	if res == nil || res.Object == nil {
+		return &FetchResult{Docs: nil, Total: 0, Took: 0}, nil
+	}
+	obj := res.Object
+	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
+		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch docs from URL: %w", err)
 		}
 	}
-	return res, nil
+	return &FetchResult{
+		Docs:  obj.Docs,
+		Total: obj.Total,
+		Took:  obj.Took,
+	}, nil
 }
 
 // fetchJSONFromURL GETs the URL and unmarshals the response body as JSON into v.

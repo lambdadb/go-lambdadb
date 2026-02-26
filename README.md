@@ -63,8 +63,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if res.Object != nil {
-		// handle response
+	if res != nil {
+		// handle response (e.g. res.Collections)
 	}
 }
 
@@ -117,8 +117,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if res.Object != nil {
-		// handle response
+	if res != nil {
+		// handle response (e.g. res.Collections)
 	}
 }
 
@@ -140,7 +140,7 @@ func main() {
 
 Use `client.Collection("name")` for operations on a single collection (no need to pass the collection name on every call):
 
-* **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `res.Object.Docs` is always populated.
+* **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `result.Docs` is always populated.
 * **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). Fetch does the same presigned-URL resolution for docs when `isDocsInline=false`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
 
 </details>
@@ -164,7 +164,7 @@ List endpoints return one page at a time. Use **iterators** to walk all pages wi
 		if page == nil {
 			break
 		}
-		for _, doc := range page.Object.Docs {
+		for _, doc := range page.Docs {
 			// process doc
 		}
 	}
@@ -179,7 +179,7 @@ List endpoints return one page at a time. Use **iterators** to walk all pages wi
 		if page == nil {
 			break
 		}
-		for _, c := range page.Object.Collections {
+		for _, c := range page.Collections {
 			// process collection
 		}
 	}
@@ -235,8 +235,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if res.Object != nil {
-		// handle response
+	if res != nil {
+		// handle response (e.g. res.Collections)
 	}
 }
 
@@ -275,8 +275,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if res.Object != nil {
-		// handle response
+	if res != nil {
+		// handle response (e.g. res.Collections)
 	}
 }
 

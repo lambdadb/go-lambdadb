@@ -105,8 +105,8 @@ func TestCollectionsList_RequestURLAndHeaders(t *testing.T) {
 	if key := rt.req.Header.Get("x-api-key"); key != "test-api-key" {
 		t.Errorf("x-api-key header = %q, want test-api-key", key)
 	}
-	if res.Object == nil || len(res.Object.Collections) != 0 {
-		t.Errorf("expected empty collections list, got %v", res.Object)
+	if len(res.Collections) != 0 {
+		t.Errorf("expected empty collections list, got %v", res.Collections)
 	}
 }
 
@@ -132,7 +132,7 @@ func TestCollectionGet_RequestURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Collection.Get() err = %v", err)
 	}
-	if res == nil || res.Object == nil {
+	if res == nil {
 		t.Fatal("Get() returned nil")
 	}
 	wantURL := "https://api.lambdadb.ai/projects/playground/collections/my-coll"
@@ -142,8 +142,8 @@ func TestCollectionGet_RequestURL(t *testing.T) {
 	if rt.req.Method != http.MethodGet {
 		t.Errorf("request Method = %q, want GET", rt.req.Method)
 	}
-	if res.Object.Collection.CollectionName != "my-coll" {
-		t.Errorf("collection name = %q", res.Object.Collection.CollectionName)
+	if res.CollectionName != "my-coll" {
+		t.Errorf("collection name = %q", res.CollectionName)
 	}
 }
 
@@ -242,8 +242,8 @@ func TestDocListIterator_NextAndDone(t *testing.T) {
 	if page1 == nil {
 		t.Fatal("First Next() returned nil page")
 	}
-	if len(page1.Object.Docs) != 1 || page1.Object.Docs[0]["id"] != "1" {
-		t.Errorf("First page docs = %v", page1.Object.Docs)
+	if len(page1.Docs) != 1 || page1.Docs[0]["id"] != "1" {
+		t.Errorf("First page docs = %v", page1.Docs)
 	}
 
 	page2, err := it.Next(ctx)
@@ -253,8 +253,8 @@ func TestDocListIterator_NextAndDone(t *testing.T) {
 	if page2 == nil {
 		t.Fatal("Second Next() returned nil page")
 	}
-	if len(page2.Object.Docs) != 1 || page2.Object.Docs[0]["id"] != "2" {
-		t.Errorf("Second page docs = %v", page2.Object.Docs)
+	if len(page2.Docs) != 1 || page2.Docs[0]["id"] != "2" {
+		t.Errorf("Second page docs = %v", page2.Docs)
 	}
 
 	page3, err := it.Next(ctx)
@@ -262,7 +262,7 @@ func TestDocListIterator_NextAndDone(t *testing.T) {
 		t.Fatalf("Third Next() err = %v", err)
 	}
 	if page3 != nil {
-		t.Errorf("Third Next() should return (nil, nil) when done, got page with %d docs", len(page3.Object.Docs))
+		t.Errorf("Third Next() should return (nil, nil) when done, got page with %d docs", len(page3.Docs))
 	}
 	if callCount != 2 {
 		t.Errorf("expected 2 API calls, got %d", callCount)
@@ -301,14 +301,14 @@ func TestCollectionListIterator_NextAndDone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("First Next() err = %v", err)
 	}
-	if page1 == nil || len(page1.Object.Collections) != 1 || page1.Object.Collections[0].CollectionName != "a" {
+	if page1 == nil || len(page1.Collections) != 1 || page1.Collections[0].CollectionName != "a" {
 		t.Fatalf("First page = %+v", page1)
 	}
 	page2, err := it.Next(ctx)
 	if err != nil {
 		t.Fatalf("Second Next() err = %v", err)
 	}
-	if page2 == nil || len(page2.Object.Collections) != 1 || page2.Object.Collections[0].CollectionName != "b" {
+	if page2 == nil || len(page2.Collections) != 1 || page2.Collections[0].CollectionName != "b" {
 		t.Fatalf("Second page = %+v", page2)
 	}
 	page3, err := it.Next(ctx)
@@ -440,14 +440,14 @@ func TestQuery_WithDocsURL_FetchesDocsInline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Query err = %v", err)
 	}
-	if res == nil || res.Object == nil {
-		t.Fatal("Query returned nil response or Object")
+	if res == nil {
+		t.Fatal("Query returned nil response")
 	}
-	if len(res.Object.Docs) != 1 {
-		t.Fatalf("expected 1 doc after fetch from URL, got %d", len(res.Object.Docs))
+	if len(res.Docs) != 1 {
+		t.Fatalf("expected 1 doc after fetch from URL, got %d", len(res.Docs))
 	}
-	if res.Object.Docs[0].Doc["id"] != "1" || res.Object.Docs[0].Doc["name"] != "a" {
-		t.Errorf("doc = %v", res.Object.Docs[0].Doc)
+	if res.Docs[0].Doc["id"] != "1" || res.Docs[0].Doc["name"] != "a" {
+		t.Errorf("doc = %v", res.Docs[0].Doc)
 	}
 }
 
@@ -482,13 +482,13 @@ func TestFetch_WithDocsURL_FetchesDocsInline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Fetch err = %v", err)
 	}
-	if res == nil || res.Object == nil {
-		t.Fatal("Fetch returned nil response or Object")
+	if res == nil {
+		t.Fatal("Fetch returned nil response")
 	}
-	if len(res.Object.Docs) != 1 {
-		t.Fatalf("expected 1 doc after fetch from URL, got %d", len(res.Object.Docs))
+	if len(res.Docs) != 1 {
+		t.Fatalf("expected 1 doc after fetch from URL, got %d", len(res.Docs))
 	}
-	if res.Object.Docs[0].Doc["id"] != "x" || res.Object.Docs[0].Doc["value"] != float64(42) {
-		t.Errorf("doc = %v", res.Object.Docs[0].Doc)
+	if res.Docs[0].Doc["id"] != "x" || res.Docs[0].Doc["value"] != float64(42) {
+		t.Errorf("doc = %v", res.Docs[0].Doc)
 	}
 }
