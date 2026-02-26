@@ -39,7 +39,7 @@ func Float64(f float64) *float64 { return &f }
 func Pointer[T any](v T) *T { return &v }
 
 // Version is the SDK version. Use it for SDKVersion and User-Agent.
-const Version = "0.2.0"
+const Version = "0.2.1"
 
 // Client is the LambdaDB API client.
 type Client struct {
@@ -53,7 +53,7 @@ type Client struct {
 	docs        *Docs
 
 	sdkConfiguration config.SDKConfiguration
-	hooks             *hooks.Hooks
+	hooks            *hooks.Hooks
 }
 
 // SDKOption configures the client.

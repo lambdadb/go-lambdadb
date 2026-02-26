@@ -716,6 +716,8 @@ func isComplexValueType(typ reflect.Type) bool {
 		case reflect.TypeOf(big.Int{}):
 			fallthrough
 		case reflect.TypeOf(types.Date{}):
+			fallthrough
+		case reflect.TypeOf(types.UnixTime{}):
 			return true
 		}
 	}
