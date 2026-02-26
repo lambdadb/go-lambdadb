@@ -122,6 +122,9 @@ func New(opts ...SDKOption) *Client {
 		hooks: hooks.New(),
 	}
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(c)
 	}
 

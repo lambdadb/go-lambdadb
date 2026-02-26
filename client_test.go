@@ -85,7 +85,7 @@ func TestCollectionsList_RequestURLAndHeaders(t *testing.T) {
 	)
 
 	ctx := context.Background()
-	res, err := client.Collections.List(ctx)
+	res, err := client.Collections.List(ctx, nil)
 	if err != nil {
 		t.Fatalf("Collections.List() err = %v", err)
 	}
@@ -202,5 +202,148 @@ func TestListDocsOpts_PassedAsQueryParams(t *testing.T) {
 	}
 	if q.Get("pageToken") != "token" {
 		t.Errorf("query pageToken = %q, want token", q.Get("pageToken"))
+	}
+}
+
+func TestDocListIterator_NextAndDone(t *testing.T) {
+	callCount := 0
+	rt := &mockRoundTripper{
+		doFunc: func(req *http.Request) (*http.Response, error) {
+			callCount++
+			// First call: return one page with nextPageToken; second: no next token
+			if callCount == 1 {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": {"application/json"}},
+					Body:       io.NopCloser(bytes.NewReader([]byte(`{"total":2,"docs":[{"id":"1"}],"nextPageToken":"tok"}`))),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": {"application/json"}},
+				Body:       io.NopCloser(bytes.NewReader([]byte(`{"total":2,"docs":[{"id":"2"}],"nextPageToken":""}`))),
+			}, nil
+		},
+	}
+	client := New(
+		WithAPIKey("key"),
+		WithBaseURL("https://api.lambdadb.ai"),
+		WithProjectName("p1"),
+		WithClient(rt),
+	)
+	ctx := context.Background()
+
+	it := client.Collection("c1").Docs().ListIterator(ctx, &ListDocsOpts{Size: Int64(10)})
+	page1, err := it.Next(ctx)
+	if err != nil {
+		t.Fatalf("First Next() err = %v", err)
+	}
+	if page1 == nil {
+		t.Fatal("First Next() returned nil page")
+	}
+	if len(page1.Object.Docs) != 1 || page1.Object.Docs[0]["id"] != "1" {
+		t.Errorf("First page docs = %v", page1.Object.Docs)
+	}
+
+	page2, err := it.Next(ctx)
+	if err != nil {
+		t.Fatalf("Second Next() err = %v", err)
+	}
+	if page2 == nil {
+		t.Fatal("Second Next() returned nil page")
+	}
+	if len(page2.Object.Docs) != 1 || page2.Object.Docs[0]["id"] != "2" {
+		t.Errorf("Second page docs = %v", page2.Object.Docs)
+	}
+
+	page3, err := it.Next(ctx)
+	if err != nil {
+		t.Fatalf("Third Next() err = %v", err)
+	}
+	if page3 != nil {
+		t.Errorf("Third Next() should return (nil, nil) when done, got page with %d docs", len(page3.Object.Docs))
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 API calls, got %d", callCount)
+	}
+}
+
+func TestCollectionListIterator_NextAndDone(t *testing.T) {
+	callCount := 0
+	rt := &mockRoundTripper{
+		doFunc: func(req *http.Request) (*http.Response, error) {
+			callCount++
+			if callCount == 1 {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": {"application/json"}},
+					Body:       io.NopCloser(bytes.NewReader([]byte(`{"collections":[{"collectionName":"a"}],"nextPageToken":"t"}`))),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": {"application/json"}},
+				Body:       io.NopCloser(bytes.NewReader([]byte(`{"collections":[{"collectionName":"b"}],"nextPageToken":""}`))),
+			}, nil
+		},
+	}
+	client := New(
+		WithAPIKey("key"),
+		WithBaseURL("https://api.lambdadb.ai"),
+		WithProjectName("p1"),
+		WithClient(rt),
+	)
+	ctx := context.Background()
+
+	it := client.Collections.ListIterator(ctx, &ListCollectionsOpts{Size: Int64(20)})
+	page1, err := it.Next(ctx)
+	if err != nil {
+		t.Fatalf("First Next() err = %v", err)
+	}
+	if page1 == nil || len(page1.Object.Collections) != 1 || page1.Object.Collections[0].CollectionName != "a" {
+		t.Fatalf("First page = %+v", page1)
+	}
+	page2, err := it.Next(ctx)
+	if err != nil {
+		t.Fatalf("Second Next() err = %v", err)
+	}
+	if page2 == nil || len(page2.Object.Collections) != 1 || page2.Object.Collections[0].CollectionName != "b" {
+		t.Fatalf("Second page = %+v", page2)
+	}
+	page3, err := it.Next(ctx)
+	if err != nil {
+		t.Fatalf("Third Next() err = %v", err)
+	}
+	if page3 != nil {
+		t.Error("Third Next() should return (nil, nil) when done")
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 API calls, got %d", callCount)
+	}
+}
+
+func TestNilOption_DoesNotPanic(t *testing.T) {
+	rt := &mockRoundTripper{
+		resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": {"application/json"}},
+			Body:       io.NopCloser(bytes.NewReader([]byte(`{"collections":[]}`))),
+		},
+	}
+	client := New(
+		WithAPIKey("key"),
+		WithBaseURL("https://api.lambdadb.ai"),
+		WithProjectName("p1"),
+		WithClient(rt),
+	)
+	ctx := context.Background()
+
+	// Passing nil as a variadic option (e.g. List(ctx, nil, nil)) must not panic.
+	res, err := client.Collections.List(ctx, nil, nil)
+	if err != nil {
+		t.Fatalf("List(ctx, nil, nil) err = %v", err)
+	}
+	if res == nil {
+		t.Fatal("List returned nil response")
 	}
 }

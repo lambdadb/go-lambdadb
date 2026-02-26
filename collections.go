@@ -30,7 +30,8 @@ func newCollections(rootSDK *Client, sdkConfig config.SDKConfiguration, hooks *h
 }
 
 // List all collections in an existing project.
-func (s *Collections) List(ctx context.Context, opts ...operations.Option) (*operations.ListCollectionsResponse, error) {
+// Pass nil for listOpts to use defaults (no size/page token).
+func (s *Collections) List(ctx context.Context, listOpts *ListCollectionsOpts, opts ...operations.Option) (*operations.ListCollectionsResponse, error) {
 	o := operations.Options{}
 	supportedOptions := []string{
 		operations.SupportedOptionRetries,
@@ -38,6 +39,9 @@ func (s *Collections) List(ctx context.Context, opts ...operations.Option) (*ope
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -81,6 +85,13 @@ func (s *Collections) List(ctx context.Context, opts ...operations.Option) (*ope
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", s.sdkConfiguration.UserAgent)
+
+	if listOpts != nil {
+		request := operations.ListCollectionsRequest{Size: listOpts.Size, PageToken: listOpts.PageToken}
+		if err := utils.PopulateQueryParams(ctx, req, &request, nil, nil); err != nil {
+			return nil, fmt.Errorf("error populating query params: %w", err)
+		}
+	}
 
 	if err := utils.PopulateSecurity(ctx, req, s.sdkConfiguration.Security); err != nil {
 		return nil, err
@@ -350,6 +361,9 @@ func (s *Collections) Create(ctx context.Context, request operations.CreateColle
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -698,6 +712,9 @@ func (s *Collections) Delete(ctx context.Context, collectionName string, opts ..
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -1014,6 +1031,9 @@ func (s *Collections) Get(ctx context.Context, collectionName string, opts ...op
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -1331,6 +1351,9 @@ func (s *Collections) Update(ctx context.Context, collectionName string, body op
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -1680,6 +1703,9 @@ func (s *Collections) Query(ctx context.Context, collectionName string, body ope
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}

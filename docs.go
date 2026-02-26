@@ -43,6 +43,9 @@ func (s *Docs) List(ctx context.Context, collectionName string, size *int64, pag
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -389,6 +392,9 @@ func (s *Docs) Upsert(ctx context.Context, collectionName string, body operation
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -737,6 +743,9 @@ func (s *Docs) GetBulkUpsertInfo(ctx context.Context, collectionName string, opt
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -1054,6 +1063,9 @@ func (s *Docs) BulkUpsert(ctx context.Context, collectionName string, body opera
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -1403,6 +1415,9 @@ func (s *Docs) Update(ctx context.Context, collectionName string, body operation
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -1752,6 +1767,9 @@ func (s *Docs) Delete(ctx context.Context, collectionName string, body operation
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}
@@ -2101,6 +2119,9 @@ func (s *Docs) Fetch(ctx context.Context, collectionName string, body operations
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(&o, supportedOptions...); err != nil {
 			return nil, fmt.Errorf("error applying option: %w", err)
 		}

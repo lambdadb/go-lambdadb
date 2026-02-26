@@ -11,6 +11,15 @@ type ListDocsOpts struct {
 	PageToken *string
 }
 
+// ListCollectionsOpts holds optional parameters for listing collections.
+// Pass nil to use defaults.
+type ListCollectionsOpts struct {
+	// Max number of collections to return at once.
+	Size *int64
+	// Next page token for pagination.
+	PageToken *string
+}
+
 // Public API type aliases for request/response bodies.
 // These map to the underlying operations types for a cleaner public API.
 

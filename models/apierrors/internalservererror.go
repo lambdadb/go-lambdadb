@@ -1,7 +1,6 @@
 package apierrors
 
 import (
-	"encoding/json"
 	"github.com/lambdadb/go-lambdadb/models/components"
 )
 
@@ -13,6 +12,5 @@ type InternalServerError struct {
 var _ error = &InternalServerError{}
 
 func (e *InternalServerError) Error() string {
-	data, _ := json.Marshal(e)
-	return string(data)
+	return formatErrorMessage(e.Message, "internal server error")
 }

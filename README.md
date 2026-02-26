@@ -17,6 +17,7 @@ LambdaDB API: LambdaDB Open API Spec
   * [Authentication](#authentication)
   * [Configuration](#configuration)
   * [Available Resources and Operations](#available-resources-and-operations)
+  * [Pagination](#pagination)
   * [Retries](#retries)
   * [Error Handling](#error-handling)
   * [Custom HTTP Client](#custom-http-client)
@@ -58,7 +59,7 @@ func main() {
 		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := client.Collections.List(ctx)
+	res, err := client.Collections.List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -112,7 +113,7 @@ func main() {
 		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := client.Collections.List(ctx)
+	res, err := client.Collections.List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -145,6 +146,57 @@ Use `client.Collection("name")` for operations on a single collection (no need t
 </details>
 <!-- End Available Resources and Operations [operations] -->
 
+<!-- Start Pagination [pagination] -->
+## Pagination
+
+List endpoints return one page at a time. Use **iterators** to walk all pages without managing tokens, or **ListAll** to load every page into a single slice.
+
+### Iterator (page-by-page)
+
+```go
+	// Documents
+	iter := client.Collection("my-collection").Docs().ListIterator(ctx, &lambdadb.ListDocsOpts{Size: lambdadb.Int64(100)})
+	for {
+		page, err := iter.Next(ctx)
+		if err != nil {
+			return err
+		}
+		if page == nil {
+			break
+		}
+		for _, doc := range page.Object.Docs {
+			// process doc
+		}
+	}
+
+	// Collections
+	iter := client.Collections.ListIterator(ctx, &lambdadb.ListCollectionsOpts{Size: lambdadb.Int64(20)})
+	for {
+		page, err := iter.Next(ctx)
+		if err != nil {
+			return err
+		}
+		if page == nil {
+			break
+		}
+		for _, c := range page.Object.Collections {
+			// process collection
+		}
+	}
+```
+
+### ListAll (fetch all pages)
+
+Use when you need the full list in memory; avoid on very large datasets.
+
+```go
+	docs, err := client.Collection("my-collection").Docs().ListAll(ctx, &lambdadb.ListDocsOpts{Size: lambdadb.Int64(100)})
+	// ...
+	colls, err := client.Collections.ListAll(ctx, &lambdadb.ListCollectionsOpts{Size: lambdadb.Int64(20)})
+```
+
+<!-- End Pagination [pagination] -->
+
 <!-- Start Retries [retries] -->
 ## Retries
 
@@ -169,7 +221,7 @@ func main() {
 		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := client.Collections.List(ctx, operations.WithRetries(
+	res, err := client.Collections.List(ctx, nil, operations.WithRetries(
 		retry.Config{
 			Strategy: "backoff",
 			Backoff: &retry.BackoffStrategy{
@@ -219,7 +271,7 @@ func main() {
 		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := client.Collections.List(ctx)
+	res, err := client.Collections.List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -270,7 +322,7 @@ func main() {
 		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := client.Collections.List(ctx)
+	res, err := client.Collections.List(ctx, nil)
 	if err != nil {
 		var authErr *apierrors.UnauthenticatedError
 		if errors.As(err, &authErr) {

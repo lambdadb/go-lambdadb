@@ -1,7 +1,6 @@
 package apierrors
 
 import (
-	"encoding/json"
 	"github.com/lambdadb/go-lambdadb/models/components"
 )
 
@@ -13,6 +12,5 @@ type ResourceNotFoundError struct {
 var _ error = &ResourceNotFoundError{}
 
 func (e *ResourceNotFoundError) Error() string {
-	data, _ := json.Marshal(e)
-	return string(data)
+	return formatErrorMessage(e.Message, "resource not found")
 }

@@ -17,7 +17,7 @@ func main() {
 		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := client.Collections.List(ctx)
+	res, err := client.Collections.List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
