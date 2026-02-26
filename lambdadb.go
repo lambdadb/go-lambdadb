@@ -38,6 +38,9 @@ func Float64(f float64) *float64 { return &f }
 // Pointer returns a pointer to v.
 func Pointer[T any](v T) *T { return &v }
 
+// Version is the SDK version. Use it for SDKVersion and User-Agent.
+const Version = "0.2.0"
+
 // Client is the LambdaDB API client.
 type Client struct {
 	SDKVersion string
@@ -113,9 +116,9 @@ func WithTimeout(timeout time.Duration) SDKOption {
 // New creates a new LambdaDB client with the given options.
 func New(opts ...SDKOption) *Client {
 	c := &Client{
-		SDKVersion: "0.2.0",
+		SDKVersion: Version,
 		sdkConfiguration: config.SDKConfiguration{
-			UserAgent:   "lambdadb-go/0.2.0",
+			UserAgent:   "lambdadb-go/" + Version,
 			BaseURL:     config.DefaultBaseURL,
 			ProjectName: config.DefaultProjectName,
 		},

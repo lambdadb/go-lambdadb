@@ -14,8 +14,8 @@ func TestNew_DefaultConfig(t *testing.T) {
 	if client == nil {
 		t.Fatal("New() returned nil")
 	}
-	if client.SDKVersion != "0.2.0" {
-		t.Errorf("SDKVersion = %q, want 0.2.0", client.SDKVersion)
+	if client.SDKVersion != Version {
+		t.Errorf("SDKVersion = %q, want %q", client.SDKVersion, Version)
 	}
 	if client.Collections == nil {
 		t.Error("Collections is nil")
