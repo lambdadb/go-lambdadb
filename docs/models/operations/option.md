@@ -1,27 +1,10 @@
 ## Options
 
-### WithServerURL
-
-WithServerURL allows providing an alternative server URL.
-
-```go
-operations.WithServerURL("http://api.example.com")
-```
-
-## WithTemplatedServerURL
-
-WithTemplatedServerURL allows providing an alternative server URL with templated parameters.
-
-```go
-operations.WithTemplatedServerURL("http://{host}:{port}", map[string]string{
-    "host": "api.example.com",
-    "port": "8080",
-})
-```
+Per-call options (e.g. retries, timeout) for API methods. Client-level configuration (base URL, project name, API key) is set when creating the client via `lambdadb.WithBaseURL`, `lambdadb.WithProjectName`, `lambdadb.WithAPIKey`.
 
 ### WithRetries
 
-WithRetries allows customizing the default retry configuration. Only usable with methods that mention they support retries.
+WithRetries allows customizing the default retry configuration. Only usable with methods that support retries.
 
 ```go
 operations.WithRetries(retry.Config{
@@ -35,3 +18,11 @@ operations.WithRetries(retry.Config{
     RetryConnectionErrors: true,
 })
 ```
+
+### WithOperationTimeout
+
+WithOperationTimeout sets the request timeout for a single operation.
+
+### WithSetHeaders
+
+WithSetHeaders sets additional or override headers for the request.

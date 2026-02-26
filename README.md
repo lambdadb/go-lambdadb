@@ -15,10 +15,11 @@ LambdaDB API: LambdaDB Open API Spec
   * [SDK Installation](#sdk-installation)
   * [SDK Example Usage](#sdk-example-usage)
   * [Authentication](#authentication)
+  * [Configuration](#configuration)
   * [Available Resources and Operations](#available-resources-and-operations)
+  * [Pagination](#pagination)
   * [Retries](#retries)
   * [Error Handling](#error-handling)
-  * [Server Selection](#server-selection)
   * [Custom HTTP Client](#custom-http-client)
 * [Development](#development)
   * [Maturity](#maturity)
@@ -52,20 +53,34 @@ import (
 func main() {
 	ctx := context.Background()
 
-	s := lambdadb.New(
-		lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+	client := lambdadb.New(
+		lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+		lambdadb.WithProjectName("playground"),
+		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := s.Collections.List(ctx)
+	res, err := client.Collections.List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if res.Object != nil {
-		// handle response
+	if res != nil {
+		// handle response (e.g. res.Collections)
 	}
 }
 
 ```
+
+### Collection-scoped usage
+
+Use `client.Collection(name)` to work with a single collection without passing the collection name on every call:
+
+```go
+	coll := client.Collection("my-collection")
+	meta, err := coll.Get(ctx)
+	docs, err := coll.Docs().List(ctx, nil)
+	err = coll.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: myDocs})
+```
+
 <!-- End SDK Example Usage [usage] -->
 
 <!-- Start Authentication [security] -->
@@ -79,7 +94,7 @@ This SDK supports the following security scheme globally:
 | --------------- | ------ | ------- | -------------------------- |
 | `ProjectAPIKey` | apiKey | API key | `LAMBDADB_PROJECT_API_KEY` |
 
-You can configure it using the `WithSecurity` option when initializing the SDK client instance. For example:
+You can configure it using the `WithAPIKey` option when initializing the SDK client instance. For example:
 ```go
 package main
 
@@ -92,16 +107,18 @@ import (
 func main() {
 	ctx := context.Background()
 
-	s := lambdadb.New(
-		lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+	client := lambdadb.New(
+		lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+		lambdadb.WithProjectName("playground"),
+		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := s.Collections.List(ctx)
+	res, err := client.Collections.List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if res.Object != nil {
-		// handle response
+	if res != nil {
+		// handle response (e.g. res.Collections)
 	}
 }
 
@@ -114,27 +131,71 @@ func main() {
 <details open>
 <summary>Available methods</summary>
 
-### [Collections](docs/sdks/collections/README.md)
+### Project-level: `client.Collections`
 
-* [List](docs/sdks/collections/README.md#list) - List all collections in an existing project.
+* [List](docs/sdks/collections/README.md#list) - List all collections in the project.
 * [Create](docs/sdks/collections/README.md#create) - Create a collection.
-* [Delete](docs/sdks/collections/README.md#delete) - Delete an existing collection.
-* [Get](docs/sdks/collections/README.md#get) - Get metadata of an existing collection.
-* [Update](docs/sdks/collections/README.md#update) - Configure a collection.
-* [Query](docs/sdks/collections/README.md#query) - Search a collection with a query and return the most similar documents.
 
-### [Docs](docs/sdks/docs/README.md)
+### Collection-scoped: `client.Collection(name)`
 
-* [List](docs/sdks/docs/README.md#list) - List documents in a collection.
-* [Upsert](docs/sdks/docs/README.md#upsert) - Upsert documents into a collection. Note that the maximum supported payload size is 6MB.
-* [GetBulkUpsertInfo](docs/sdks/docs/README.md#getbulkupsertinfo) - Request required info to upload documents.
-* [BulkUpsert](docs/sdks/docs/README.md#bulkupsert) - Bulk upsert documents into a collection. Note that the maximum supported object size is 200MB.
-* [Update](docs/sdks/docs/README.md#update) - Update documents in a collection. Note that the maximum supported payload size is 6MB.
-* [Delete](docs/sdks/docs/README.md#delete) - Delete documents by document IDs or query filter from a collection.
-* [Fetch](docs/sdks/docs/README.md#fetch) - Lookup and return documents by document IDs from a collection.
+Use `client.Collection("name")` for operations on a single collection (no need to pass the collection name on every call):
+
+* **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `result.Docs` is always populated.
+* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). Fetch does the same presigned-URL resolution for docs when `isDocsInline=false`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
 
 </details>
 <!-- End Available Resources and Operations [operations] -->
+
+<!-- Start Pagination [pagination] -->
+## Pagination
+
+List endpoints return one page at a time. Use **iterators** to walk all pages without managing tokens, or **ListAll** to load every page into a single slice.
+
+### Iterator (page-by-page)
+
+```go
+	// Documents
+	iter := client.Collection("my-collection").Docs().ListIterator(ctx, &lambdadb.ListDocsOpts{Size: lambdadb.Int64(100)})
+	for {
+		page, err := iter.Next(ctx)
+		if err != nil {
+			return err
+		}
+		if page == nil {
+			break
+		}
+		for _, doc := range page.Docs {
+			// process doc
+		}
+	}
+
+	// Collections
+	iter := client.Collections.ListIterator(ctx, &lambdadb.ListCollectionsOpts{Size: lambdadb.Int64(20)})
+	for {
+		page, err := iter.Next(ctx)
+		if err != nil {
+			return err
+		}
+		if page == nil {
+			break
+		}
+		for _, c := range page.Collections {
+			// process collection
+		}
+	}
+```
+
+### ListAll (fetch all pages)
+
+Use when you need the full list in memory; avoid on very large datasets.
+
+```go
+	docs, err := client.Collection("my-collection").Docs().ListAll(ctx, &lambdadb.ListDocsOpts{Size: lambdadb.Int64(100)})
+	// ...
+	colls, err := client.Collections.ListAll(ctx, &lambdadb.ListCollectionsOpts{Size: lambdadb.Int64(20)})
+```
+
+<!-- End Pagination [pagination] -->
 
 <!-- Start Retries [retries] -->
 ## Retries
@@ -156,11 +217,11 @@ import (
 func main() {
 	ctx := context.Background()
 
-	s := lambdadb.New(
-		lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+	client := lambdadb.New(
+		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := s.Collections.List(ctx, operations.WithRetries(
+	res, err := client.Collections.List(ctx, nil, operations.WithRetries(
 		retry.Config{
 			Strategy: "backoff",
 			Backoff: &retry.BackoffStrategy{
@@ -174,8 +235,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if res.Object != nil {
-		// handle response
+	if res != nil {
+		// handle response (e.g. res.Collections)
 	}
 }
 
@@ -195,7 +256,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	s := lambdadb.New(
+	client := lambdadb.New(
 		lambdadb.WithRetryConfig(
 			retry.Config{
 				Strategy: "backoff",
@@ -207,15 +268,15 @@ func main() {
 				},
 				RetryConnectionErrors: false,
 			}),
-		lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := s.Collections.List(ctx)
+	res, err := client.Collections.List(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if res.Object != nil {
-		// handle response
+	if res != nil {
+		// handle response (e.g. res.Collections)
 	}
 }
 
@@ -255,41 +316,33 @@ import (
 func main() {
 	ctx := context.Background()
 
-	s := lambdadb.New(
-		lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+	client := lambdadb.New(
+		lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+		lambdadb.WithProjectName("playground"),
+		lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
 	)
 
-	res, err := s.Collections.List(ctx)
+	res, err := client.Collections.List(ctx, nil)
 	if err != nil {
-
-		var e *apierrors.UnauthenticatedError
-		if errors.As(err, &e) {
-			// handle error
-			log.Fatal(e.Error())
+		var authErr *apierrors.UnauthenticatedError
+		if errors.As(err, &authErr) {
+			log.Fatal(authErr.Error())
 		}
-
-		var e *apierrors.ResourceNotFoundError
-		if errors.As(err, &e) {
-			// handle error
-			log.Fatal(e.Error())
+		var notFoundErr *apierrors.ResourceNotFoundError
+		if errors.As(err, &notFoundErr) {
+			log.Fatal(notFoundErr.Error())
 		}
-
-		var e *apierrors.TooManyRequestsError
-		if errors.As(err, &e) {
-			// handle error
-			log.Fatal(e.Error())
+		var rateLimitErr *apierrors.TooManyRequestsError
+		if errors.As(err, &rateLimitErr) {
+			log.Fatal(rateLimitErr.Error())
 		}
-
-		var e *apierrors.InternalServerError
-		if errors.As(err, &e) {
-			// handle error
-			log.Fatal(e.Error())
+		var serverErr *apierrors.InternalServerError
+		if errors.As(err, &serverErr) {
+			log.Fatal(serverErr.Error())
 		}
-
-		var e *apierrors.APIError
-		if errors.As(err, &e) {
-			// handle error
-			log.Fatal(e.Error())
+		var apiErr *apierrors.APIError
+		if errors.As(err, &apiErr) {
+			log.Fatal(apiErr.Error())
 		}
 	}
 }
@@ -297,79 +350,27 @@ func main() {
 ```
 <!-- End Error Handling [errors] -->
 
-<!-- Start Server Selection [server] -->
-## Server Selection
+<!-- Start Configuration [config] -->
+## Configuration
 
-### Server Variables
+Configuration follows the REST API path structure. Defaults match the OpenAPI spec.
 
-The default server `https://{projectHost}` contains variables and is set to `https://api.lambdadb.com/projects/default` by default. To override default values, the following options are available when initializing the SDK client instance:
+| Option | Default | Description |
+| ------ | ------- | ----------- |
+| `WithBaseURL(baseURL string)` | `https://api.lambdadb.ai` | API base URL (scheme + host). |
+| `WithProjectName(projectName string)` | `playground` | Project name (path segment). |
+| `WithAPIKey(apiKey string)` | (none) | Project API key. Can also use `LAMBDADB_PROJECT_API_KEY` env. |
 
-| Variable      | Option                                | Default                               | Description                |
-| ------------- | ------------------------------------- | ------------------------------------- | -------------------------- |
-| `projectHost` | `WithProjectHost(projectHost string)` | `"api.lambdadb.com/projects/default"` | The project URL of the API |
-
-#### Example
+The effective request base is `BaseURL + "/projects/" + ProjectName`. Example:
 
 ```go
-package main
-
-import (
-	"context"
-	lambdadb "github.com/lambdadb/go-lambdadb"
-	"log"
-)
-
-func main() {
-	ctx := context.Background()
-
-	s := lambdadb.New(
-		lambdadb.WithServerIndex(0),
-		lambdadb.WithProjectHost("api.lambdadb.com/projects/default"),
-		lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
+	client := lambdadb.New(
+		lambdadb.WithBaseURL("https://api.lambdadb.ai"),
+		lambdadb.WithProjectName("my-project"),
+		lambdadb.WithAPIKey("your-api-key"),
 	)
-
-	res, err := s.Collections.List(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if res.Object != nil {
-		// handle response
-	}
-}
-
 ```
-
-### Override Server URL Per-Client
-
-The default server can be overridden globally using the `WithServerURL(serverURL string)` option when initializing the SDK client instance. For example:
-```go
-package main
-
-import (
-	"context"
-	lambdadb "github.com/lambdadb/go-lambdadb"
-	"log"
-)
-
-func main() {
-	ctx := context.Background()
-
-	s := lambdadb.New(
-		lambdadb.WithServerURL("https://api.lambdadb.com/projects/default"),
-		lambdadb.WithSecurity("<YOUR_PROJECT_API_KEY>"),
-	)
-
-	res, err := s.Collections.List(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if res.Object != nil {
-		// handle response
-	}
-}
-
-```
-<!-- End Server Selection [server] -->
+<!-- End Configuration [config] -->
 
 <!-- Start Custom HTTP Client [http-client] -->
 ## Custom HTTP Client
