@@ -123,8 +123,18 @@ func (c *Collection) Delete(ctx context.Context, opts ...operations.Option) (*op
 }
 
 // Query runs a search query on the collection.
+// When the API returns isDocsInline=false and docsUrl, the SDK fetches docs from the presigned URL automatically so res.Object.Docs is always populated.
 func (c *Collection) Query(ctx context.Context, input QueryInput, opts ...operations.Option) (*operations.QueryCollectionResponse, error) {
-	return c.client.collections.Query(ctx, c.name, input, opts...)
+	res, err := c.client.collections.Query(ctx, c.name, input, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil && res.Object != nil && !res.Object.IsDocsInline && res.Object.DocsURL != nil && *res.Object.DocsURL != "" {
+		if err := fetchJSONFromURL(ctx, *res.Object.DocsURL, &res.Object.Docs); err != nil {
+			return nil, fmt.Errorf("fetch query docs from URL: %w", err)
+		}
+	}
+	return res, nil
 }
 
 // Docs returns a handle for document operations on this collection.
@@ -301,6 +311,39 @@ func (d *CollectionDocs) Delete(ctx context.Context, body DeleteDocsInput, opts 
 }
 
 // Fetch fetches documents by IDs from the collection.
+// When the API returns isDocsInline=false and docsUrl, the SDK fetches docs from the presigned URL automatically so res.Object.Docs is always populated.
 func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ...operations.Option) (*operations.FetchDocsResponse, error) {
-	return d.client.docs.Fetch(ctx, d.name, body, opts...)
+	res, err := d.client.docs.Fetch(ctx, d.name, body, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil && res.Object != nil && !res.Object.IsDocsInline && res.Object.DocsURL != nil && *res.Object.DocsURL != "" {
+		if err := fetchJSONFromURL(ctx, *res.Object.DocsURL, &res.Object.Docs); err != nil {
+			return nil, fmt.Errorf("fetch docs from URL: %w", err)
+		}
+	}
+	return res, nil
+}
+
+// fetchJSONFromURL GETs the URL and unmarshals the response body as JSON into v.
+func fetchJSONFromURL(ctx context.Context, url string, v interface{}) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return err
+	}
+	client := &http.Client{Timeout: 5 * time.Minute}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("download failed: status %d, body: %s", resp.StatusCode, string(body))
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, v)
 }

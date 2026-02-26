@@ -408,3 +408,87 @@ func TestBulkUpsertDocuments_Flow(t *testing.T) {
 		t.Errorf("expected 2 API calls (GetBulkUpsertInfo + BulkUpsert), got %d", callCount)
 	}
 }
+
+func TestQuery_WithDocsURL_FetchesDocsInline(t *testing.T) {
+	docsFromURL := []byte(`[{"collection":"c1","score":0.9,"doc":{"id":"1","name":"a"}}]`)
+	docsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(docsFromURL)
+	}))
+	defer docsServer.Close()
+
+	rt := &mockRoundTripper{
+		doFunc: func(req *http.Request) (*http.Response, error) {
+			// Query API returns isDocsInline=false and docsUrl
+			body := []byte(`{"took":1,"total":1,"docs":[],"isDocsInline":false,"docsUrl":"` + docsServer.URL + `"}`)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": {"application/json"}},
+				Body:       io.NopCloser(bytes.NewReader(body)),
+			}, nil
+		},
+	}
+	client := New(
+		WithAPIKey("key"),
+		WithBaseURL("https://api.lambdadb.ai"),
+		WithProjectName("p1"),
+		WithClient(rt),
+	)
+	ctx := context.Background()
+
+	res, err := client.Collection("my-coll").Query(ctx, QueryInput{Query: map[string]any{"match_all": map[string]any{}}})
+	if err != nil {
+		t.Fatalf("Query err = %v", err)
+	}
+	if res == nil || res.Object == nil {
+		t.Fatal("Query returned nil response or Object")
+	}
+	if len(res.Object.Docs) != 1 {
+		t.Fatalf("expected 1 doc after fetch from URL, got %d", len(res.Object.Docs))
+	}
+	if res.Object.Docs[0].Doc["id"] != "1" || res.Object.Docs[0].Doc["name"] != "a" {
+		t.Errorf("doc = %v", res.Object.Docs[0].Doc)
+	}
+}
+
+func TestFetch_WithDocsURL_FetchesDocsInline(t *testing.T) {
+	docsFromURL := []byte(`[{"collection":"c1","doc":{"id":"x","value":42}}]`)
+	docsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(docsFromURL)
+	}))
+	defer docsServer.Close()
+
+	rt := &mockRoundTripper{
+		doFunc: func(req *http.Request) (*http.Response, error) {
+			// Fetch API returns isDocsInline=false and docsUrl
+			body := []byte(`{"total":1,"took":0,"docs":[],"isDocsInline":false,"docsUrl":"` + docsServer.URL + `"}`)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": {"application/json"}},
+				Body:       io.NopCloser(bytes.NewReader(body)),
+			}, nil
+		},
+	}
+	client := New(
+		WithAPIKey("key"),
+		WithBaseURL("https://api.lambdadb.ai"),
+		WithProjectName("p1"),
+		WithClient(rt),
+	)
+	ctx := context.Background()
+
+	res, err := client.Collection("my-coll").Docs().Fetch(ctx, FetchDocsInput{Ids: []string{"x"}})
+	if err != nil {
+		t.Fatalf("Fetch err = %v", err)
+	}
+	if res == nil || res.Object == nil {
+		t.Fatal("Fetch returned nil response or Object")
+	}
+	if len(res.Object.Docs) != 1 {
+		t.Fatalf("expected 1 doc after fetch from URL, got %d", len(res.Object.Docs))
+	}
+	if res.Object.Docs[0].Doc["id"] != "x" || res.Object.Docs[0].Doc["value"] != float64(42) {
+		t.Errorf("doc = %v", res.Object.Docs[0].Doc)
+	}
+}

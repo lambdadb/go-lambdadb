@@ -140,8 +140,8 @@ func main() {
 
 Use `client.Collection("name")` for operations on a single collection (no need to pass the collection name on every call):
 
-* **Collection**: Get, Update, Delete, Query (metadata and search).
-* **Collection.Docs()**: List, Upsert, Fetch, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
+* **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `res.Object.Docs` is always populated.
+* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). Fetch does the same presigned-URL resolution for docs when `isDocsInline=false`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
 
 </details>
 <!-- End Available Resources and Operations [operations] -->
