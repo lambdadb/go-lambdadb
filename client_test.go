@@ -229,13 +229,13 @@ func TestDocListIterator_NextAndDone(t *testing.T) {
 				return &http.Response{
 					StatusCode: http.StatusOK,
 					Header:     http.Header{"Content-Type": {"application/json"}},
-					Body:       io.NopCloser(bytes.NewReader([]byte(`{"total":2,"docs":[{"id":"1"}],"nextPageToken":"tok"}`))),
+					Body:       io.NopCloser(bytes.NewReader([]byte(`{"total":2,"docs":[{"collection":"c1","doc":{"id":"1"}}],"nextPageToken":"tok","isDocsInline":true}`))),
 				}, nil
 			}
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{"Content-Type": {"application/json"}},
-				Body:       io.NopCloser(bytes.NewReader([]byte(`{"total":2,"docs":[{"id":"2"}],"nextPageToken":""}`))),
+				Body:       io.NopCloser(bytes.NewReader([]byte(`{"total":2,"docs":[{"collection":"c1","doc":{"id":"2"}}],"nextPageToken":"","isDocsInline":true}`))),
 			}, nil
 		},
 	}
@@ -255,7 +255,7 @@ func TestDocListIterator_NextAndDone(t *testing.T) {
 	if page1 == nil {
 		t.Fatal("First Next() returned nil page")
 	}
-	if len(page1.Docs) != 1 || page1.Docs[0]["id"] != "1" {
+	if len(page1.Docs) != 1 || page1.Docs[0].Doc["id"] != "1" {
 		t.Errorf("First page docs = %v", page1.Docs)
 	}
 
@@ -266,7 +266,7 @@ func TestDocListIterator_NextAndDone(t *testing.T) {
 	if page2 == nil {
 		t.Fatal("Second Next() returned nil page")
 	}
-	if len(page2.Docs) != 1 || page2.Docs[0]["id"] != "2" {
+	if len(page2.Docs) != 1 || page2.Docs[0].Doc["id"] != "2" {
 		t.Errorf("Second page docs = %v", page2.Docs)
 	}
 

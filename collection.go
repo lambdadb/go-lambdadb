@@ -207,10 +207,16 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 	if res == nil || res.Object == nil {
 		return &ListDocsResult{Docs: nil, Total: 0, NextPageToken: nil}, nil
 	}
+	obj := res.Object
+	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
+		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+			return nil, fmt.Errorf("fetch list docs from URL: %w", err)
+		}
+	}
 	return &ListDocsResult{
-		Docs:          res.Object.Docs,
-		Total:         res.Object.Total,
-		NextPageToken: res.Object.NextPageToken,
+		Docs:          obj.Docs,
+		Total:         obj.Total,
+		NextPageToken: obj.NextPageToken,
 	}, nil
 }
 
@@ -258,6 +264,11 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 		return &ListDocsResult{Docs: nil, Total: 0, NextPageToken: nil}, nil
 	}
 	obj := res.Object
+	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
+		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+			return nil, fmt.Errorf("fetch list docs from URL: %w", err)
+		}
+	}
 	if obj.NextPageToken == nil || *obj.NextPageToken == "" {
 		it.done = true
 	} else {
@@ -286,7 +297,9 @@ func (d *CollectionDocs) ListAll(ctx context.Context, listOpts *ListDocsOpts, op
 			break
 		}
 		if len(page.Docs) > 0 {
-			out = append(out, page.Docs...)
+			for _, d := range page.Docs {
+				out = append(out, d.Doc)
+			}
 		}
 	}
 	return out, nil

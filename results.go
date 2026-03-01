@@ -28,7 +28,7 @@ type ListCollectionsResult struct {
 
 // ListDocsResult is the flattened result of listing documents (one page).
 type ListDocsResult struct {
-	Docs          []map[string]any
+	Docs          []operations.ListDocsDoc
 	Total         int64
 	NextPageToken *string
 }

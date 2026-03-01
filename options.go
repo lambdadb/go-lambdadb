@@ -2,8 +2,10 @@ package lambdadb
 
 import "github.com/lambdadb/go-lambdadb/models/operations"
 
-// ListDocsOpts holds optional parameters for listing documents.
+// ListDocsOpts holds optional parameters for listing documents (request only).
 // Pass nil to use defaults.
+// Note: isDocsInline and docsUrl are response-only fields from the API; they are not request options.
+// When the API returns isDocsInline=false and docsUrl, the SDK automatically fetches the document list from that URL.
 type ListDocsOpts struct {
 	// Max number of documents to return at once.
 	Size *int64
