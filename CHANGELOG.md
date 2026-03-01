@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.3.0] - 2025-03-01
+
+### Added
+
+- **List docs: `isDocsInline` and `docsUrl`**: When the list-docs API returns `isDocsInline=false` and `docsUrl`, the SDK fetches the document list from the presigned URL automatically (same behavior as Query and Fetch). Response body type [ListDocsResponseBody](docs/models/operations/listdocsresponsebody.md) includes `IsDocsInline` and `DocsURL`.
+
+### Changed
+
+- **Breaking**: `ListDocsResult.Docs` is now `[]operations.ListDocsDoc` instead of `[]map[string]any`. Each `ListDocsDoc` has `Collection` and `Doc` (document content). Use `item.Doc` for the document map. `ListAll` still returns `[]map[string]any` (document content only). This aligns List with Fetch and the API response shape.
+
 ## [0.2.1] - 2025-02-26
 
 ### Added

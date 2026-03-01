@@ -35,12 +35,36 @@ func (l *ListDocsRequest) GetPageToken() *string {
 	return l.PageToken
 }
 
+// ListDocsDoc - A single document in a list response.
+type ListDocsDoc struct {
+	Collection string         `json:"collection"`
+	Doc        map[string]any `json:"doc"`
+}
+
+func (l *ListDocsDoc) GetCollection() string {
+	if l == nil {
+		return ""
+	}
+	return l.Collection
+}
+
+func (l *ListDocsDoc) GetDoc() map[string]any {
+	if l == nil {
+		return map[string]any{}
+	}
+	return l.Doc
+}
+
 // ListDocsResponseBody - Documents list.
 type ListDocsResponseBody struct {
 	Total int64 `json:"total"`
 	// A list of documents.
-	Docs          []map[string]any `json:"docs"`
+	Docs          []ListDocsDoc `json:"docs"`
 	NextPageToken *string          `json:"nextPageToken,omitzero"`
+	// Whether the list of documents is included in the response.
+	IsDocsInline bool `json:"isDocsInline"`
+	// Download URL for the list of documents when not inline.
+	DocsURL *string `json:"docsUrl,omitzero"`
 }
 
 func (l *ListDocsResponseBody) GetTotal() int64 {
@@ -50,9 +74,9 @@ func (l *ListDocsResponseBody) GetTotal() int64 {
 	return l.Total
 }
 
-func (l *ListDocsResponseBody) GetDocs() []map[string]any {
+func (l *ListDocsResponseBody) GetDocs() []ListDocsDoc {
 	if l == nil {
-		return []map[string]any{}
+		return []ListDocsDoc{}
 	}
 	return l.Docs
 }
@@ -62,6 +86,20 @@ func (l *ListDocsResponseBody) GetNextPageToken() *string {
 		return nil
 	}
 	return l.NextPageToken
+}
+
+func (l *ListDocsResponseBody) GetIsDocsInline() bool {
+	if l == nil {
+		return false
+	}
+	return l.IsDocsInline
+}
+
+func (l *ListDocsResponseBody) GetDocsURL() *string {
+	if l == nil {
+		return nil
+	}
+	return l.DocsURL
 }
 
 type ListDocsResponse struct {

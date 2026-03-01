@@ -53,14 +53,14 @@ func main() {
 | Parameter                                                | Type                                                     | Required                                                 | Description                                              |
 | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
-| `listOpts`                                               | *[ListDocsOpts](../../../options.go)                     | :heavy_minus_sign:                                       | Optional: Size, PageToken. Pass nil for defaults.        |
+| `listOpts`                                               | *[ListDocsOpts](../../../options.go)                     | :heavy_minus_sign:                                       | Optional: Size, PageToken. Pass nil for defaults. isDocsInline and docsUrl are response-only (not request options). |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
 
 Use `client.Collection("name").Docs().List(ctx, nil)` or `List(ctx, &lambdadb.ListDocsOpts{...})`.
 
 ### Response
 
-**[*operations.ListDocsResponse](../../models/operations/listdocsresponse.md), error**
+**\*ListDocsResult** (one page): `Docs` is `[]operations.ListDocsDoc` (each has `Collection` and `Doc`), `Total`, `NextPageToken`. When the API returns `isDocsInline=false` and `docsUrl`, the SDK fetches the document list from the presigned URL automatically so `result.Docs` is always populated. See [ListDocsResponseBody](../../models/operations/listdocsresponsebody.md) for the API response shape.
 
 ### Errors
 
