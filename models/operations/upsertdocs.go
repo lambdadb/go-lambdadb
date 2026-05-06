@@ -6,7 +6,7 @@ import (
 )
 
 type UpsertDocsRequestBody struct {
-	// A list of documents to upsert.
+	// A list of documents to upsert. For managed embedding vector fields, omit the managed vector field and provide only the configured source text field.
 	Docs []map[string]any `json:"docs"`
 }
 

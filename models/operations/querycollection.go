@@ -8,7 +8,7 @@ import (
 type QueryCollectionRequestBody struct {
 	// Number of documents to return. Note that the maximum number of documents is 100.
 	Size *int64 `json:"size,omitzero"`
-	// Query object.
+	// Query object. For managed embedding vector fields, use knn.queryText. For unmanaged vector fields, use knn.queryVector.
 	Query map[string]any `json:"query"`
 	// If your application requires a strongly consistent read, set consistentRead to true. Although a strongly consistent read might take more time than an eventually consistent read, it always returns the last updated value.
 	ConsistentRead *bool `default:"false" json:"consistentRead"`

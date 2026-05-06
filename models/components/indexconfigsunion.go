@@ -132,7 +132,28 @@ func (e *TypeVector) UnmarshalJSON(data []byte) error {
 	}
 }
 
-// Similarity - Vector similarity metric.
+type EmbeddingConfigProvider string
+
+const (
+	EmbeddingConfigProviderOpenai EmbeddingConfigProvider = "openai"
+)
+
+func (e EmbeddingConfigProvider) ToPointer() *EmbeddingConfigProvider {
+	return &e
+}
+
+// IsExact returns true if the value matches a known enum value, false otherwise.
+func (e *EmbeddingConfigProvider) IsExact() bool {
+	if e != nil {
+		switch *e {
+		case "openai":
+			return true
+		}
+	}
+	return false
+}
+
+// Similarity - Resolved vector similarity metric.
 type Similarity string
 
 const (
@@ -157,21 +178,111 @@ func (e *Similarity) IsExact() bool {
 	return false
 }
 
+// EmbeddingConfig - Managed embedding configuration for vector fields.
+type EmbeddingConfig struct {
+	// Embedding provider.
+	Provider EmbeddingConfigProvider `json:"provider"`
+	// Embedding model name.
+	Model string `json:"model"`
+	// Source text field name used to generate embeddings.
+	SourceField string `json:"sourceField"`
+	// Resolved embedding dimensions. Optional in requests and resolved in stored collection metadata.
+	Dimensions *int64 `json:"dimensions,omitzero"`
+	// Resolved vector similarity metric. Optional in requests and resolved in stored collection metadata.
+	Similarity *Similarity `default:"cosine" json:"similarity,omitzero"`
+}
+
+func (e EmbeddingConfig) MarshalJSON() ([]byte, error) {
+	return utils.MarshalJSON(e, "", false)
+}
+
+func (e *EmbeddingConfig) UnmarshalJSON(data []byte) error {
+	if err := utils.UnmarshalJSON(data, &e, "", false, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *EmbeddingConfig) GetProvider() EmbeddingConfigProvider {
+	if e == nil {
+		return EmbeddingConfigProvider("")
+	}
+	return e.Provider
+}
+
+func (e *EmbeddingConfig) GetModel() string {
+	if e == nil {
+		return ""
+	}
+	return e.Model
+}
+
+func (e *EmbeddingConfig) GetSourceField() string {
+	if e == nil {
+		return ""
+	}
+	return e.SourceField
+}
+
+func (e *EmbeddingConfig) GetDimensions() *int64 {
+	if e == nil {
+		return nil
+	}
+	return e.Dimensions
+}
+
+func (e *EmbeddingConfig) GetSimilarity() *Similarity {
+	if e == nil {
+		return nil
+	}
+	return e.Similarity
+}
+
 type IndexConfigsVector struct {
 	Type TypeVector `json:"type"`
-	// Vector dimensions.
+	// Set to false or omit for unmanaged vector fields.
+	ManagedEmbedding *bool `json:"managedEmbedding,omitzero"`
+	// Vector dimensions for unmanaged vector fields.
 	Dimensions int64 `json:"dimensions"`
-	// Vector similarity metric.
+	// Vector similarity metric for unmanaged vector fields.
 	Similarity *Similarity `default:"cosine" json:"similarity"`
 }
 
 func (i IndexConfigsVector) MarshalJSON() ([]byte, error) {
+	if i.ManagedEmbedding != nil && *i.ManagedEmbedding {
+		return nil, errors.New("managedEmbedding=true requires IndexConfigsManagedEmbeddingVector")
+	}
+	if i.Dimensions == 0 {
+		return nil, errors.New("Dimensions is required field")
+	}
+	if i.Similarity != nil && !i.Similarity.IsExact() {
+		return nil, fmt.Errorf("%s is not a supported similarity metric supported similarity metrics are %v", *i.Similarity, supportedVectorSimilarities())
+	}
 	return utils.MarshalJSON(i, "", false)
 }
 
 func (i *IndexConfigsVector) UnmarshalJSON(data []byte) error {
+	state, err := vectorEmbeddingState(data)
+	if err != nil {
+		return err
+	}
+	if state.hasEmbedding {
+		return errors.New("embedding is not allowed when managedEmbedding=false")
+	}
+	if state.hasManagedEmbedding && state.managedEmbedding {
+		return errors.New("managedEmbedding=true requires IndexConfigsManagedEmbeddingVector")
+	}
+	if !state.hasDimensions {
+		return errors.New("Dimensions is required field")
+	}
 	if err := utils.UnmarshalJSON(data, &i, "", false, nil); err != nil {
 		return err
+	}
+	if i.Dimensions == 0 {
+		return errors.New("Dimensions is required field")
+	}
+	if i.Similarity != nil && !i.Similarity.IsExact() {
+		return fmt.Errorf("%s is not a supported similarity metric supported similarity metrics are %v", *i.Similarity, supportedVectorSimilarities())
 	}
 	return nil
 }
@@ -181,6 +292,13 @@ func (i *IndexConfigsVector) GetType() TypeVector {
 		return TypeVector("")
 	}
 	return i.Type
+}
+
+func (i *IndexConfigsVector) GetManagedEmbedding() *bool {
+	if i == nil {
+		return nil
+	}
+	return i.ManagedEmbedding
 }
 
 func (i *IndexConfigsVector) GetDimensions() int64 {
@@ -195,6 +313,65 @@ func (i *IndexConfigsVector) GetSimilarity() *Similarity {
 		return nil
 	}
 	return i.Similarity
+}
+
+type IndexConfigsManagedEmbeddingVector struct {
+	Type TypeVector `json:"type"`
+	// Managed embedding vector field.
+	ManagedEmbedding bool            `json:"managedEmbedding"`
+	Embedding        EmbeddingConfig `json:"embedding"`
+}
+
+func (i IndexConfigsManagedEmbeddingVector) MarshalJSON() ([]byte, error) {
+	i.ManagedEmbedding = true
+	return utils.MarshalJSON(i, "", false)
+}
+
+func (i *IndexConfigsManagedEmbeddingVector) UnmarshalJSON(data []byte) error {
+	state, err := vectorEmbeddingState(data)
+	if err != nil {
+		return err
+	}
+	if state.hasDimensions {
+		return errors.New("Top-level dimensions are not allowed for managed embedding field")
+	}
+	if state.hasSimilarity {
+		return errors.New("Top-level similarity is not allowed for managed embedding field")
+	}
+	if !state.hasManagedEmbedding || !state.managedEmbedding {
+		if state.hasEmbedding {
+			return errors.New("managedEmbedding=true is required when embedding config is provided")
+		}
+		return errors.New("managedEmbedding=true is required for managed embedding vector")
+	}
+	if !state.hasEmbedding {
+		return errors.New("embedding is required when managedEmbedding=true")
+	}
+	if err := utils.UnmarshalJSON(data, &i, "", false, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (i *IndexConfigsManagedEmbeddingVector) GetType() TypeVector {
+	if i == nil {
+		return TypeVector("")
+	}
+	return i.Type
+}
+
+func (i *IndexConfigsManagedEmbeddingVector) GetManagedEmbedding() bool {
+	if i == nil {
+		return false
+	}
+	return i.ManagedEmbedding
+}
+
+func (i *IndexConfigsManagedEmbeddingVector) GetEmbedding() EmbeddingConfig {
+	if i == nil {
+		return EmbeddingConfig{}
+	}
+	return i.Embedding
 }
 
 type TypeText string
@@ -290,10 +467,11 @@ const (
 )
 
 type IndexConfigsUnion struct {
-	IndexConfigsText   *IndexConfigsText   `queryParam:"inline" union:"member"`
-	IndexConfigsVector *IndexConfigsVector `queryParam:"inline" union:"member"`
-	IndexConfigs       *IndexConfigs       `queryParam:"inline" union:"member"`
-	IndexConfigsObject *IndexConfigsObject `queryParam:"inline" union:"member"`
+	IndexConfigsText                   *IndexConfigsText                   `queryParam:"inline" union:"member"`
+	IndexConfigsVector                 *IndexConfigsVector                 `queryParam:"inline" union:"member"`
+	IndexConfigsManagedEmbeddingVector *IndexConfigsManagedEmbeddingVector `queryParam:"inline" union:"member"`
+	IndexConfigs                       *IndexConfigs                       `queryParam:"inline" union:"member"`
+	IndexConfigsObject                 *IndexConfigsObject                 `queryParam:"inline" union:"member"`
 
 	Type IndexConfigsUnionType
 }
@@ -319,6 +497,19 @@ func CreateIndexConfigsUnionVector(vector IndexConfigsVector) IndexConfigsUnion 
 	return IndexConfigsUnion{
 		IndexConfigsVector: &vector,
 		Type:               typ,
+	}
+}
+
+func CreateIndexConfigsUnionManagedEmbeddingVector(managedEmbeddingVector IndexConfigsManagedEmbeddingVector) IndexConfigsUnion {
+	typ := IndexConfigsUnionTypeVector
+
+	typStr := TypeVector(typ)
+	managedEmbeddingVector.Type = typStr
+	managedEmbeddingVector.ManagedEmbedding = true
+
+	return IndexConfigsUnion{
+		IndexConfigsManagedEmbeddingVector: &managedEmbeddingVector,
+		Type:                               typ,
 	}
 }
 
@@ -428,6 +619,27 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 		u.Type = IndexConfigsUnionTypeText
 		return nil
 	case "vector":
+		state, err := vectorEmbeddingState(data)
+		if err != nil {
+			return fmt.Errorf("could not inspect vector embedding state within IndexConfigsUnion: %w", err)
+		}
+		if state.hasEmbedding && !state.hasManagedEmbedding {
+			return errors.New("managedEmbedding=true is required when embedding config is provided")
+		}
+		if state.hasEmbedding && !state.managedEmbedding {
+			return errors.New("embedding is not allowed when managedEmbedding=false")
+		}
+		if state.hasManagedEmbedding && state.managedEmbedding {
+			indexConfigsManagedEmbeddingVector := new(IndexConfigsManagedEmbeddingVector)
+			if err := utils.UnmarshalJSON(data, &indexConfigsManagedEmbeddingVector, "", true, nil); err != nil {
+				return fmt.Errorf("could not unmarshal `%s` into expected (Type == vector, ManagedEmbedding == true) type IndexConfigsManagedEmbeddingVector within IndexConfigsUnion: %w", string(data), err)
+			}
+
+			u.IndexConfigsManagedEmbeddingVector = indexConfigsManagedEmbeddingVector
+			u.Type = IndexConfigsUnionTypeVector
+			return nil
+		}
+
 		indexConfigsVector := new(IndexConfigsVector)
 		if err := utils.UnmarshalJSON(data, &indexConfigsVector, "", true, nil); err != nil {
 			return fmt.Errorf("could not unmarshal `%s` into expected (Type == vector) type IndexConfigsVector within IndexConfigsUnion: %w", string(data), err)
@@ -513,6 +725,10 @@ func (u IndexConfigsUnion) MarshalJSON() ([]byte, error) {
 		return utils.MarshalJSON(u.IndexConfigsVector, "", true)
 	}
 
+	if u.IndexConfigsManagedEmbeddingVector != nil {
+		return utils.MarshalJSON(u.IndexConfigsManagedEmbeddingVector, "", true)
+	}
+
 	if u.IndexConfigs != nil {
 		return utils.MarshalJSON(u.IndexConfigs, "", true)
 	}
@@ -522,4 +738,54 @@ func (u IndexConfigsUnion) MarshalJSON() ([]byte, error) {
 	}
 
 	return nil, errors.New("could not marshal union type IndexConfigsUnion: all fields are null")
+}
+
+type vectorEmbeddingRawState struct {
+	hasManagedEmbedding bool
+	managedEmbedding    bool
+	hasEmbedding        bool
+	hasDimensions       bool
+	hasSimilarity       bool
+}
+
+func vectorEmbeddingState(data []byte) (vectorEmbeddingRawState, error) {
+	state := vectorEmbeddingRawState{}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return state, err
+	}
+
+	if raw, ok := fields["managedEmbedding"]; ok && !isJSONNull(raw) {
+		state.hasManagedEmbedding = true
+		if err := json.Unmarshal(raw, &state.managedEmbedding); err != nil {
+			return state, fmt.Errorf("could not unmarshal managedEmbedding: %w", err)
+		}
+	}
+	if raw, ok := fields["embedding"]; ok && !isJSONNull(raw) {
+		state.hasEmbedding = true
+	}
+	if raw, ok := fields["dimensions"]; ok && !isJSONNull(raw) {
+		state.hasDimensions = true
+	}
+	if raw, ok := fields["similarity"]; ok && !isJSONNull(raw) {
+		state.hasSimilarity = true
+	}
+	return state, nil
+}
+
+func isJSONNull(raw json.RawMessage) bool {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return false
+	}
+	return v == nil
+}
+
+func supportedVectorSimilarities() []Similarity {
+	return []Similarity{
+		SimilarityCosine,
+		SimilarityEuclidean,
+		SimilarityDotProduct,
+		SimilarityMaxInnerProduct,
+	}
 }
