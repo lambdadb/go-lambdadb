@@ -292,6 +292,117 @@ func TestPublicAPI_WriteRequestBodiesFromExternalPackage(t *testing.T) {
 	mock.assertDone()
 }
 
+func TestPublicAPI_ManagedEmbeddingCollectionConfigFromExternalPackage(t *testing.T) {
+	mock := &publicAPIMockClient{
+		t: t,
+		handlers: []func(*http.Request) *http.Response{
+			func(req *http.Request) *http.Response {
+				assertRequest(t, req, http.MethodPost, "https://api.example.com/projects/project-managed/collections")
+				body := decodeJSONBody(t, req)
+				indexConfigs, ok := body["indexConfigs"].(map[string]any)
+				if !ok {
+					t.Fatalf("indexConfigs body = %#v, want object", body["indexConfigs"])
+				}
+				vectorConfig, ok := indexConfigs["bodyEmbedding"].(map[string]any)
+				if !ok {
+					t.Fatalf("bodyEmbedding config = %#v, want object", indexConfigs["bodyEmbedding"])
+				}
+				if got := vectorConfig["type"]; got != "vector" {
+					t.Fatalf("bodyEmbedding.type = %v, want vector", got)
+				}
+				if got := vectorConfig["managedEmbedding"]; got != true {
+					t.Fatalf("bodyEmbedding.managedEmbedding = %v, want true", got)
+				}
+				embedding, ok := vectorConfig["embedding"].(map[string]any)
+				if !ok {
+					t.Fatalf("bodyEmbedding.embedding = %#v, want object", vectorConfig["embedding"])
+				}
+				if got := embedding["provider"]; got != "openai" {
+					t.Fatalf("embedding.provider = %v, want openai", got)
+				}
+				if got := embedding["model"]; got != "text-embedding-3-small" {
+					t.Fatalf("embedding.model = %v, want text-embedding-3-small", got)
+				}
+				if got := embedding["sourceField"]; got != "body" {
+					t.Fatalf("embedding.sourceField = %v, want body", got)
+				}
+				if _, ok := embedding["dimensions"]; ok {
+					t.Fatalf("embedding.dimensions was sent in create request: %#v", embedding["dimensions"])
+				}
+				if _, ok := embedding["similarity"]; ok {
+					t.Fatalf("embedding.similarity was sent in create request: %#v", embedding["similarity"])
+				}
+				return jsonResponse(http.StatusAccepted, `{
+					"collection": {
+						"projectName": "project-managed",
+						"collectionName": "semantic-articles",
+						"indexConfigs": {
+							"body": {
+								"type": "text",
+								"analyzers": ["english"]
+							},
+							"bodyEmbedding": {
+								"type": "vector",
+								"managedEmbedding": true,
+								"embedding": {
+									"provider": "openai",
+									"model": "text-embedding-3-small",
+									"sourceField": "body",
+									"dimensions": 1536,
+									"similarity": "cosine"
+								}
+							}
+						},
+						"numPartitions": 1,
+						"numDocs": 0,
+						"collectionStatus": "CREATING",
+						"createdAt": 1700000000,
+						"updatedAt": 1700000000,
+						"dataUpdatedAt": 1700000000
+					}
+				}`)
+			},
+		},
+	}
+
+	client := lambdadb.New(
+		lambdadb.WithAPIKey("public-key"),
+		lambdadb.WithBaseURL("https://api.example.com"),
+		lambdadb.WithProjectName("project-managed"),
+		lambdadb.WithClient(mock),
+	)
+
+	created, err := client.Collections.Create(context.Background(), lambdadb.CreateCollectionOptions{
+		CollectionName: "semantic-articles",
+		IndexConfigs: map[string]components.IndexConfigsUnion{
+			"body": components.CreateIndexConfigsUnionText(components.IndexConfigsText{
+				Analyzers: []components.Analyzer{components.AnalyzerEnglish},
+			}),
+			"bodyEmbedding": components.CreateIndexConfigsUnionManagedEmbeddingVector(components.IndexConfigsManagedEmbeddingVector{
+				Embedding: components.EmbeddingConfig{
+					Provider:    components.EmbeddingConfigProviderOpenai,
+					Model:       "text-embedding-3-small",
+					SourceField: "body",
+				},
+			}),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Collections.Create() error = %v", err)
+	}
+	managed := created.IndexConfigs["bodyEmbedding"].IndexConfigsManagedEmbeddingVector
+	if managed == nil {
+		t.Fatalf("bodyEmbedding union = %#v, want managed embedding vector", created.IndexConfigs["bodyEmbedding"])
+	}
+	if got := managed.Embedding.GetDimensions(); got == nil || *got != 1536 {
+		t.Fatalf("embedding dimensions = %v, want 1536", got)
+	}
+	if got := managed.Embedding.GetSimilarity(); got == nil || *got != components.SimilarityCosine {
+		t.Fatalf("embedding similarity = %v, want cosine", got)
+	}
+	mock.assertDone()
+}
+
 func TestPublicAPI_CollectionMutationAndQueryFromExternalPackage(t *testing.T) {
 	mock := &publicAPIMockClient{
 		t: t,

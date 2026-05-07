@@ -27,7 +27,7 @@ func main() {
 
 	// Collection-scoped: no need to pass collection name every time
 	coll := client.Collection("my-collection")
-	meta, _ := coll.Get(ctx)
+	_, _ = coll.Get(ctx)
 	coll.Docs().List(ctx, nil)
 }
 ```

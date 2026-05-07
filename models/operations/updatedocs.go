@@ -6,7 +6,7 @@ import (
 )
 
 type UpdateDocsRequestBody struct {
-	// A list of documents to update. Each document must contain 'id' field to be updated.
+	// A list of documents to update. Each document must contain 'id' field to be updated. For managed embedding vector fields, omit the managed vector field and update only the configured source text field.
 	Docs []map[string]any `json:"docs"`
 }
 

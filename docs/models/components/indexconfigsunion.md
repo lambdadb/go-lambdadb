@@ -15,6 +15,12 @@ indexConfigsUnion := components.CreateIndexConfigsUnionText(components.IndexConf
 indexConfigsUnion := components.CreateIndexConfigsUnionVector(components.IndexConfigsVector{/* values here */})
 ```
 
+### IndexConfigsManagedEmbeddingVector
+
+```go
+indexConfigsUnion := components.CreateIndexConfigsUnionManagedEmbeddingVector(components.IndexConfigsManagedEmbeddingVector{/* values here */})
+```
+
 ### IndexConfigs
 
 ```go
@@ -56,4 +62,3 @@ indexConfigsUnion := components.CreateIndexConfigsUnionSparseVector(components.I
 ```go
 indexConfigsUnion := components.CreateIndexConfigsUnionObject(components.IndexConfigsObject{/* values here */})
 ```
-

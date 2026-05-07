@@ -209,9 +209,9 @@ package main
 import (
 	"context"
 	lambdadb "github.com/lambdadb/go-lambdadb"
+	"github.com/lambdadb/go-lambdadb/models/operations"
 	"github.com/lambdadb/go-lambdadb/retry"
 	"log"
-	"models/operations"
 )
 
 func main() {
@@ -344,6 +344,9 @@ func main() {
 		if errors.As(err, &apiErr) {
 			log.Fatal(apiErr.Error())
 		}
+	}
+	if res != nil {
+		// handle response (e.g. res.Collections)
 	}
 }
 
