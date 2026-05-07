@@ -110,7 +110,6 @@ package main
 import(
 	"context"
 	lambdadb "github.com/lambdadb/go-lambdadb"
-	"github.com/lambdadb/go-lambdadb/models/operations"
 	"log"
 )
 
@@ -143,7 +142,6 @@ package main
 import(
 	"context"
 	lambdadb "github.com/lambdadb/go-lambdadb"
-	"github.com/lambdadb/go-lambdadb/models/operations"
 	"log"
 )
 
@@ -181,7 +179,6 @@ import(
 	"context"
 	lambdadb "github.com/lambdadb/go-lambdadb"
 	"github.com/lambdadb/go-lambdadb/models/components"
-	"github.com/lambdadb/go-lambdadb/models/operations"
 	"log"
 )
 
@@ -376,7 +373,6 @@ import(
 	"context"
 	lambdadb "github.com/lambdadb/go-lambdadb"
 	"github.com/lambdadb/go-lambdadb/models/components"
-	"github.com/lambdadb/go-lambdadb/models/operations"
 	"log"
 )
 
@@ -430,7 +426,6 @@ import(
 	"context"
 	lambdadb "github.com/lambdadb/go-lambdadb"
 	"github.com/lambdadb/go-lambdadb/models/components"
-	"github.com/lambdadb/go-lambdadb/models/operations"
 	"log"
 )
 
@@ -500,7 +495,6 @@ package main
 import(
 	"context"
 	lambdadb "github.com/lambdadb/go-lambdadb"
-	"github.com/lambdadb/go-lambdadb/models/operations"
 	"log"
 )
 
