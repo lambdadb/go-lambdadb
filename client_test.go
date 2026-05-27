@@ -3,10 +3,13 @@ package lambdadb
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/lambdadb/go-lambdadb/models/components"
 )
 
 func TestNew_DefaultConfig(t *testing.T) {
@@ -183,7 +186,7 @@ func TestCollectionDocsList_RequestURL(t *testing.T) {
 	if res == nil {
 		t.Fatal("List() returned nil")
 	}
-	wantURL := "https://api.lambdadb.ai/projects/p1/collections/my-docs/docs"
+	wantURL := "https://api.lambdadb.ai/projects/p1/collections/my-docs/docs?includeVectors=false"
 	if rt.req.URL.String() != wantURL {
 		t.Errorf("request URL = %q, want %q", rt.req.URL.String(), wantURL)
 	}
@@ -205,7 +208,7 @@ func TestListDocsOpts_PassedAsQueryParams(t *testing.T) {
 	)
 	ctx := context.Background()
 
-	opts := &ListDocsOpts{Size: Int64(10), PageToken: String("token")}
+	opts := &ListDocsOpts{Size: Int64(10), PageToken: String("token"), IncludeVectors: Bool(true)}
 	_, err := client.Collection("c1").Docs().List(ctx, opts)
 	if err != nil {
 		t.Fatalf("List() err = %v", err)
@@ -216,6 +219,79 @@ func TestListDocsOpts_PassedAsQueryParams(t *testing.T) {
 	}
 	if q.Get("pageToken") != "token" {
 		t.Errorf("query pageToken = %q, want token", q.Get("pageToken"))
+	}
+	if q.Get("includeVectors") != "true" {
+		t.Errorf("query includeVectors = %q, want true", q.Get("includeVectors"))
+	}
+}
+
+func TestListDocsOpts_ExtendedListRequestBody(t *testing.T) {
+	rt := &mockRoundTripper{
+		doFunc: func(req *http.Request) (*http.Response, error) {
+			if req.Method != http.MethodPost {
+				t.Errorf("method = %s, want POST", req.Method)
+			}
+			wantPath := "/projects/p1/collections/c1/docs/list"
+			if req.URL.Path != wantPath {
+				t.Errorf("path = %q, want %q", req.URL.Path, wantPath)
+			}
+			if got := req.Header.Get("Content-Type"); got != "application/json" {
+				t.Errorf("content-type = %q, want application/json", got)
+			}
+			var body map[string]any
+			if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+				t.Fatalf("decode body: %v", err)
+			}
+			if body["size"] != float64(10) {
+				t.Errorf("body size = %v, want 10", body["size"])
+			}
+			if body["pageToken"] != "token" {
+				t.Errorf("body pageToken = %v, want token", body["pageToken"])
+			}
+			if body["includeVectors"] != false {
+				t.Errorf("body includeVectors = %v, want false", body["includeVectors"])
+			}
+			if _, ok := body["filter"].(map[string]any); !ok {
+				t.Fatalf("body filter = %T, want object", body["filter"])
+			}
+			if _, ok := body["partitionFilter"].(map[string]any); !ok {
+				t.Fatalf("body partitionFilter = %T, want object", body["partitionFilter"])
+			}
+			if _, ok := body["fields"].(map[string]any); !ok {
+				t.Fatalf("body fields = %T, want object", body["fields"])
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": {"application/json"}},
+				Body:       io.NopCloser(bytes.NewReader([]byte(`{"total":0,"docs":[],"isDocsInline":true}`))),
+			}, nil
+		},
+	}
+	client := New(
+		WithAPIKey("key"),
+		WithBaseURL("https://api.lambdadb.ai"),
+		WithProjectName("p1"),
+		WithClient(rt),
+	)
+	ctx := context.Background()
+
+	opts := &ListDocsOpts{
+		Size:           Int64(10),
+		PageToken:      String("token"),
+		IncludeVectors: Bool(false),
+		Filter:         map[string]any{"queryString": map[string]any{"query": "category:docs"}},
+		PartitionFilter: &components.PartitionFilter{
+			Field: "tenant",
+			In:    []string{"acme"},
+		},
+		Fields: &components.FieldsSelectorUnion{
+			FieldsSelector1: &components.FieldsSelector1{Include: []string{"id", "title"}},
+			Type:            components.FieldsSelectorUnionTypeFieldsSelector1,
+		},
+	}
+	_, err := client.Collection("c1").Docs().List(ctx, opts)
+	if err != nil {
+		t.Fatalf("List() err = %v", err)
 	}
 }
 

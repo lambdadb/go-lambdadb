@@ -50,10 +50,10 @@ func (p *ProjectCollections) Create(ctx context.Context, request CreateCollectio
 // Create it with ListIterator; then call Next until it returns (nil, nil).
 type CollectionListIterator struct {
 	collections *Collections
-	size       *int64
-	nextToken  *string
-	done       bool
-	callOpts   []operations.Option
+	size        *int64
+	nextToken   *string
+	done        bool
+	callOpts    []operations.Option
 }
 
 // ListIterator returns an iterator that fetches collection list pages. Pass nil for listOpts to use defaults.
@@ -196,11 +196,32 @@ type CollectionDocs struct {
 func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts ...operations.Option) (*ListDocsResult, error) {
 	var size *int64
 	var pageToken *string
+	var includeVectors *bool
+	var filter map[string]any
+	var partitionFilter *components.PartitionFilter
+	var fields *components.FieldsSelectorUnion
 	if listOpts != nil {
 		size = listOpts.Size
 		pageToken = listOpts.PageToken
+		includeVectors = listOpts.IncludeVectors
+		filter = listOpts.Filter
+		partitionFilter = listOpts.PartitionFilter
+		fields = listOpts.Fields
 	}
-	res, err := d.client.docs.List(ctx, d.name, size, pageToken, opts...)
+	var res *operations.ListDocsResponse
+	var err error
+	if filter != nil || partitionFilter != nil || fields != nil {
+		res, err = d.client.docs.ListExtended(ctx, d.name, operations.ListDocsExtendedRequestBody{
+			Size:            size,
+			PageToken:       pageToken,
+			Filter:          filter,
+			PartitionFilter: partitionFilter,
+			Fields:          fields,
+			IncludeVectors:  includeVectors,
+		}, opts...)
+	} else {
+		res, err = d.client.docs.List(ctx, d.name, size, pageToken, includeVectors, opts...)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -225,12 +246,16 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 // Whether there are more pages is determined only by the API's nextPageToken—the number of
 // documents per page may be less than the requested size (e.g. due to payload size limits).
 type DocListIterator struct {
-	docs     *Docs
-	name     string
-	size     *int64
-	nextToken *string
-	done     bool
-	callOpts []operations.Option
+	docs            *Docs
+	name            string
+	size            *int64
+	nextToken       *string
+	includeVectors  *bool
+	filter          map[string]any
+	partitionFilter *components.PartitionFilter
+	fields          *components.FieldsSelectorUnion
+	done            bool
+	callOpts        []operations.Option
 }
 
 // ListIterator returns an iterator that fetches document list pages. Pass nil for listOpts to use defaults.
@@ -246,6 +271,10 @@ func (d *CollectionDocs) ListIterator(ctx context.Context, listOpts *ListDocsOpt
 			tok := *listOpts.PageToken
 			it.nextToken = &tok
 		}
+		it.includeVectors = listOpts.IncludeVectors
+		it.filter = listOpts.Filter
+		it.partitionFilter = listOpts.PartitionFilter
+		it.fields = listOpts.Fields
 	}
 	return it
 }
@@ -255,7 +284,20 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 	if it.done {
 		return nil, nil
 	}
-	res, err := it.docs.List(ctx, it.name, it.size, it.nextToken, it.callOpts...)
+	var res *operations.ListDocsResponse
+	var err error
+	if it.filter != nil || it.partitionFilter != nil || it.fields != nil {
+		res, err = it.docs.ListExtended(ctx, it.name, operations.ListDocsExtendedRequestBody{
+			Size:            it.size,
+			PageToken:       it.nextToken,
+			Filter:          it.filter,
+			PartitionFilter: it.partitionFilter,
+			Fields:          it.fields,
+			IncludeVectors:  it.includeVectors,
+		}, it.callOpts...)
+	} else {
+		res, err = it.docs.List(ctx, it.name, it.size, it.nextToken, it.includeVectors, it.callOpts...)
+	}
 	if err != nil {
 		return nil, err
 	}

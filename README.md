@@ -141,7 +141,7 @@ func main() {
 Use `client.Collection("name")` for operations on a single collection (no need to pass the collection name on every call):
 
 * **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `result.Docs` is always populated.
-* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
+* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, or `Fields` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
 
 </details>
 <!-- End Available Resources and Operations [operations] -->
@@ -194,6 +194,8 @@ Use when you need the full list in memory; avoid on very large datasets.
 	// ...
 	colls, err := client.Collections.ListAll(ctx, &lambdadb.ListCollectionsOpts{Size: lambdadb.Int64(20)})
 ```
+
+For filtered scans or field selection, pass the extended list options through `ListDocsOpts`; the SDK will use the extended list endpoint automatically.
 
 <!-- End Pagination [pagination] -->
 
