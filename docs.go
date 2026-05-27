@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/lambdadb/go-lambdadb/internal/config"
 	"github.com/lambdadb/go-lambdadb/internal/hooks"
 	"github.com/lambdadb/go-lambdadb/internal/utils"
@@ -11,7 +14,6 @@ import (
 	"github.com/lambdadb/go-lambdadb/models/components"
 	"github.com/lambdadb/go-lambdadb/models/operations"
 	"github.com/lambdadb/go-lambdadb/retry"
-	"net/http"
 )
 
 type Docs struct {
@@ -29,13 +31,26 @@ func newDocs(rootSDK *Client, sdkConfig config.SDKConfiguration, hooks *hooks.Ho
 }
 
 // List documents in a collection.
-func (s *Docs) List(ctx context.Context, collectionName string, size *int64, pageToken *string, opts ...operations.Option) (*operations.ListDocsResponse, error) {
+func (s *Docs) List(ctx context.Context, collectionName string, size *int64, pageToken *string, includeVectors *bool, opts ...operations.Option) (*operations.ListDocsResponse, error) {
 	request := operations.ListDocsRequest{
 		CollectionName: collectionName,
 		Size:           size,
 		PageToken:      pageToken,
+		IncludeVectors: includeVectors,
 	}
+	return s.doListDocs(ctx, request, http.MethodGet, "/collections/{collectionName}/docs", "listDocs", "", opts...)
+}
 
+// ListExtended lists documents in a collection with filters, partition filtering, field selection, and vector inclusion.
+func (s *Docs) ListExtended(ctx context.Context, collectionName string, body operations.ListDocsExtendedRequestBody, opts ...operations.Option) (*operations.ListDocsResponse, error) {
+	request := operations.ListDocsExtendedRequest{
+		CollectionName: collectionName,
+		Body:           body,
+	}
+	return s.doListDocs(ctx, request, http.MethodPost, "/collections/{collectionName}/docs/list", "listDocsExtended", "Body", opts...)
+}
+
+func (s *Docs) doListDocs(ctx context.Context, request any, method, path, operationID, requestBodyField string, opts ...operations.Option) (*operations.ListDocsResponse, error) {
 	o := operations.Options{}
 	supportedOptions := []string{
 		operations.SupportedOptionRetries,
@@ -57,7 +72,7 @@ func (s *Docs) List(ctx context.Context, collectionName string, size *int64, pag
 	} else {
 		baseURL = *o.ServerURL
 	}
-	opURL, err := utils.GenerateURL(ctx, baseURL, "/collections/{collectionName}/docs", request, nil)
+	opURL, err := utils.GenerateURL(ctx, baseURL, path, request, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error generating URL: %w", err)
 	}
@@ -67,9 +82,17 @@ func (s *Docs) List(ctx context.Context, collectionName string, size *int64, pag
 		SDKConfiguration: s.sdkConfiguration,
 		BaseURL:          baseURL,
 		Context:          ctx,
-		OperationID:      "listDocs",
+		OperationID:      operationID,
 		OAuth2Scopes:     nil,
 		SecuritySource:   s.sdkConfiguration.Security,
+	}
+	var bodyReader io.Reader
+	var reqContentType string
+	if requestBodyField != "" {
+		bodyReader, reqContentType, err = utils.SerializeRequestBody(ctx, request, false, false, requestBodyField, "json", `request:"mediaType=application/json"`)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	timeout := o.Timeout
@@ -83,12 +106,15 @@ func (s *Docs) List(ctx context.Context, collectionName string, size *int64, pag
 		defer cancel()
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", opURL, nil)
+	req, err := http.NewRequestWithContext(ctx, method, opURL, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", s.sdkConfiguration.UserAgent)
+	if reqContentType != "" {
+		req.Header.Set("Content-Type", reqContentType)
+	}
 
 	if err := utils.PopulateQueryParams(ctx, req, request, nil, nil); err != nil {
 		return nil, fmt.Errorf("error populating query params: %w", err)

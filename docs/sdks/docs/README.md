@@ -53,10 +53,26 @@ func main() {
 | Parameter                                                | Type                                                     | Required                                                 | Description                                              |
 | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
-| `listOpts`                                               | *[ListDocsOpts](../../../options.go)                     | :heavy_minus_sign:                                       | Optional: Size, PageToken. Pass nil for defaults. isDocsInline and docsUrl are response-only (not request options). |
+| `listOpts`                                               | *[ListDocsOpts](../../../options.go)                     | :heavy_minus_sign:                                       | Optional: Size, PageToken, IncludeVectors, Filter, PartitionFilter, Fields. Pass nil for defaults. isDocsInline and docsUrl are response-only (not request options). |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
 
 Use `client.Collection("name").Docs().List(ctx, nil)` or `List(ctx, &lambdadb.ListDocsOpts{...})`.
+
+When `Filter`, `PartitionFilter`, or `Fields` is set, the SDK uses the extended list endpoint (`POST /collections/{collectionName}/docs/list`) automatically:
+
+```go
+fields := components.CreateFieldsSelectorUnionFieldsSelector1(components.FieldsSelector1{
+    Include: []string{"id", "title", "category"},
+})
+
+res, err := client.Collection("my-collection").Docs().List(ctx, &lambdadb.ListDocsOpts{
+    Size:            lambdadb.Int64(10),
+    Filter:          map[string]any{"queryString": map[string]any{"query": "category:docs"}},
+    PartitionFilter: &components.PartitionFilter{Field: "tenant", In: []string{"acme"}},
+    Fields:          &fields,
+    IncludeVectors:  lambdadb.Bool(false),
+})
+```
 
 ### Response
 

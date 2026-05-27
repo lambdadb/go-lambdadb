@@ -292,6 +292,62 @@ func TestPublicAPI_WriteRequestBodiesFromExternalPackage(t *testing.T) {
 	mock.assertDone()
 }
 
+func TestPublicAPI_ListDocsExtendedOptionsFromExternalPackage(t *testing.T) {
+	mock := &publicAPIMockClient{
+		t: t,
+		handlers: []func(*http.Request) *http.Response{
+			func(req *http.Request) *http.Response {
+				assertRequest(t, req, http.MethodPost, "https://api.example.com/projects/project-list/collections/articles/docs/list")
+				body := decodeJSONBody(t, req)
+				if body["size"] != float64(10) {
+					t.Fatalf("size = %v, want 10", body["size"])
+				}
+				if body["includeVectors"] != false {
+					t.Fatalf("includeVectors = %v, want false", body["includeVectors"])
+				}
+				if _, ok := body["filter"].(map[string]any); !ok {
+					t.Fatalf("filter = %#v, want object", body["filter"])
+				}
+				if _, ok := body["partitionFilter"].(map[string]any); !ok {
+					t.Fatalf("partitionFilter = %#v, want object", body["partitionFilter"])
+				}
+				if _, ok := body["fields"].(map[string]any); !ok {
+					t.Fatalf("fields = %#v, want object", body["fields"])
+				}
+				return jsonResponse(http.StatusOK, `{
+					"total": 1,
+					"docs": [{"collection": "articles", "doc": {"id": "doc-1", "title": "LambdaDB"}}],
+					"isDocsInline": true
+				}`)
+			},
+		},
+	}
+	client := lambdadb.New(
+		lambdadb.WithAPIKey("public-key"),
+		lambdadb.WithBaseURL("https://api.example.com"),
+		lambdadb.WithProjectName("project-list"),
+		lambdadb.WithClient(mock),
+	)
+	fields := components.CreateFieldsSelectorUnionFieldsSelector1(components.FieldsSelector1{
+		Include: []string{"id", "title"},
+	})
+
+	docs, err := client.Collection("articles").Docs().List(context.Background(), &lambdadb.ListDocsOpts{
+		Size:            lambdadb.Int64(10),
+		Filter:          map[string]any{"queryString": map[string]any{"query": "category:docs"}},
+		PartitionFilter: &components.PartitionFilter{Field: "tenant", In: []string{"acme"}},
+		Fields:          &fields,
+		IncludeVectors:  lambdadb.Bool(false),
+	})
+	if err != nil {
+		t.Fatalf("Docs().List() error = %v", err)
+	}
+	if docs.Total != 1 || docs.Docs[0].Doc["id"] != "doc-1" {
+		t.Fatalf("docs = %#v, want doc-1", docs)
+	}
+	mock.assertDone()
+}
+
 func TestPublicAPI_ManagedEmbeddingCollectionConfigFromExternalPackage(t *testing.T) {
 	mock := &publicAPIMockClient{
 		t: t,

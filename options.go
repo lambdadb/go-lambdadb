@@ -1,6 +1,9 @@
 package lambdadb
 
-import "github.com/lambdadb/go-lambdadb/models/operations"
+import (
+	"github.com/lambdadb/go-lambdadb/models/components"
+	"github.com/lambdadb/go-lambdadb/models/operations"
+)
 
 // ListDocsOpts holds optional parameters for listing documents (request only).
 // Pass nil to use defaults.
@@ -11,6 +14,14 @@ type ListDocsOpts struct {
 	Size *int64
 	// Next page token for pagination.
 	PageToken *string
+	// Include vector values in the response.
+	IncludeVectors *bool
+	// Filter applied before pagination. When set, the SDK uses the extended list endpoint.
+	Filter map[string]any
+	// Partition filter applied before pagination. When set, the SDK uses the extended list endpoint.
+	PartitionFilter *components.PartitionFilter
+	// Field selector. When set, the SDK uses the extended list endpoint.
+	Fields *components.FieldsSelectorUnion
 }
 
 // ListCollectionsOpts holds optional parameters for listing collections.
