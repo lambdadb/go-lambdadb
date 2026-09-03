@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-rc.1] - 2026-09-03
+
 Implemented against the Data Versioning API contract in
 `lambdadb/docs@63e07d6b2e281704aa3367fbeb94f40f519241b8` (OpenAPI `1.1.1`).
 This source revision does not by itself indicate that the API is deployed.

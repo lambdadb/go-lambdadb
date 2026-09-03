@@ -14,6 +14,8 @@ import (
 	"github.com/lambdadb/go-lambdadb/models/operations"
 )
 
+const integrationConditionTimeout = 2 * time.Minute
+
 func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if os.Getenv("LAMBDADB_RUN_VERSIONING_SMOKE") != "1" {
 		t.Skip("set LAMBDADB_RUN_VERSIONING_SMOKE=1 to run the live smoke test")
@@ -466,7 +468,7 @@ func waitForIntegrationBranchSnapshot(t *testing.T, ctx context.Context, collect
 
 func waitForIntegrationCondition(t *testing.T, ctx context.Context, description string, condition func() (bool, error)) {
 	t.Helper()
-	deadline := time.NewTimer(90 * time.Second)
+	deadline := time.NewTimer(integrationConditionTimeout)
 	defer deadline.Stop()
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
@@ -483,7 +485,7 @@ func waitForIntegrationCondition(t *testing.T, ctx context.Context, description 
 		case <-ctx.Done():
 			t.Fatalf("wait for %s: %v", description, ctx.Err())
 		case <-deadline.C:
-			t.Fatalf("timed out waiting for %s", description)
+			t.Fatalf("timed out after %s waiting for %s", integrationConditionTimeout, description)
 		case <-ticker.C:
 		}
 	}
