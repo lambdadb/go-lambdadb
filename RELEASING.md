@@ -71,15 +71,41 @@ the final validation checklist passes.
 4. Validate the exact `develop` commit through a commit-SHA dependency.
 5. Run smoke tests against the intended LambdaDB development or staging environment.
 6. Merge the validated SDK commit into `main`.
-7. Synchronize the resulting reviewed `main` commit back into `develop` before
-   further development so release-only version and changelog changes do not
-   diverge. Use a `main` to `develop` pull request when the branch is protected.
+7. Synchronize the resulting reviewed `main` commit back into `develop` as
+   described in [Branch synchronization](#branch-synchronization) before
+   further development so release-only changes do not diverge.
 8. Publish `vX.Y.Z-rc.1` from that reviewed `main` commit and mark its GitHub
    Release as a prerelease.
 9. Address feedback with a new commit and increment the RC number. Never move
    an existing tag.
 10. Publish `vX.Y.Z` only after the release candidate is accepted, then
     synchronize any stable-release-only commit from `main` back into `develop`.
+
+## Branch synchronization
+
+Synchronizing release changes from `main` back into `develop` must preserve the
+reviewed `main` commit as an ancestor of `develop`. Fast-forward `develop` when
+branch protections permit it and `develop` has not advanced. Otherwise, open a
+`main` to `develop` pull request and merge it with **Create a merge commit**.
+
+Never squash or rebase a synchronization pull request. Those methods can make
+the branch trees identical without preserving `main` ancestry, which causes
+later three-dot comparisons to report already-synchronized release changes.
+
+After synchronization, fetch both branches and verify the exact reviewed
+`main` commit is an ancestor of `develop`:
+
+```bash
+git fetch origin main develop
+git merge-base --is-ancestor <reviewed-main-commit> origin/develop
+```
+
+The ancestry command must exit with status 0. When no new development commits
+are expected after synchronization, also confirm the branch trees are equal:
+
+```bash
+git diff --exit-code <reviewed-main-commit>..origin/develop
+```
 
 ## Validation checklist
 
