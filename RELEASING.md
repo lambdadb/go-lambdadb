@@ -102,6 +102,31 @@ go list -m -json github.com/lambdadb/go-lambdadb@vX.Y.Z-rc.1
 The first command must resolve to the latest stable version when one exists.
 The second command must resolve to the intended release candidate.
 
+## Data Versioning smoke test
+
+Before an RC containing Data Versioning changes, load the target environment's
+values without printing them:
+
+```text
+LAMBDADB_BASE_URL
+LAMBDADB_PROJECT_NAME
+LAMBDADB_PROJECT_API_KEY
+```
+
+Then run:
+
+```bash
+LAMBDADB_RUN_VERSIONING_SMOKE=1 \
+  go test -run '^TestIntegrationDataVersioningSmoke$' -count=1 -v .
+```
+
+The test creates a uniquely named temporary Collection, exercises collection
+metadata, Branch/Tag/Alias lifecycle operations, ref-scoped reads,
+Branch-scoped writes, and the signed bulk-upload flow, and then deletes the
+Collection. Run it only in an environment where creating and deleting that
+temporary data is authorized. The API key must remain local and must not be
+printed in logs or review artifacts.
+
 ## Tag safety
 
 Treat every pushed tag as immutable. Go module proxies may cache a version after

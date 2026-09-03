@@ -71,7 +71,7 @@ func TestPublicAPI_RefReadsAndBranchWrites(t *testing.T) {
 		t.Fatalf("Docs().List() error = %v", err)
 	}
 	if _, err := client.Collection("articles").Query(context.Background(), lambdadb.QueryInput{
-		Query: map[string]any{"matchAll": map[string]any{}},
+		Query: map[string]any{"queryString": map[string]any{"query": "*:*"}},
 		Ref:   &lambdadb.RefContext{Kind: lambdadb.RefKindTag, Name: "validated-2026-09"},
 	}); err != nil {
 		t.Fatalf("Collection().Query() error = %v", err)

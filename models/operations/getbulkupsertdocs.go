@@ -10,6 +10,8 @@ import (
 type GetBulkUpsertDocsRequest struct {
 	// Collection name.
 	CollectionName string `pathParam:"style=simple,explode=false,name=collectionName"`
+	// Write target branch. Defaults to main when omitted.
+	Branch *string `queryParam:"style=form,explode=true,name=branch"`
 }
 
 func (g *GetBulkUpsertDocsRequest) GetCollectionName() string {
@@ -17,6 +19,13 @@ func (g *GetBulkUpsertDocsRequest) GetCollectionName() string {
 		return ""
 	}
 	return g.CollectionName
+}
+
+func (g *GetBulkUpsertDocsRequest) GetBranch() *string {
+	if g == nil {
+		return nil
+	}
+	return g.Branch
 }
 
 // Type - Content type that must be specified when uploading documents.

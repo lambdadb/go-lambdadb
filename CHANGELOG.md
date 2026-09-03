@@ -18,7 +18,7 @@ This source revision does not by itself indicate that the API is deployed.
 - Branch-scoped Upsert, Update, Delete, and Bulk Upsert writes.
 - Collection descriptions, metadata tags, default branch, and snapshot
   retention fields.
-- Signed bulk-upload header forwarding.
+- Signed bulk-upload header forwarding and Branch-scoped upload URL requests.
 
 ### Changed
 

@@ -7,6 +7,7 @@
 * [List](#list) - List documents in a collection.
 * [Upsert](#upsert) - Upsert documents into a collection. Note that the maximum supported payload size is 6MB.
 * [GetBulkUpsertInfo](#getbulkupsertinfo) - Request required info to upload documents (presigned URL, object key; payload limit 200MB).
+* **GetBulkUpsertInfoForBranch** (on `Collection.Docs()`) - Request upload information for a specific write Branch.
 * [BulkUpsert](#bulkupsert) - Bulk upsert documents into a collection. Payload must not exceed 200MB (`lambdadb.MaxBulkUpsertPayloadBytes`).
 * **BulkUpsertDocuments** (on `Collection.Docs()`) - One-step bulk upload: get presigned URL, upload docs, complete. Same 200MB payload limit.
 * [Update](#update) - Update documents in a collection. Note that the maximum supported payload size is 6MB.
@@ -211,6 +212,10 @@ func main() {
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
 
 Collection is specified via `client.Collection("name")`.
+
+Use `GetBulkUpsertInfoForBranch(ctx, "candidate")` when completing the upload
+on a non-default Branch. `BulkUpsertDocuments` automatically uses the same
+Branch for both control requests.
 
 ### Response
 

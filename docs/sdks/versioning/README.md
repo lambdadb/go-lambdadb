@@ -69,7 +69,7 @@ Set `Ref` on Query, Fetch, or List options:
 
 ```go
 result, err := collection.Query(ctx, lambdadb.QueryInput{
-	Query: map[string]any{"matchAll": map[string]any{}},
+	Query: map[string]any{"queryString": map[string]any{"query": "*:*"}},
 	Ref: &lambdadb.RefContext{
 		Kind: lambdadb.RefKindAlias,
 		Name: "production",
@@ -91,6 +91,21 @@ _, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
 	Branch: lambdadb.String("candidate"),
 })
 ```
+
+For the two-step bulk flow, request an upload URL for the same Branch used in
+the completion request:
+
+```go
+info, err := collection.Docs().GetBulkUpsertInfoForBranch(ctx, "candidate")
+// Upload with info.Type and every entry in info.Headers, then:
+_, err = collection.Docs().BulkUpsert(ctx, lambdadb.BulkUpsertInput{
+	ObjectKey: info.ObjectKey,
+	Type:      info.Type,
+	Branch:    lambdadb.String("candidate"),
+})
+```
+
+`BulkUpsertDocuments` applies the Branch to both control calls automatically.
 
 For response and request field details, see the
 [Data Versioning models](../../models/components/versioning.md).

@@ -464,6 +464,9 @@ func TestBulkUpsertDocuments_Flow(t *testing.T) {
 			callCount++
 			if callCount == 1 {
 				// GetBulkUpsertInfo (GET)
+				if got := req.URL.Query().Get("branch"); got != "candidate" {
+					t.Errorf("GetBulkUpsertInfo branch = %q, want candidate", got)
+				}
 				body := []byte(`{"url":"` + uploadServer.URL + `","type":"application/json","httpMethod":"PUT","objectKey":"test-key","sizeLimitBytes":209715200,"headers":{"If-None-Match":"*"}}`)
 				return &http.Response{
 					StatusCode: http.StatusOK,

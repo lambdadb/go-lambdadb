@@ -142,7 +142,7 @@ func main() {
 Use `client.Collection("name")` for operations on a single collection (no need to pass the collection name on every call):
 
 * **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `result.Docs` is always populated.
-* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, `Fields`, or `Ref` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
+* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, GetBulkUpsertInfoForBranch, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, `Fields`, or `Ref` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete); it applies the same Branch to both bulk control calls. Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
 * **Collection.Branches()**: Create, List, and Delete writable branches.
 * **Collection.Tags()**: Create, List, and Delete immutable tags.
 * **Collection.Aliases()**: Create, List, Retarget, and Delete aliases. See the [Data Versioning API guide](docs/sdks/versioning/README.md).
@@ -189,7 +189,7 @@ automatically use the extended list endpoint when a ref is supplied.
 
 ```go
 result, err := collection.Query(ctx, lambdadb.QueryInput{
-	Query: map[string]any{"matchAll": map[string]any{}},
+	Query: map[string]any{"queryString": map[string]any{"query": "*:*"}},
 	Ref: &lambdadb.RefContext{
 		Kind: lambdadb.RefKindAlias,
 		Name: "production",

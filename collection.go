@@ -373,7 +373,17 @@ func (d *CollectionDocs) Upsert(ctx context.Context, body UpsertDocsInput, opts 
 // GetBulkUpsertInfo returns info required for bulk upload (presigned URL, object key, and optionally sizeLimitBytes).
 // When sizeLimitBytes is present, the upload payload must not exceed it (e.g. LambdaDB uses 200MB).
 func (d *CollectionDocs) GetBulkUpsertInfo(ctx context.Context, opts ...operations.Option) (*GetBulkUpsertInfoResult, error) {
-	res, err := d.client.docs.GetBulkUpsertInfo(ctx, d.name, opts...)
+	return d.getBulkUpsertInfo(ctx, nil, opts...)
+}
+
+// GetBulkUpsertInfoForBranch returns upload info scoped to the given write
+// branch. The same branch must be used for the completion request.
+func (d *CollectionDocs) GetBulkUpsertInfoForBranch(ctx context.Context, branch string, opts ...operations.Option) (*GetBulkUpsertInfoResult, error) {
+	return d.getBulkUpsertInfo(ctx, &branch, opts...)
+}
+
+func (d *CollectionDocs) getBulkUpsertInfo(ctx context.Context, branch *string, opts ...operations.Option) (*GetBulkUpsertInfoResult, error) {
+	res, err := d.client.docs.GetBulkUpsertInfo(ctx, d.name, branch, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -404,7 +414,7 @@ func (d *CollectionDocs) BulkUpsert(ctx context.Context, body BulkUpsertInput, o
 // It is a convenience over calling GetBulkUpsertInfo, uploading to the presigned URL, and BulkUpsert separately.
 // The body format is the same as Upsert (docs array). When the API returns sizeLimitBytes in GetBulkUpsertInfo, payload size is validated against it before uploading.
 func (d *CollectionDocs) BulkUpsertDocuments(ctx context.Context, body UpsertDocsInput, opts ...operations.Option) (*operations.BulkUpsertDocsResponse, error) {
-	info, err := d.GetBulkUpsertInfo(ctx, opts...)
+	info, err := d.getBulkUpsertInfo(ctx, body.Branch, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("get bulk upsert info: %w", err)
 	}

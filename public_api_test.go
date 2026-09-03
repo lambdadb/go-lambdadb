@@ -696,6 +696,9 @@ func TestPublicAPI_BulkUpsertDocumentsFromExternalPackage(t *testing.T) {
 		handlers: []func(*http.Request) *http.Response{
 			func(req *http.Request) *http.Response {
 				assertRequest(t, req, http.MethodGet, "https://api.example.com/projects/project-f/collections/articles/docs/bulk-upsert")
+				if got := req.URL.Query().Get("branch"); got != "candidate" {
+					t.Fatalf("bulk upload info branch = %q, want candidate", got)
+				}
 				return jsonResponse(http.StatusOK, `{
 					"url": "`+uploadServer.URL+`",
 					"type": "application/json",
