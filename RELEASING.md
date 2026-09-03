@@ -92,6 +92,16 @@ Before publishing either an RC or stable tag:
 - Confirm the publish workflow marks `v*-*` tags as GitHub prereleases and does
   not make them the latest GitHub Release.
 
+Before pushing a tag, validate its format and its agreement with the SDK
+version and changelog locally:
+
+```bash
+./scripts/validate-release-metadata.sh vX.Y.Z-rc.N
+```
+
+The publish workflow runs the same validator and accepts only `vX.Y.Z` stable
+tags or `vX.Y.Z-rc.N` release-candidate tags. RC numbering starts at 1.
+
 After publishing an RC, verify both selections explicitly:
 
 ```bash
