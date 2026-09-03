@@ -193,6 +193,19 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 		waitForIntegrationDoc(t, ctx, collection, branchName, bulkDocID, "bulk")
 	}
 
+	branchDocs, err := collection.Docs().ListAll(ctx, &lambdadb.ListDocsOpts{
+		Size: lambdadb.Int64(1),
+		Ref:  &lambdadb.RefContext{Kind: lambdadb.RefKindBranch, Name: branchName},
+	})
+	if err != nil {
+		t.Fatalf("list all paginated docs through branch: %v", err)
+	}
+	if !containsIntegrationRawDoc(branchDocs, seedID) ||
+		!containsIntegrationRawDoc(branchDocs, docID) ||
+		!containsIntegrationRawDoc(branchDocs, bulkDocID) {
+		t.Fatalf("paginated branch list did not contain expected documents: %#v", branchDocs)
+	}
+
 	tag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
 		TagName: tagName,
 		Source: &lambdadb.RefSource{
@@ -479,6 +492,15 @@ func waitForIntegrationCondition(t *testing.T, ctx context.Context, description 
 func containsIntegrationRef(refs []lambdadb.RefDetails, name string) bool {
 	for _, ref := range refs {
 		if ref.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func containsIntegrationRawDoc(docs []map[string]any, id string) bool {
+	for _, doc := range docs {
+		if doc["id"] == id {
 			return true
 		}
 	}

@@ -112,6 +112,71 @@ func TestPublicAPI_RefReadsAndBranchWrites(t *testing.T) {
 	mock.assertDone()
 }
 
+func TestPublicAPI_RefIsPreservedAcrossPaginatedDocumentReads(t *testing.T) {
+	assertListRequest := func(t *testing.T, req *http.Request, kind, name, pageToken string) {
+		t.Helper()
+		assertRequest(t, req, http.MethodPost, "https://api.example.com/projects/project-refs/collections/articles/docs/list")
+		body := decodeJSONBody(t, req)
+		assertRef(t, body, kind, name)
+		if got, _ := body["pageToken"].(string); got != pageToken {
+			t.Fatalf("pageToken = %q, want %q", got, pageToken)
+		}
+	}
+
+	mock := &publicAPIMockClient{
+		t: t,
+		handlers: []func(*http.Request) *http.Response{
+			func(req *http.Request) *http.Response {
+				assertListRequest(t, req, "alias", "production", "")
+				return jsonResponse(http.StatusOK, `{"total":2,"docs":[{"collection":"articles","doc":{"id":"iterator-1"}}],"nextPageToken":"iterator-next","isDocsInline":true}`)
+			},
+			func(req *http.Request) *http.Response {
+				assertListRequest(t, req, "alias", "production", "iterator-next")
+				return jsonResponse(http.StatusOK, `{"total":2,"docs":[{"collection":"articles","doc":{"id":"iterator-2"}}],"isDocsInline":true}`)
+			},
+			func(req *http.Request) *http.Response {
+				assertListRequest(t, req, "branch", "candidate", "")
+				return jsonResponse(http.StatusOK, `{"total":2,"docs":[{"collection":"articles","doc":{"id":"all-1"}}],"nextPageToken":"all-next","isDocsInline":true}`)
+			},
+			func(req *http.Request) *http.Response {
+				assertListRequest(t, req, "branch", "candidate", "all-next")
+				return jsonResponse(http.StatusOK, `{"total":2,"docs":[{"collection":"articles","doc":{"id":"all-2"}}],"isDocsInline":true}`)
+			},
+		},
+	}
+
+	client := lambdadb.New(
+		lambdadb.WithBaseURL("https://api.example.com"),
+		lambdadb.WithProjectName("project-refs"),
+		lambdadb.WithClient(mock),
+	)
+	docs := client.Collection("articles").Docs()
+
+	iterator := docs.ListIterator(context.Background(), &lambdadb.ListDocsOpts{
+		Ref: &lambdadb.RefContext{Kind: lambdadb.RefKindAlias, Name: "production"},
+	})
+	for pageNumber := 1; pageNumber <= 2; pageNumber++ {
+		page, err := iterator.Next(context.Background())
+		if err != nil {
+			t.Fatalf("ListIterator().Next() page %d error = %v", pageNumber, err)
+		}
+		if page == nil || len(page.Docs) != 1 {
+			t.Fatalf("ListIterator().Next() page %d = %#v, want one document", pageNumber, page)
+		}
+	}
+
+	allDocs, err := docs.ListAll(context.Background(), &lambdadb.ListDocsOpts{
+		Ref: &lambdadb.RefContext{Kind: lambdadb.RefKindBranch, Name: "candidate"},
+	})
+	if err != nil {
+		t.Fatalf("ListAll() error = %v", err)
+	}
+	if len(allDocs) != 2 || allDocs[0]["id"] != "all-1" || allDocs[1]["id"] != "all-2" {
+		t.Fatalf("ListAll() docs = %#v, want all-1 and all-2", allDocs)
+	}
+	mock.assertDone()
+}
+
 func assertRefBody(t *testing.T, req *http.Request, kind, name string) {
 	t.Helper()
 	assertRef(t, decodeJSONBody(t, req), kind, name)

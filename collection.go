@@ -272,6 +272,7 @@ type DocListIterator struct {
 	filter          map[string]any
 	partitionFilter *components.PartitionFilter
 	fields          *components.FieldsSelectorUnion
+	ref             *components.RefContext
 	done            bool
 	callOpts        []operations.Option
 }
@@ -293,6 +294,7 @@ func (d *CollectionDocs) ListIterator(ctx context.Context, listOpts *ListDocsOpt
 		it.filter = listOpts.Filter
 		it.partitionFilter = listOpts.PartitionFilter
 		it.fields = listOpts.Fields
+		it.ref = listOpts.Ref
 	}
 	return it
 }
@@ -304,7 +306,7 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 	}
 	var res *operations.ListDocsResponse
 	var err error
-	if it.filter != nil || it.partitionFilter != nil || it.fields != nil {
+	if it.filter != nil || it.partitionFilter != nil || it.fields != nil || it.ref != nil {
 		res, err = it.docs.ListExtended(ctx, it.name, operations.ListDocsExtendedRequestBody{
 			Size:            it.size,
 			PageToken:       it.nextToken,
@@ -312,6 +314,7 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 			PartitionFilter: it.partitionFilter,
 			Fields:          it.fields,
 			IncludeVectors:  it.includeVectors,
+			Ref:             it.ref,
 		}, it.callOpts...)
 	} else {
 		res, err = it.docs.List(ctx, it.name, it.size, it.nextToken, it.includeVectors, it.callOpts...)
