@@ -22,31 +22,32 @@ collection := client.Collection("my-collection")
 
 branch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 	BranchName: "candidate",
-	Source: &lambdadb.RefSource{
-		Kind: lambdadb.RefSourceKindBranch,
-		Name: "main",
-	},
+	Source:     lambdadb.BranchSource("main"),
 })
 
 tag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
 	TagName: "validated-2026-09",
-	Source: &lambdadb.RefSource{
-		Kind: lambdadb.RefSourceKindBranch,
-		Name: branch.Name,
-	},
+	Source:  lambdadb.BranchSource(branch.Name),
 })
 
 alias, err := collection.Aliases().Create(ctx, lambdadb.CreateAliasInput{
 	AliasName: "production",
-	Target: lambdadb.AliasTarget{
-		Kind: lambdadb.RefSourceKindTag,
-		Name: tag.Name,
-	},
+	Target:    lambdadb.TagTarget(tag.Name),
 })
 ```
 
-Omit `Source` to create a Branch or Tag from `main`. A Branch source may also
-set `AsOf` to a Unix epoch millisecond cutoff. Tags are immutable.
+Omit `Source` to create a Branch or Tag from `main`. Use `BranchSourceAt` to
+select the latest committed snapshot at or before a `time.Time` cutoff without
+manually converting it to Unix milliseconds:
+
+```go
+historical, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
+	BranchName: "historical",
+	Source:     lambdadb.BranchSourceAt("main", cutoff),
+})
+```
+
+Use `TagSource(name)` when creating from a Tag. Tags are immutable.
 
 ## Retarget an alias
 
@@ -55,30 +56,37 @@ alias, err := collection.Aliases().Retarget(
 	ctx,
 	"production",
 	lambdadb.RetargetAliasInput{
-		Target: lambdadb.AliasTarget{
-			Kind: lambdadb.RefSourceKindTag,
-			Name: "validated-2026-10",
-		},
+		Target: lambdadb.TagTarget("validated-2026-10"),
 	},
 )
 ```
 
 ## Select a ref for reads
 
-Set `Ref` on Query, Fetch, or List options:
+Set `Ref` on Query, Fetch, List, ListIterator, or ListAll options:
 
 ```go
 result, err := collection.Query(ctx, lambdadb.QueryInput{
 	Query: map[string]any{"queryString": map[string]any{"query": "*:*"}},
-	Ref: &lambdadb.RefContext{
-		Kind: lambdadb.RefKindAlias,
-		Name: "production",
-	},
+	Ref:   lambdadb.AliasRef("production"),
+})
+
+fetched, err := collection.Docs().Fetch(ctx, lambdadb.FetchDocsInput{
+	Ids:            []string{"doc-1"},
+	Ref:            lambdadb.BranchRef("candidate"),
+	ConsistentRead: lambdadb.Bool(true),
+})
+
+docs, err := collection.Docs().ListAll(ctx, &lambdadb.ListDocsOpts{
+	Size: lambdadb.Int64(100),
+	Ref:  lambdadb.TagRef("validated-2026-09"),
 })
 ```
 
 `ConsistentRead` is valid only when `Ref` directly selects a Branch. Tags are
-immutable, while Aliases resolve at request time and may be retargeted.
+immutable, while Aliases resolve at request time and may be retargeted. `List`
+and iterator pages return `ListDocsDoc` wrappers; `ListAll` returns document
+content directly as `[]map[string]any`.
 
 ## Select a Branch for writes
 
@@ -106,6 +114,22 @@ _, err = collection.Docs().BulkUpsert(ctx, lambdadb.BulkUpsertInput{
 ```
 
 `BulkUpsertDocuments` applies the Branch to both control calls automatically.
+Use `WithTransferClient` when presigned uploads or out-of-line result downloads
+need a custom proxy, TLS configuration, timeout, or instrumentation.
+
+## Handle errors
+
+Lifecycle operations return the same typed API errors as generated operations:
+
+```go
+_, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
+	BranchName: "candidate",
+})
+var conflict *apierrors.ResourceAlreadyExistsError
+if errors.As(err, &conflict) {
+	// The Branch already exists.
+}
+```
 
 For response and request field details, see the
 [Data Versioning models](../../models/components/versioning.md).

@@ -19,26 +19,26 @@ import (
 // CreateBranchInput configures a new writable branch. Source may be omitted to
 // create the branch from main.
 type CreateBranchInput struct {
-	BranchName string                `json:"branchName"`
-	Source     *components.RefSource `json:"source,omitempty"`
+	BranchName string     `json:"branchName"`
+	Source     *RefSource `json:"source,omitempty"`
 }
 
 // CreateTagInput configures a new immutable tag. Source may be omitted to
 // create the tag from main.
 type CreateTagInput struct {
-	TagName string                `json:"tagName"`
-	Source  *components.RefSource `json:"source,omitempty"`
+	TagName string     `json:"tagName"`
+	Source  *RefSource `json:"source,omitempty"`
 }
 
 // CreateAliasInput configures a new alias.
 type CreateAliasInput struct {
-	AliasName string                 `json:"aliasName"`
-	Target    components.AliasTarget `json:"target"`
+	AliasName string      `json:"aliasName"`
+	Target    AliasTarget `json:"target"`
 }
 
 // RetargetAliasInput configures the new target of an existing alias.
 type RetargetAliasInput struct {
-	Target components.AliasTarget `json:"target"`
+	Target AliasTarget `json:"target"`
 }
 
 // CollectionBranches provides branch operations for one collection.
@@ -47,9 +47,9 @@ type CollectionBranches struct {
 }
 
 // Create creates a writable branch.
-func (b *CollectionBranches) Create(ctx context.Context, input CreateBranchInput, opts ...operations.Option) (*components.RefDetails, error) {
+func (b *CollectionBranches) Create(ctx context.Context, input CreateBranchInput, opts ...operations.Option) (*RefDetails, error) {
 	var response struct {
-		Branch components.RefDetails `json:"branch"`
+		Branch RefDetails `json:"branch"`
 	}
 	err := b.collection.client.doVersioningRequest(
 		ctx,
@@ -68,9 +68,9 @@ func (b *CollectionBranches) Create(ctx context.Context, input CreateBranchInput
 }
 
 // List lists all branches in the collection.
-func (b *CollectionBranches) List(ctx context.Context, opts ...operations.Option) ([]components.RefDetails, error) {
+func (b *CollectionBranches) List(ctx context.Context, opts ...operations.Option) ([]RefDetails, error) {
 	var response struct {
-		Branches []components.RefDetails `json:"branches"`
+		Branches []RefDetails `json:"branches"`
 	}
 	err := b.collection.client.doVersioningRequest(
 		ctx,
@@ -89,8 +89,8 @@ func (b *CollectionBranches) List(ctx context.Context, opts ...operations.Option
 }
 
 // Delete deletes a branch. The default main branch cannot be deleted.
-func (b *CollectionBranches) Delete(ctx context.Context, branchName string, opts ...operations.Option) (*components.MessageResponse, error) {
-	var response components.MessageResponse
+func (b *CollectionBranches) Delete(ctx context.Context, branchName string, opts ...operations.Option) (*MessageResponse, error) {
+	var response MessageResponse
 	err := b.collection.client.doVersioningRequest(
 		ctx,
 		http.MethodDelete,
@@ -113,9 +113,9 @@ type CollectionTags struct {
 }
 
 // Create creates an immutable tag.
-func (t *CollectionTags) Create(ctx context.Context, input CreateTagInput, opts ...operations.Option) (*components.RefDetails, error) {
+func (t *CollectionTags) Create(ctx context.Context, input CreateTagInput, opts ...operations.Option) (*RefDetails, error) {
 	var response struct {
-		Tag components.RefDetails `json:"tag"`
+		Tag RefDetails `json:"tag"`
 	}
 	err := t.collection.client.doVersioningRequest(
 		ctx,
@@ -134,9 +134,9 @@ func (t *CollectionTags) Create(ctx context.Context, input CreateTagInput, opts 
 }
 
 // List lists all tags in the collection.
-func (t *CollectionTags) List(ctx context.Context, opts ...operations.Option) ([]components.RefDetails, error) {
+func (t *CollectionTags) List(ctx context.Context, opts ...operations.Option) ([]RefDetails, error) {
 	var response struct {
-		Tags []components.RefDetails `json:"tags"`
+		Tags []RefDetails `json:"tags"`
 	}
 	err := t.collection.client.doVersioningRequest(
 		ctx,
@@ -155,8 +155,8 @@ func (t *CollectionTags) List(ctx context.Context, opts ...operations.Option) ([
 }
 
 // Delete deletes a tag.
-func (t *CollectionTags) Delete(ctx context.Context, tagName string, opts ...operations.Option) (*components.MessageResponse, error) {
-	var response components.MessageResponse
+func (t *CollectionTags) Delete(ctx context.Context, tagName string, opts ...operations.Option) (*MessageResponse, error) {
+	var response MessageResponse
 	err := t.collection.client.doVersioningRequest(
 		ctx,
 		http.MethodDelete,
@@ -179,9 +179,9 @@ type CollectionAliases struct {
 }
 
 // Create creates an alias targeting a branch or tag.
-func (a *CollectionAliases) Create(ctx context.Context, input CreateAliasInput, opts ...operations.Option) (*components.AliasDetails, error) {
+func (a *CollectionAliases) Create(ctx context.Context, input CreateAliasInput, opts ...operations.Option) (*AliasDetails, error) {
 	var response struct {
-		Alias components.AliasDetails `json:"alias"`
+		Alias AliasDetails `json:"alias"`
 	}
 	err := a.collection.client.doVersioningRequest(
 		ctx,
@@ -200,9 +200,9 @@ func (a *CollectionAliases) Create(ctx context.Context, input CreateAliasInput, 
 }
 
 // List lists all aliases in the collection.
-func (a *CollectionAliases) List(ctx context.Context, opts ...operations.Option) ([]components.AliasDetails, error) {
+func (a *CollectionAliases) List(ctx context.Context, opts ...operations.Option) ([]AliasDetails, error) {
 	var response struct {
-		Aliases []components.AliasDetails `json:"aliases"`
+		Aliases []AliasDetails `json:"aliases"`
 	}
 	err := a.collection.client.doVersioningRequest(
 		ctx,
@@ -221,9 +221,9 @@ func (a *CollectionAliases) List(ctx context.Context, opts ...operations.Option)
 }
 
 // Retarget changes an alias target.
-func (a *CollectionAliases) Retarget(ctx context.Context, aliasName string, input RetargetAliasInput, opts ...operations.Option) (*components.AliasDetails, error) {
+func (a *CollectionAliases) Retarget(ctx context.Context, aliasName string, input RetargetAliasInput, opts ...operations.Option) (*AliasDetails, error) {
 	var response struct {
-		Alias components.AliasDetails `json:"alias"`
+		Alias AliasDetails `json:"alias"`
 	}
 	err := a.collection.client.doVersioningRequest(
 		ctx,
@@ -242,8 +242,8 @@ func (a *CollectionAliases) Retarget(ctx context.Context, aliasName string, inpu
 }
 
 // Delete deletes an alias.
-func (a *CollectionAliases) Delete(ctx context.Context, aliasName string, opts ...operations.Option) (*components.MessageResponse, error) {
-	var response components.MessageResponse
+func (a *CollectionAliases) Delete(ctx context.Context, aliasName string, opts ...operations.Option) (*MessageResponse, error) {
+	var response MessageResponse
 	err := a.collection.client.doVersioningRequest(
 		ctx,
 		http.MethodDelete,

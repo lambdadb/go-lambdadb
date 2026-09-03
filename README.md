@@ -161,26 +161,17 @@ collection := client.Collection("my-collection")
 
 branch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 	BranchName: "candidate",
-	Source: &lambdadb.RefSource{
-		Kind: lambdadb.RefSourceKindBranch,
-		Name: "main",
-	},
+	Source:     lambdadb.BranchSource("main"),
 })
 
 tag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
 	TagName: "validated-2026-09",
-	Source: &lambdadb.RefSource{
-		Kind: lambdadb.RefSourceKindBranch,
-		Name: branch.Name,
-	},
+	Source:  lambdadb.BranchSource(branch.Name),
 })
 
 _, err = collection.Aliases().Create(ctx, lambdadb.CreateAliasInput{
 	AliasName: "production",
-	Target: lambdadb.AliasTarget{
-		Kind: lambdadb.RefSourceKindTag,
-		Name: tag.Name,
-	},
+	Target:    lambdadb.TagTarget(tag.Name),
 })
 ```
 
@@ -190,10 +181,7 @@ automatically use the extended list endpoint when a ref is supplied.
 ```go
 result, err := collection.Query(ctx, lambdadb.QueryInput{
 	Query: map[string]any{"queryString": map[string]any{"query": "*:*"}},
-	Ref: &lambdadb.RefContext{
-		Kind: lambdadb.RefKindAlias,
-		Name: "production",
-	},
+	Ref:   lambdadb.AliasRef("production"),
 })
 ```
 
@@ -429,6 +417,8 @@ Configuration follows the REST API path structure. Defaults match the OpenAPI sp
 | `WithBaseURL(baseURL string)` | `https://api.lambdadb.ai` | API base URL (scheme + host). |
 | `WithProjectName(projectName string)` | `playground` | Project name (path segment). |
 | `WithAPIKey(apiKey string)` | (none) | Project API key. Can also use `LAMBDADB_PROJECT_API_KEY` env. |
+| `WithClient(client HTTPClient)` | 60-second `http.Client` | LambdaDB API request client. |
+| `WithTransferClient(client HTTPClient)` | 10-minute `http.Client` | Presigned upload and out-of-line result download client. |
 
 The effective request base is `BaseURL + "/projects/" + ProjectName`. Example:
 
@@ -468,7 +458,21 @@ var (
 )
 ```
 
-This can be a convenient way to configure timeouts, cookies, proxies, custom headers, and other low-level configuration.
+This can be a convenient way to configure timeouts, cookies, proxies, custom headers, and other low-level configuration for LambdaDB API requests.
+
+Presigned object-storage transfers intentionally use a separate client so that
+LambdaDB API authentication and hooks are not sent to third-party URLs. Supply
+`WithTransferClient` when those uploads or downloads need custom proxy, TLS,
+timeout, or instrumentation settings:
+
+```go
+apiClient := &http.Client{Timeout: 30 * time.Second}
+transferClient := &http.Client{Timeout: 15 * time.Minute}
+sdkClient := lambdadb.New(
+	lambdadb.WithClient(apiClient),
+	lambdadb.WithTransferClient(transferClient),
+)
+```
 <!-- End Custom HTTP Client [http-client] -->
 
 <!-- Placeholder for Future Speakeasy SDK Sections -->

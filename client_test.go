@@ -439,23 +439,24 @@ func TestNilOption_DoesNotPanic(t *testing.T) {
 }
 
 func TestBulkUpsertDocuments_Flow(t *testing.T) {
-	// Server that receives the PUT upload (presigned URL target).
 	uploadReceived := false
-	uploadServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	transferClient := &mockRoundTripper{doFunc: func(r *http.Request) (*http.Response, error) {
+		if r.URL.String() != "https://uploads.example.com/presigned" {
+			t.Errorf("upload URL = %q", r.URL.String())
+		}
 		if r.Method != "PUT" {
 			t.Errorf("upload server: expected PUT, got %s", r.Method)
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
 		}
 		if got := r.Header.Get("If-None-Match"); got != "*" {
 			t.Errorf("upload server: If-None-Match = %q, want *", got)
-			http.Error(w, "missing signed header", http.StatusBadRequest)
-			return
 		}
 		uploadReceived = true
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer uploadServer.Close()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{},
+			Body:       io.NopCloser(bytes.NewReader(nil)),
+		}, nil
+	}}
 
 	// SDK client mock: GET bulk-upsert -> info with presigned URL; POST bulk-upsert -> success.
 	callCount := 0
@@ -467,7 +468,7 @@ func TestBulkUpsertDocuments_Flow(t *testing.T) {
 				if got := req.URL.Query().Get("branch"); got != "candidate" {
 					t.Errorf("GetBulkUpsertInfo branch = %q, want candidate", got)
 				}
-				body := []byte(`{"url":"` + uploadServer.URL + `","type":"application/json","httpMethod":"PUT","objectKey":"test-key","sizeLimitBytes":209715200,"headers":{"If-None-Match":"*"}}`)
+				body := []byte(`{"url":"https://uploads.example.com/presigned","type":"application/json","httpMethod":"PUT","objectKey":"test-key","sizeLimitBytes":209715200,"headers":{"If-None-Match":"*"}}`)
 				return &http.Response{
 					StatusCode: http.StatusOK,
 					Header:     http.Header{"Content-Type": {"application/json"}},
@@ -487,6 +488,7 @@ func TestBulkUpsertDocuments_Flow(t *testing.T) {
 		WithBaseURL("https://api.lambdadb.ai"),
 		WithProjectName("p1"),
 		WithClient(rt),
+		WithTransferClient(transferClient),
 	)
 	ctx := context.Background()
 
@@ -501,6 +503,9 @@ func TestBulkUpsertDocuments_Flow(t *testing.T) {
 	if !uploadReceived {
 		t.Error("upload server did not receive PUT request")
 	}
+	if transferClient.doCount != 1 {
+		t.Errorf("expected 1 transfer client call, got %d", transferClient.doCount)
+	}
 	if callCount != 2 {
 		t.Errorf("expected 2 API calls (GetBulkUpsertInfo + BulkUpsert), got %d", callCount)
 	}
@@ -508,16 +513,21 @@ func TestBulkUpsertDocuments_Flow(t *testing.T) {
 
 func TestQuery_WithDocsURL_FetchesDocsInline(t *testing.T) {
 	docsFromURL := []byte(`[{"collection":"c1","score":0.9,"doc":{"id":"1","name":"a"}}]`)
-	docsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(docsFromURL)
-	}))
-	defer docsServer.Close()
+	transferClient := &mockRoundTripper{doFunc: func(req *http.Request) (*http.Response, error) {
+		if req.Method != http.MethodGet || req.URL.String() != "https://downloads.example.com/docs" {
+			t.Fatalf("transfer request = %s %s", req.Method, req.URL)
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": {"application/json"}},
+			Body:       io.NopCloser(bytes.NewReader(docsFromURL)),
+		}, nil
+	}}
 
 	rt := &mockRoundTripper{
 		doFunc: func(req *http.Request) (*http.Response, error) {
 			// Query API returns isDocsInline=false and docsUrl
-			body := []byte(`{"took":1,"total":1,"docs":[],"isDocsInline":false,"docsUrl":"` + docsServer.URL + `"}`)
+			body := []byte(`{"took":1,"total":1,"docs":[],"isDocsInline":false,"docsUrl":"https://downloads.example.com/docs"}`)
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{"Content-Type": {"application/json"}},
@@ -530,6 +540,7 @@ func TestQuery_WithDocsURL_FetchesDocsInline(t *testing.T) {
 		WithBaseURL("https://api.lambdadb.ai"),
 		WithProjectName("p1"),
 		WithClient(rt),
+		WithTransferClient(transferClient),
 	)
 	ctx := context.Background()
 
@@ -545,6 +556,9 @@ func TestQuery_WithDocsURL_FetchesDocsInline(t *testing.T) {
 	}
 	if res.Docs[0].Doc["id"] != "1" || res.Docs[0].Doc["name"] != "a" {
 		t.Errorf("doc = %v", res.Docs[0].Doc)
+	}
+	if transferClient.doCount != 1 {
+		t.Errorf("expected 1 transfer client call, got %d", transferClient.doCount)
 	}
 }
 

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/lambdadb/go-lambdadb/models/components"
 	"github.com/lambdadb/go-lambdadb/models/operations"
@@ -168,7 +167,7 @@ func (c *Collection) Query(ctx context.Context, input QueryInput, opts ...operat
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := c.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch query docs from URL: %w", err)
 		}
 	}
@@ -248,7 +247,7 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := d.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch list docs from URL: %w", err)
 		}
 	}
@@ -264,6 +263,7 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 // Whether there are more pages is determined only by the API's nextPageToken—the number of
 // documents per page may be less than the requested size (e.g. due to payload size limits).
 type DocListIterator struct {
+	client          *Client
 	docs            *Docs
 	name            string
 	size            *int64
@@ -283,7 +283,7 @@ func (d *CollectionDocs) ListIterator(ctx context.Context, listOpts *ListDocsOpt
 	if opts == nil {
 		opts = []operations.Option{}
 	}
-	it := &DocListIterator{docs: d.client.docs, name: d.name, callOpts: opts}
+	it := &DocListIterator{client: d.client, docs: d.client.docs, name: d.name, callOpts: opts}
 	if listOpts != nil {
 		it.size = listOpts.Size
 		if listOpts.PageToken != nil {
@@ -328,7 +328,7 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := it.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch list docs from URL: %w", err)
 		}
 	}
@@ -451,8 +451,7 @@ func (d *CollectionDocs) BulkUpsertDocuments(ctx context.Context, body UpsertDoc
 		req.Method = string(*info.HTTPMethod)
 	}
 
-	uploadClient := &http.Client{Timeout: 10 * time.Minute}
-	resp, err := uploadClient.Do(req)
+	resp, err := d.client.transferClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("upload to presigned URL: %w", err)
 	}
@@ -491,7 +490,7 @@ func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ..
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := d.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch docs from URL: %w", err)
 		}
 	}
@@ -503,13 +502,12 @@ func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ..
 }
 
 // fetchJSONFromURL GETs the URL and unmarshals the response body as JSON into v.
-func fetchJSONFromURL(ctx context.Context, url string, v interface{}) error {
+func (c *Client) fetchJSONFromURL(ctx context.Context, url string, v interface{}) error {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
 	}
-	client := &http.Client{Timeout: 5 * time.Minute}
-	resp, err := client.Do(req)
+	resp, err := c.transferClient.Do(req)
 	if err != nil {
 		return err
 	}

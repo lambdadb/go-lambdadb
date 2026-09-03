@@ -727,6 +727,7 @@ func TestPublicAPI_BulkUpsertDocumentsFromExternalPackage(t *testing.T) {
 		lambdadb.WithBaseURL("https://api.example.com"),
 		lambdadb.WithProjectName("project-f"),
 		lambdadb.WithClient(mock),
+		lambdadb.WithTransferClient(http.DefaultClient),
 	)
 
 	_, err := client.Collection("articles").Docs().BulkUpsertDocuments(context.Background(), lambdadb.UpsertDocsInput{

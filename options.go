@@ -1,6 +1,8 @@
 package lambdadb
 
 import (
+	"time"
+
 	"github.com/lambdadb/go-lambdadb/models/components"
 	"github.com/lambdadb/go-lambdadb/models/operations"
 )
@@ -24,7 +26,7 @@ type ListDocsOpts struct {
 	Fields *components.FieldsSelectorUnion
 	// Collection branch, tag, or alias to read. When set, the SDK uses the
 	// extended list endpoint.
-	Ref *components.RefContext
+	Ref *RefContext
 }
 
 // ListCollectionsOpts holds optional parameters for listing collections.
@@ -87,6 +89,9 @@ type AliasDetails = components.AliasDetails
 // AliasTargetKind is the resolved target kind returned by the API.
 type AliasTargetKind = components.AliasTargetKind
 
+// MessageResponse is returned by successful delete operations.
+type MessageResponse = components.MessageResponse
+
 const (
 	RefKindBranch = components.RefKindBranch
 	RefKindTag    = components.RefKindTag
@@ -97,3 +102,48 @@ const (
 	AliasTargetKindBranch = components.AliasTargetKindBranch
 	AliasTargetKindTag    = components.AliasTargetKindTag
 )
+
+// BranchRef selects a branch for a read.
+func BranchRef(name string) *RefContext {
+	return &RefContext{Kind: RefKindBranch, Name: name}
+}
+
+// TagRef selects an immutable tag for a read.
+func TagRef(name string) *RefContext {
+	return &RefContext{Kind: RefKindTag, Name: name}
+}
+
+// AliasRef selects an alias for a read.
+func AliasRef(name string) *RefContext {
+	return &RefContext{Kind: RefKindAlias, Name: name}
+}
+
+// BranchSource selects a branch as the source of a new branch or tag.
+func BranchSource(name string) *RefSource {
+	return &RefSource{Kind: RefSourceKindBranch, Name: name}
+}
+
+// BranchSourceAt selects the latest committed snapshot on a branch at or
+// before the supplied time as the source of a new branch or tag.
+func BranchSourceAt(name string, asOf time.Time) *RefSource {
+	return &RefSource{
+		Kind: RefSourceKindBranch,
+		Name: name,
+		AsOf: Int64(asOf.UnixMilli()),
+	}
+}
+
+// TagSource selects an immutable tag as the source of a new branch or tag.
+func TagSource(name string) *RefSource {
+	return &RefSource{Kind: RefSourceKindTag, Name: name}
+}
+
+// BranchTarget selects a branch as an alias target.
+func BranchTarget(name string) AliasTarget {
+	return AliasTarget{Kind: RefSourceKindBranch, Name: name}
+}
+
+// TagTarget selects a tag as an alias target.
+func TagTarget(name string) AliasTarget {
+	return AliasTarget{Kind: RefSourceKindTag, Name: name}
+}

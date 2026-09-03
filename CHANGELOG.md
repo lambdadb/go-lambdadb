@@ -19,6 +19,9 @@ This source revision does not by itself indicate that the API is deployed.
 - Collection descriptions, metadata tags, default branch, and snapshot
   retention fields.
 - Signed bulk-upload header forwarding and Branch-scoped upload URL requests.
+- Ref and source constructors for concise, safer Branch, Tag, and Alias usage.
+- `WithTransferClient` for configuring presigned uploads and out-of-line result
+  downloads independently from authenticated API requests.
 
 ### Changed
 
@@ -26,7 +29,8 @@ This source revision does not by itself indicate that the API is deployed.
 - Collection creation now expects HTTP 201 and deletion expects HTTP 200.
 - Collection creation uses the current metadata and retention contract instead
   of the removed cross-collection source fields.
-
+- Public Data Versioning method signatures use top-level SDK type names, and
+  paginated document reads preserve their Ref across every page.
 
 ## [0.3.3] - 2026-05-28
 

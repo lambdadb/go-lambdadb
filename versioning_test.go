@@ -6,10 +6,49 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
 	lambdadb "github.com/lambdadb/go-lambdadb"
 	"github.com/lambdadb/go-lambdadb/models/apierrors"
 )
+
+func TestPublicAPI_RefAndSourceConstructors(t *testing.T) {
+	cutoff := time.Date(2026, time.September, 3, 12, 0, 0, 123_000_000, time.UTC)
+
+	tests := []struct {
+		name string
+		ref  *lambdadb.RefContext
+		kind lambdadb.RefKind
+	}{
+		{name: "candidate", ref: lambdadb.BranchRef("candidate"), kind: lambdadb.RefKindBranch},
+		{name: "validated", ref: lambdadb.TagRef("validated"), kind: lambdadb.RefKindTag},
+		{name: "production", ref: lambdadb.AliasRef("production"), kind: lambdadb.RefKindAlias},
+	}
+	for _, test := range tests {
+		if test.ref == nil || test.ref.Kind != test.kind || test.ref.Name != test.name {
+			t.Errorf("ref constructor = %#v, want %s/%s", test.ref, test.kind, test.name)
+		}
+	}
+
+	branchSource := lambdadb.BranchSource("main")
+	if branchSource.Kind != lambdadb.RefSourceKindBranch || branchSource.Name != "main" || branchSource.AsOf != nil {
+		t.Fatalf("BranchSource() = %#v", branchSource)
+	}
+	branchSourceAt := lambdadb.BranchSourceAt("main", cutoff)
+	if branchSourceAt.Kind != lambdadb.RefSourceKindBranch || branchSourceAt.AsOf == nil || *branchSourceAt.AsOf != cutoff.UnixMilli() {
+		t.Fatalf("BranchSourceAt() = %#v, want %d", branchSourceAt, cutoff.UnixMilli())
+	}
+	tagSource := lambdadb.TagSource("validated")
+	if tagSource.Kind != lambdadb.RefSourceKindTag || tagSource.Name != "validated" || tagSource.AsOf != nil {
+		t.Fatalf("TagSource() = %#v", tagSource)
+	}
+	if target := lambdadb.BranchTarget("candidate"); target.Kind != lambdadb.RefSourceKindBranch || target.Name != "candidate" {
+		t.Fatalf("BranchTarget() = %#v", target)
+	}
+	if target := lambdadb.TagTarget("validated"); target.Kind != lambdadb.RefSourceKindTag || target.Name != "validated" {
+		t.Fatalf("TagTarget() = %#v", target)
+	}
+}
 
 func TestPublicAPI_VersioningLifecycle(t *testing.T) {
 	const createdAt = int64(1788336000123)
