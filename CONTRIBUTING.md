@@ -17,6 +17,13 @@ If you encounter any bugs or have suggestions for improvements, please open an i
 
 We will review and triage issues as quickly as possible. Our goal is to address bugs and incorporate improvements in the upstream source code. Fixes will be included in the next generation of the generated code.
 
+## Releasing
+
+Maintainers must follow the development, release-candidate, and stable release
+procedure in [RELEASING.md](RELEASING.md). In particular, development validation
+uses an exact commit SHA, release candidates use `vX.Y.Z-rc.N`, and published
+tags must never be moved or replaced.
+
 ## Contact
 
 If you have any questions or need further assistance, please feel free to reach out by opening an issue.

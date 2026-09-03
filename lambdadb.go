@@ -51,6 +51,9 @@ type Client struct {
 	// collections and docs are used internally by Collection and CollectionDocs.
 	collections *Collections
 	docs        *Docs
+	// transferClient handles presigned URL uploads and downloads separately so
+	// LambdaDB API authentication and hooks are not applied to object storage.
+	transferClient HTTPClient
 
 	sdkConfiguration config.SDKConfiguration
 	hooks            *hooks.Hooks
@@ -87,6 +90,15 @@ func WithAPIKey(apiKey string) SDKOption {
 func WithClient(client HTTPClient) SDKOption {
 	return func(c *Client) {
 		c.sdkConfiguration.Client = client
+	}
+}
+
+// WithTransferClient sets the HTTP client used for presigned URL uploads and
+// downloads, including BulkUpsertDocuments and out-of-line document results.
+// LambdaDB API authentication and hooks are not applied to transfer requests.
+func WithTransferClient(client HTTPClient) SDKOption {
+	return func(c *Client) {
+		c.transferClient = client
 	}
 }
 
@@ -140,6 +152,9 @@ func New(opts ...SDKOption) *Client {
 
 	if c.sdkConfiguration.Client == nil {
 		c.sdkConfiguration.Client = &http.Client{Timeout: 60 * time.Second}
+	}
+	if c.transferClient == nil {
+		c.transferClient = &http.Client{Timeout: 10 * time.Minute}
 	}
 
 	c.sdkConfiguration = c.hooks.SDKInit(c.sdkConfiguration)

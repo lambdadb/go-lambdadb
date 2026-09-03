@@ -10,6 +10,8 @@ import (
 type GetBulkUpsertDocsRequest struct {
 	// Collection name.
 	CollectionName string `pathParam:"style=simple,explode=false,name=collectionName"`
+	// Write target branch. Defaults to main when omitted.
+	Branch *string `queryParam:"style=form,explode=true,name=branch"`
 }
 
 func (g *GetBulkUpsertDocsRequest) GetCollectionName() string {
@@ -17,6 +19,13 @@ func (g *GetBulkUpsertDocsRequest) GetCollectionName() string {
 		return ""
 	}
 	return g.CollectionName
+}
+
+func (g *GetBulkUpsertDocsRequest) GetBranch() *string {
+	if g == nil {
+		return nil
+	}
+	return g.Branch
 }
 
 // Type - Content type that must be specified when uploading documents.
@@ -79,6 +88,8 @@ type GetBulkUpsertDocsResponseBody struct {
 	ObjectKey string `json:"objectKey"`
 	// Object size limit in bytes.
 	SizeLimitBytes *int64 `default:"209715200" json:"sizeLimitBytes"`
+	// Signed headers to forward unchanged on the presigned upload request.
+	Headers map[string]string `json:"headers"`
 }
 
 func (g GetBulkUpsertDocsResponseBody) MarshalJSON() ([]byte, error) {
@@ -125,6 +136,13 @@ func (g *GetBulkUpsertDocsResponseBody) GetSizeLimitBytes() *int64 {
 		return nil
 	}
 	return g.SizeLimitBytes
+}
+
+func (g *GetBulkUpsertDocsResponseBody) GetHeaders() map[string]string {
+	if g == nil {
+		return nil
+	}
+	return g.Headers
 }
 
 type GetBulkUpsertDocsResponse struct {

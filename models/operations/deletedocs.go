@@ -11,6 +11,8 @@ type DeleteDocsRequestBody struct {
 	// Query filter.
 	Filter          map[string]any              `json:"filter,omitzero"`
 	PartitionFilter *components.PartitionFilter `json:"partitionFilter,omitzero"`
+	// Write target branch. Defaults to main when omitted.
+	Branch *string `json:"branch,omitzero"`
 }
 
 func (d DeleteDocsRequestBody) MarshalJSON() ([]byte, error) {
@@ -43,6 +45,13 @@ func (d *DeleteDocsRequestBody) GetPartitionFilter() *components.PartitionFilter
 		return nil
 	}
 	return d.PartitionFilter
+}
+
+func (d *DeleteDocsRequestBody) GetBranch() *string {
+	if d == nil {
+		return nil
+	}
+	return d.Branch
 }
 
 type DeleteDocsRequest struct {

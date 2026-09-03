@@ -17,6 +17,7 @@ LambdaDB API: LambdaDB Open API Spec
   * [Authentication](#authentication)
   * [Configuration](#configuration)
   * [Available Resources and Operations](#available-resources-and-operations)
+  * [Data Versioning](#data-versioning)
   * [Pagination](#pagination)
   * [Retries](#retries)
   * [Error Handling](#error-handling)
@@ -78,7 +79,7 @@ Use `client.Collection(name)` to work with a single collection without passing t
 	coll := client.Collection("my-collection")
 	meta, err := coll.Get(ctx)
 	docs, err := coll.Docs().List(ctx, nil)
-	err = coll.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: myDocs})
+	_, err = coll.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: myDocs})
 ```
 
 <!-- End SDK Example Usage [usage] -->
@@ -141,10 +142,61 @@ func main() {
 Use `client.Collection("name")` for operations on a single collection (no need to pass the collection name on every call):
 
 * **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `result.Docs` is always populated.
-* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, or `Fields` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
+* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, GetBulkUpsertInfoForBranch, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, `Fields`, or `Ref` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete); it applies the same Branch to both bulk control calls. Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
+* **Collection.Branches()**: Create, List, and Delete writable branches.
+* **Collection.Tags()**: Create, List, and Delete immutable tags.
+* **Collection.Aliases()**: Create, List, Retarget, and Delete aliases. See the [Data Versioning API guide](docs/sdks/versioning/README.md).
 
 </details>
 <!-- End Available Resources and Operations [operations] -->
+
+## Data Versioning
+
+Every collection has a default writable `main` branch. Create branches for
+isolated writes, tags for immutable snapshots, and aliases for movable read
+references.
+
+```go
+collection := client.Collection("my-collection")
+
+branch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
+	BranchName: "candidate",
+	Source:     lambdadb.BranchSource("main"),
+})
+
+tag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
+	TagName: "validated-2026-09",
+	Source:  lambdadb.BranchSource(branch.Name),
+})
+
+_, err = collection.Aliases().Create(ctx, lambdadb.CreateAliasInput{
+	AliasName: "production",
+	Target:    lambdadb.TagTarget(tag.Name),
+})
+```
+
+Select a branch, tag, or alias for reads with `Ref`. Simple document lists
+automatically use the extended list endpoint when a ref is supplied.
+
+```go
+result, err := collection.Query(ctx, lambdadb.QueryInput{
+	Query: map[string]any{"queryString": map[string]any{"query": "*:*"}},
+	Ref:   lambdadb.AliasRef("production"),
+})
+```
+
+Select a writable branch for document mutations with `Branch`:
+
+```go
+_, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
+	Docs:   myDocs,
+	Branch: lambdadb.String("candidate"),
+})
+```
+
+`ConsistentRead` is supported only when `Ref` directly selects a branch. Tags
+are immutable, while aliases can be retargeted and therefore resolve at request
+time.
 
 <!-- Start Pagination [pagination] -->
 ## Pagination
@@ -365,6 +417,8 @@ Configuration follows the REST API path structure. Defaults match the OpenAPI sp
 | `WithBaseURL(baseURL string)` | `https://api.lambdadb.ai` | API base URL (scheme + host). |
 | `WithProjectName(projectName string)` | `playground` | Project name (path segment). |
 | `WithAPIKey(apiKey string)` | (none) | Project API key. Can also use `LAMBDADB_PROJECT_API_KEY` env. |
+| `WithClient(client HTTPClient)` | 60-second `http.Client` | LambdaDB API request client. |
+| `WithTransferClient(client HTTPClient)` | 10-minute `http.Client` | Presigned upload and out-of-line result download client. |
 
 The effective request base is `BaseURL + "/projects/" + ProjectName`. Example:
 
@@ -404,7 +458,21 @@ var (
 )
 ```
 
-This can be a convenient way to configure timeouts, cookies, proxies, custom headers, and other low-level configuration.
+This can be a convenient way to configure timeouts, cookies, proxies, custom headers, and other low-level configuration for LambdaDB API requests.
+
+Presigned object-storage transfers intentionally use a separate client so that
+LambdaDB API authentication and hooks are not sent to third-party URLs. Supply
+`WithTransferClient` when those uploads or downloads need custom proxy, TLS,
+timeout, or instrumentation settings:
+
+```go
+apiClient := &http.Client{Timeout: 30 * time.Second}
+transferClient := &http.Client{Timeout: 15 * time.Minute}
+sdkClient := lambdadb.New(
+	lambdadb.WithClient(apiClient),
+	lambdadb.WithTransferClient(transferClient),
+)
+```
 <!-- End Custom HTTP Client [http-client] -->
 
 <!-- Placeholder for Future Speakeasy SDK Sections -->

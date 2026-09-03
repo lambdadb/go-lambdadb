@@ -8,13 +8,15 @@ import (
 type FetchDocsRequestBody struct {
 	// A list of document IDs to fetch. Note that the maximum number of document IDs is 100.
 	Ids []string `json:"ids"`
-	// If your application requires a strongly consistent read, set consistentRead to true. Although a strongly consistent read might take more time than an eventually consistent read, it always returns the last updated value.
+	// Requests a strongly consistent read. This is valid only when Ref directly selects a branch.
 	ConsistentRead *bool `default:"false" json:"consistentRead"`
 	// If your application need to include vector values in the response, set includeVectors to true.
 	IncludeVectors *bool `default:"false" json:"includeVectors"`
 	// An object to specify a list of field names to include and/or exclude in the result.
 	Fields          *components.FieldsSelectorUnion `json:"fields,omitzero"`
 	PartitionFilter *components.PartitionFilter     `json:"partitionFilter,omitzero"`
+	// Collection branch, tag, or alias to read.
+	Ref *components.RefContext `json:"ref,omitzero"`
 }
 
 func (f FetchDocsRequestBody) MarshalJSON() ([]byte, error) {
@@ -61,6 +63,13 @@ func (f *FetchDocsRequestBody) GetPartitionFilter() *components.PartitionFilter 
 		return nil
 	}
 	return f.PartitionFilter
+}
+
+func (f *FetchDocsRequestBody) GetRef() *components.RefContext {
+	if f == nil {
+		return nil
+	}
+	return f.Ref
 }
 
 type FetchDocsRequest struct {

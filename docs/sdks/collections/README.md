@@ -24,6 +24,7 @@ package main
 import(
 	"context"
 	lambdadb "github.com/lambdadb/go-lambdadb"
+	"github.com/lambdadb/go-lambdadb/models/components"
 	"log"
 )
 
@@ -124,42 +125,7 @@ func main() {
 
     res, err := client.Collections.Create(ctx, lambdadb.CreateCollectionOptions{
         CollectionName: "<value>",
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    if res != nil {
-        // handle response
-    }
-}
-```
-### Example Usage: forkedCollection
-
-<!-- UsageSnippet language="go" operationID="createCollection" method="post" path="/collections" example="forkedCollection" -->
-```go
-package main
-
-import(
-	"context"
-	lambdadb "github.com/lambdadb/go-lambdadb"
-	"log"
-)
-
-func main() {
-    ctx := context.Background()
-
-    client := lambdadb.New(
-        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
-        lambdadb.WithProjectName("playground"),
-        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
-    )
-
-    res, err := client.Collections.Create(ctx, lambdadb.CreateCollectionOptions{
-        CollectionName: "example-collection-name",
-        SourceProjectName: lambdadb.Pointer("example-source-project-name"),
-        SourceCollectionName: lambdadb.Pointer("example-source-collection-name"),
-        SourceDatetime: lambdadb.Pointer("2023-10-01T12:00:00Z"),
-        SourceProjectAPIKey: lambdadb.Pointer("example-source-project-api-key"),
+        IndexConfigs: map[string]components.IndexConfigsUnion{},
     })
     if err != nil {
         log.Fatal(err)
@@ -343,7 +309,7 @@ func main() {
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
 
-Collection is specified via `client.Collection("name")`. The returned [CollectionResponse](../../models/components/collectionresponse.md) includes `CreatedAt`, `UpdatedAt`, and `DataUpdatedAt` (API sends Unix epoch seconds; SDK exposes them as [types.UnixTime](https://pkg.go.dev/github.com/lambdadb/go-lambdadb/types#UnixTime) / `time.Time` via getters).
+Collection is specified via `client.Collection("name")`. The returned [CollectionResponse](../../models/components/collectionresponse.md) includes collection metadata and `CreatedAt`, `UpdatedAt`, and `DataUpdatedAt` timestamps. The API sends Unix epoch milliseconds; the SDK exposes them as [types.UnixMilliTime](https://pkg.go.dev/github.com/lambdadb/go-lambdadb/types#UnixMilliTime) and as `time.Time` through getters.
 
 ### Response
 

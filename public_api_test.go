@@ -69,10 +69,13 @@ func TestPublicAPI_ListCollectionsFromExternalPackage(t *testing.T) {
 						"indexConfigs": {},
 						"numPartitions": 1,
 						"numDocs": 3,
-						"collectionStatus": "ACTIVE",
-						"createdAt": 1700000000,
-						"updatedAt": 1700000100,
-						"dataUpdatedAt": 1700000200
+						"description": "",
+						"tags": {},
+						"defaultBranchName": "main",
+						"snapshotRetentionInDays": 30,
+						"createdAt": 1700000000000,
+						"updatedAt": 1700000100000,
+						"dataUpdatedAt": 1700000200000
 					}],
 					"nextPageToken": "page-2"
 				}`)
@@ -172,10 +175,13 @@ func TestPublicAPI_CollectionHandleReadFlowsFromExternalPackage(t *testing.T) {
 						"indexConfigs": {},
 						"numPartitions": 1,
 						"numDocs": 1,
-						"collectionStatus": "ACTIVE",
-						"createdAt": 1700000000,
-						"updatedAt": 1700000100,
-						"dataUpdatedAt": 1700000200
+						"description": "",
+						"tags": {},
+						"defaultBranchName": "main",
+						"snapshotRetentionInDays": 30,
+						"createdAt": 1700000000000,
+						"updatedAt": 1700000100000,
+						"dataUpdatedAt": 1700000200000
 					}
 				}`)
 			},
@@ -236,17 +242,30 @@ func TestPublicAPI_WriteRequestBodiesFromExternalPackage(t *testing.T) {
 				if got := body["collectionName"]; got != "articles" {
 					t.Fatalf("collectionName body = %v, want articles", got)
 				}
-				return jsonResponse(http.StatusAccepted, `{
+				if _, ok := body["indexConfigs"].(map[string]any); !ok {
+					t.Fatalf("indexConfigs body = %#v, want object", body["indexConfigs"])
+				}
+				if body["description"] != "Versioned articles" || body["snapshotRetentionInDays"] != float64(14) {
+					t.Fatalf("collection metadata body = %#v", body)
+				}
+				tags, ok := body["tags"].(map[string]any)
+				if !ok || tags["environment"] != "test" {
+					t.Fatalf("collection tags body = %#v", body["tags"])
+				}
+				return jsonResponse(http.StatusCreated, `{
 					"collection": {
 						"projectName": "project-c",
 						"collectionName": "articles",
 						"indexConfigs": {},
 						"numPartitions": 1,
 						"numDocs": 0,
-						"collectionStatus": "CREATING",
-						"createdAt": 1700000000,
-						"updatedAt": 1700000000,
-						"dataUpdatedAt": 1700000000
+						"description": "",
+						"tags": {},
+						"defaultBranchName": "main",
+						"snapshotRetentionInDays": 30,
+						"createdAt": 1700000000000,
+						"updatedAt": 1700000000000,
+						"dataUpdatedAt": 1700000000000
 					}
 				}`)
 			},
@@ -274,7 +293,11 @@ func TestPublicAPI_WriteRequestBodiesFromExternalPackage(t *testing.T) {
 	)
 
 	created, err := client.Collections.Create(context.Background(), lambdadb.CreateCollectionOptions{
-		CollectionName: "articles",
+		CollectionName:          "articles",
+		IndexConfigs:            map[string]components.IndexConfigsUnion{},
+		Description:             lambdadb.String("Versioned articles"),
+		Tags:                    map[string]string{"environment": "test"},
+		SnapshotRetentionInDays: lambdadb.Int64(14),
 	})
 	if err != nil {
 		t.Fatalf("Collections.Create() error = %v", err)
@@ -388,7 +411,7 @@ func TestPublicAPI_ManagedEmbeddingCollectionConfigFromExternalPackage(t *testin
 				if _, ok := embedding["similarity"]; ok {
 					t.Fatalf("embedding.similarity was sent in create request: %#v", embedding["similarity"])
 				}
-				return jsonResponse(http.StatusAccepted, `{
+				return jsonResponse(http.StatusCreated, `{
 					"collection": {
 						"projectName": "project-managed",
 						"collectionName": "semantic-articles",
@@ -411,10 +434,13 @@ func TestPublicAPI_ManagedEmbeddingCollectionConfigFromExternalPackage(t *testin
 						},
 						"numPartitions": 1,
 						"numDocs": 0,
-						"collectionStatus": "CREATING",
-						"createdAt": 1700000000,
-						"updatedAt": 1700000000,
-						"dataUpdatedAt": 1700000000
+						"description": "",
+						"tags": {},
+						"defaultBranchName": "main",
+						"snapshotRetentionInDays": 30,
+						"createdAt": 1700000000000,
+						"updatedAt": 1700000000000,
+						"dataUpdatedAt": 1700000000000
 					}
 				}`)
 			},
@@ -465,7 +491,11 @@ func TestPublicAPI_CollectionMutationAndQueryFromExternalPackage(t *testing.T) {
 		handlers: []func(*http.Request) *http.Response{
 			func(req *http.Request) *http.Response {
 				assertRequest(t, req, http.MethodPatch, "https://api.example.com/projects/project-d/collections/articles")
-				return jsonResponse(http.StatusOK, collectionResponseBody("project-d", "articles", "ACTIVE"))
+				body := decodeJSONBody(t, req)
+				if body["description"] != "Updated description" {
+					t.Fatalf("update description = %v", body["description"])
+				}
+				return jsonResponse(http.StatusOK, collectionResponseBody("project-d", "articles"))
 			},
 			func(req *http.Request) *http.Response {
 				assertRequest(t, req, http.MethodPost, "https://api.example.com/projects/project-d/collections/articles/query")
@@ -490,7 +520,7 @@ func TestPublicAPI_CollectionMutationAndQueryFromExternalPackage(t *testing.T) {
 			},
 			func(req *http.Request) *http.Response {
 				assertRequest(t, req, http.MethodDelete, "https://api.example.com/projects/project-d/collections/articles")
-				return jsonResponse(http.StatusAccepted, `{"message": "accepted"}`)
+				return jsonResponse(http.StatusOK, `{"message": "deleted"}`)
 			},
 		},
 	}
@@ -503,7 +533,9 @@ func TestPublicAPI_CollectionMutationAndQueryFromExternalPackage(t *testing.T) {
 	)
 	collection := client.Collection("articles")
 
-	updated, err := collection.Update(context.Background(), lambdadb.UpdateCollectionOptions{})
+	updated, err := collection.Update(context.Background(), lambdadb.UpdateCollectionOptions{
+		Description: lambdadb.String("Updated description"),
+	})
 	if err != nil {
 		t.Fatalf("Collection.Update() error = %v", err)
 	}
@@ -639,6 +671,11 @@ func TestPublicAPI_BulkUpsertDocumentsFromExternalPackage(t *testing.T) {
 			http.Error(w, uploadErr.Error(), http.StatusInternalServerError)
 			return
 		}
+		if got := req.Header.Get("If-None-Match"); got != "*" {
+			uploadErr = fmt.Errorf("upload If-None-Match = %q, want *", got)
+			http.Error(w, uploadErr.Error(), http.StatusInternalServerError)
+			return
+		}
 		data, err := io.ReadAll(req.Body)
 		if err != nil {
 			uploadErr = fmt.Errorf("read upload body: %w", err)
@@ -659,12 +696,16 @@ func TestPublicAPI_BulkUpsertDocumentsFromExternalPackage(t *testing.T) {
 		handlers: []func(*http.Request) *http.Response{
 			func(req *http.Request) *http.Response {
 				assertRequest(t, req, http.MethodGet, "https://api.example.com/projects/project-f/collections/articles/docs/bulk-upsert")
+				if got := req.URL.Query().Get("branch"); got != "candidate" {
+					t.Fatalf("bulk upload info branch = %q, want candidate", got)
+				}
 				return jsonResponse(http.StatusOK, `{
 					"url": "`+uploadServer.URL+`",
 					"type": "application/json",
 					"httpMethod": "PUT",
 					"objectKey": "uploads/articles.json",
-					"sizeLimitBytes": 209715200
+					"sizeLimitBytes": 209715200,
+					"headers": {"If-None-Match": "*"}
 				}`)
 			},
 			func(req *http.Request) *http.Response {
@@ -672,6 +713,9 @@ func TestPublicAPI_BulkUpsertDocumentsFromExternalPackage(t *testing.T) {
 				body := decodeJSONBody(t, req)
 				if got := body["objectKey"]; got != "uploads/articles.json" {
 					t.Fatalf("objectKey body = %v, want uploads/articles.json", got)
+				}
+				if body["branch"] != "candidate" || body["type"] != "application/json" {
+					t.Fatalf("bulk completion body = %#v", body)
 				}
 				return jsonResponse(http.StatusAccepted, `{"message": "accepted"}`)
 			},
@@ -683,10 +727,12 @@ func TestPublicAPI_BulkUpsertDocumentsFromExternalPackage(t *testing.T) {
 		lambdadb.WithBaseURL("https://api.example.com"),
 		lambdadb.WithProjectName("project-f"),
 		lambdadb.WithClient(mock),
+		lambdadb.WithTransferClient(http.DefaultClient),
 	)
 
 	_, err := client.Collection("articles").Docs().BulkUpsertDocuments(context.Background(), lambdadb.UpsertDocsInput{
-		Docs: []map[string]any{{"id": "doc-1"}},
+		Docs:   []map[string]any{{"id": "doc-1"}},
+		Branch: lambdadb.String("candidate"),
 	})
 	if uploadErr != nil {
 		t.Fatal(uploadErr)
@@ -711,7 +757,7 @@ func TestPublicAPI_ListHelpersFromExternalPackage(t *testing.T) {
 					t.Fatalf("size query = %q, want 1", got)
 				}
 				return jsonResponse(http.StatusOK, `{
-					"collections": [`+collectionObject("project-g", "one", "ACTIVE")+`],
+					"collections": [`+collectionObject("project-g", "one")+`],
 					"nextPageToken": "next"
 				}`)
 			},
@@ -721,7 +767,7 @@ func TestPublicAPI_ListHelpersFromExternalPackage(t *testing.T) {
 					t.Fatalf("pageToken query = %q, want next", got)
 				}
 				return jsonResponse(http.StatusOK, `{
-					"collections": [`+collectionObject("project-g", "two", "ACTIVE")+`]
+					"collections": [`+collectionObject("project-g", "two")+`]
 				}`)
 			},
 			func(req *http.Request) *http.Response {
@@ -750,7 +796,7 @@ func TestPublicAPI_ListHelpersFromExternalPackage(t *testing.T) {
 			func(req *http.Request) *http.Response {
 				assertRequest(t, req, http.MethodGet, "https://api.example.com/projects/project-g/collections")
 				return jsonResponse(http.StatusOK, `{
-					"collections": [`+collectionObject("project-g", "iterated", "ACTIVE")+`]
+					"collections": [`+collectionObject("project-g", "iterated")+`]
 				}`)
 			},
 			func(req *http.Request) *http.Response {
@@ -858,20 +904,23 @@ func assertDocsBody(t *testing.T, req *http.Request, id string) {
 	}
 }
 
-func collectionResponseBody(projectName string, collectionName string, status string) string {
-	return `{"collection": ` + collectionObject(projectName, collectionName, status) + `}`
+func collectionResponseBody(projectName string, collectionName string) string {
+	return `{"collection": ` + collectionObject(projectName, collectionName) + `}`
 }
 
-func collectionObject(projectName string, collectionName string, status string) string {
+func collectionObject(projectName string, collectionName string) string {
 	return `{
 		"projectName": "` + projectName + `",
 		"collectionName": "` + collectionName + `",
 		"indexConfigs": {},
 		"numPartitions": 1,
 		"numDocs": 0,
-		"collectionStatus": "` + status + `",
-		"createdAt": 1700000000,
-		"updatedAt": 1700000000,
-		"dataUpdatedAt": 1700000000
+		"description": "",
+		"tags": {},
+		"defaultBranchName": "main",
+		"snapshotRetentionInDays": 30,
+		"createdAt": 1700000000000,
+		"updatedAt": 1700000000000,
+		"dataUpdatedAt": 1700000000000
 	}`
 }

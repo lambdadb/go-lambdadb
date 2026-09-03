@@ -1,6 +1,5 @@
-# Go 모듈은 별도 패키지 레지스트리에 올리지 않습니다.
-# 태그 푸시(v*) 시 테스트 후 GitHub Release만 생성합니다.
-# 사용자는 go get github.com/lambdadb/go-lambdadb@v0.2.0 으로 버전 지정 설치합니다.
+# Go modules are published through immutable Git tags. This workflow validates
+# release metadata, runs the SDK checks, and creates the matching GitHub Release.
 
 name: Publish
 
@@ -10,21 +9,35 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    outputs:
+      make_latest: ${{ steps.release_metadata.outputs.make_latest }}
+      prerelease: ${{ steps.release_metadata.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      - name: Validate release metadata
+        id: release_metadata
+        run: ./scripts/validate-release-metadata.sh "${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
-          go-version: "1.22"
+          go-version-file: go.mod
 
       - name: Run tests
-        run: go test -v ./...
+        run: go test -count=1 -v ./...
+
+      - name: Run vet
+        run: go vet ./...
 
       - name: Build
         run: go build -v ./...
@@ -32,14 +45,18 @@ jobs:
   release:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
+          make_latest: ${{ needs.test.outputs.make_latest }}
+          prerelease: ${{ needs.test.outputs.prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

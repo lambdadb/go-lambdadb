@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/lambdadb/go-lambdadb/models/components"
 	"github.com/lambdadb/go-lambdadb/models/operations"
@@ -168,7 +167,7 @@ func (c *Collection) Query(ctx context.Context, input QueryInput, opts ...operat
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := c.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch query docs from URL: %w", err)
 		}
 	}
@@ -183,6 +182,21 @@ func (c *Collection) Query(ctx context.Context, input QueryInput, opts ...operat
 // Docs returns a handle for document operations on this collection.
 func (c *Collection) Docs() *CollectionDocs {
 	return &CollectionDocs{client: c.client, name: c.name}
+}
+
+// Branches returns a handle for branch operations on this collection.
+func (c *Collection) Branches() *CollectionBranches {
+	return &CollectionBranches{collection: c}
+}
+
+// Tags returns a handle for tag operations on this collection.
+func (c *Collection) Tags() *CollectionTags {
+	return &CollectionTags{collection: c}
+}
+
+// Aliases returns a handle for alias operations on this collection.
+func (c *Collection) Aliases() *CollectionAliases {
+	return &CollectionAliases{collection: c}
 }
 
 // CollectionDocs provides document operations for a single collection.
@@ -200,6 +214,7 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 	var filter map[string]any
 	var partitionFilter *components.PartitionFilter
 	var fields *components.FieldsSelectorUnion
+	var ref *components.RefContext
 	if listOpts != nil {
 		size = listOpts.Size
 		pageToken = listOpts.PageToken
@@ -207,10 +222,11 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 		filter = listOpts.Filter
 		partitionFilter = listOpts.PartitionFilter
 		fields = listOpts.Fields
+		ref = listOpts.Ref
 	}
 	var res *operations.ListDocsResponse
 	var err error
-	if filter != nil || partitionFilter != nil || fields != nil {
+	if filter != nil || partitionFilter != nil || fields != nil || ref != nil {
 		res, err = d.client.docs.ListExtended(ctx, d.name, operations.ListDocsExtendedRequestBody{
 			Size:            size,
 			PageToken:       pageToken,
@@ -218,6 +234,7 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 			PartitionFilter: partitionFilter,
 			Fields:          fields,
 			IncludeVectors:  includeVectors,
+			Ref:             ref,
 		}, opts...)
 	} else {
 		res, err = d.client.docs.List(ctx, d.name, size, pageToken, includeVectors, opts...)
@@ -230,7 +247,7 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := d.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch list docs from URL: %w", err)
 		}
 	}
@@ -246,6 +263,7 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 // Whether there are more pages is determined only by the API's nextPageToken—the number of
 // documents per page may be less than the requested size (e.g. due to payload size limits).
 type DocListIterator struct {
+	client          *Client
 	docs            *Docs
 	name            string
 	size            *int64
@@ -254,6 +272,7 @@ type DocListIterator struct {
 	filter          map[string]any
 	partitionFilter *components.PartitionFilter
 	fields          *components.FieldsSelectorUnion
+	ref             *components.RefContext
 	done            bool
 	callOpts        []operations.Option
 }
@@ -264,7 +283,7 @@ func (d *CollectionDocs) ListIterator(ctx context.Context, listOpts *ListDocsOpt
 	if opts == nil {
 		opts = []operations.Option{}
 	}
-	it := &DocListIterator{docs: d.client.docs, name: d.name, callOpts: opts}
+	it := &DocListIterator{client: d.client, docs: d.client.docs, name: d.name, callOpts: opts}
 	if listOpts != nil {
 		it.size = listOpts.Size
 		if listOpts.PageToken != nil {
@@ -275,6 +294,7 @@ func (d *CollectionDocs) ListIterator(ctx context.Context, listOpts *ListDocsOpt
 		it.filter = listOpts.Filter
 		it.partitionFilter = listOpts.PartitionFilter
 		it.fields = listOpts.Fields
+		it.ref = listOpts.Ref
 	}
 	return it
 }
@@ -286,7 +306,7 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 	}
 	var res *operations.ListDocsResponse
 	var err error
-	if it.filter != nil || it.partitionFilter != nil || it.fields != nil {
+	if it.filter != nil || it.partitionFilter != nil || it.fields != nil || it.ref != nil {
 		res, err = it.docs.ListExtended(ctx, it.name, operations.ListDocsExtendedRequestBody{
 			Size:            it.size,
 			PageToken:       it.nextToken,
@@ -294,6 +314,7 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 			PartitionFilter: it.partitionFilter,
 			Fields:          it.fields,
 			IncludeVectors:  it.includeVectors,
+			Ref:             it.ref,
 		}, it.callOpts...)
 	} else {
 		res, err = it.docs.List(ctx, it.name, it.size, it.nextToken, it.includeVectors, it.callOpts...)
@@ -307,7 +328,7 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := it.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch list docs from URL: %w", err)
 		}
 	}
@@ -355,7 +376,17 @@ func (d *CollectionDocs) Upsert(ctx context.Context, body UpsertDocsInput, opts 
 // GetBulkUpsertInfo returns info required for bulk upload (presigned URL, object key, and optionally sizeLimitBytes).
 // When sizeLimitBytes is present, the upload payload must not exceed it (e.g. LambdaDB uses 200MB).
 func (d *CollectionDocs) GetBulkUpsertInfo(ctx context.Context, opts ...operations.Option) (*GetBulkUpsertInfoResult, error) {
-	res, err := d.client.docs.GetBulkUpsertInfo(ctx, d.name, opts...)
+	return d.getBulkUpsertInfo(ctx, nil, opts...)
+}
+
+// GetBulkUpsertInfoForBranch returns upload info scoped to the given write
+// branch. The same branch must be used for the completion request.
+func (d *CollectionDocs) GetBulkUpsertInfoForBranch(ctx context.Context, branch string, opts ...operations.Option) (*GetBulkUpsertInfoResult, error) {
+	return d.getBulkUpsertInfo(ctx, &branch, opts...)
+}
+
+func (d *CollectionDocs) getBulkUpsertInfo(ctx context.Context, branch *string, opts ...operations.Option) (*GetBulkUpsertInfoResult, error) {
+	res, err := d.client.docs.GetBulkUpsertInfo(ctx, d.name, branch, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -369,6 +400,7 @@ func (d *CollectionDocs) GetBulkUpsertInfo(ctx context.Context, opts ...operatio
 		Type:           o.Type,
 		HTTPMethod:     o.HTTPMethod,
 		SizeLimitBytes: o.SizeLimitBytes,
+		Headers:        o.Headers,
 	}, nil
 }
 
@@ -385,7 +417,7 @@ func (d *CollectionDocs) BulkUpsert(ctx context.Context, body BulkUpsertInput, o
 // It is a convenience over calling GetBulkUpsertInfo, uploading to the presigned URL, and BulkUpsert separately.
 // The body format is the same as Upsert (docs array). When the API returns sizeLimitBytes in GetBulkUpsertInfo, payload size is validated against it before uploading.
 func (d *CollectionDocs) BulkUpsertDocuments(ctx context.Context, body UpsertDocsInput, opts ...operations.Option) (*operations.BulkUpsertDocsResponse, error) {
-	info, err := d.GetBulkUpsertInfo(ctx, opts...)
+	info, err := d.getBulkUpsertInfo(ctx, body.Branch, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("get bulk upsert info: %w", err)
 	}
@@ -407,13 +439,19 @@ func (d *CollectionDocs) BulkUpsertDocuments(ctx context.Context, body UpsertDoc
 	if err != nil {
 		return nil, fmt.Errorf("create upload request: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	for key, value := range info.Headers {
+		req.Header.Set(key, value)
+	}
+	contentType := "application/json"
+	if info.Type != nil && string(*info.Type) != "" {
+		contentType = string(*info.Type)
+	}
+	req.Header.Set("Content-Type", contentType)
 	if info.HTTPMethod != nil && string(*info.HTTPMethod) != "" {
 		req.Method = string(*info.HTTPMethod)
 	}
 
-	uploadClient := &http.Client{Timeout: 10 * time.Minute}
-	resp, err := uploadClient.Do(req)
+	resp, err := d.client.transferClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("upload to presigned URL: %w", err)
 	}
@@ -423,7 +461,11 @@ func (d *CollectionDocs) BulkUpsertDocuments(ctx context.Context, body UpsertDoc
 		return nil, fmt.Errorf("upload failed: status %d, body: %s", resp.StatusCode, string(respBody))
 	}
 
-	return d.client.docs.BulkUpsert(ctx, d.name, operations.BulkUpsertDocsRequestBody{ObjectKey: info.ObjectKey}, opts...)
+	return d.client.docs.BulkUpsert(ctx, d.name, operations.BulkUpsertDocsRequestBody{
+		ObjectKey: info.ObjectKey,
+		Type:      info.Type,
+		Branch:    body.Branch,
+	}, opts...)
 }
 
 // Update updates documents in the collection.
@@ -448,7 +490,7 @@ func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ..
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := d.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch docs from URL: %w", err)
 		}
 	}
@@ -460,13 +502,12 @@ func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ..
 }
 
 // fetchJSONFromURL GETs the URL and unmarshals the response body as JSON into v.
-func fetchJSONFromURL(ctx context.Context, url string, v interface{}) error {
+func (c *Client) fetchJSONFromURL(ctx context.Context, url string, v interface{}) error {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
 	}
-	client := &http.Client{Timeout: 5 * time.Minute}
-	resp, err := client.Do(req)
+	resp, err := c.transferClient.Do(req)
 	if err != nil {
 		return err
 	}

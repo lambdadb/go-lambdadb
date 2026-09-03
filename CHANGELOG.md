@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Implemented against the Data Versioning API contract in
+`lambdadb/docs@63e07d6b2e281704aa3367fbeb94f40f519241b8` (OpenAPI `1.1.1`).
+This source revision does not by itself indicate that the API is deployed.
+
+### Added
+
+- Collection-scoped Branch, Tag, and Alias lifecycle operations.
+- Ref-scoped Query, Fetch, and extended List reads.
+- Branch-scoped Upsert, Update, Delete, and Bulk Upsert writes.
+- Collection descriptions, metadata tags, default branch, and snapshot
+  retention fields.
+- Signed bulk-upload header forwarding and Branch-scoped upload URL requests.
+- Ref and source constructors for concise, safer Branch, Tag, and Alias usage.
+- `WithTransferClient` for configuring presigned uploads and out-of-line result
+  downloads independently from authenticated API requests.
+
+### Changed
+
+- Collection timestamps now decode Unix epoch milliseconds.
+- Collection creation now expects HTTP 201 and deletion expects HTTP 200.
+- Collection creation uses the current metadata and retention contract instead
+  of the removed cross-collection source fields.
+- Public Data Versioning method signatures use top-level SDK type names, and
+  paginated document reads preserve their Ref across every page.
 
 ## [0.3.3] - 2026-05-28
 
@@ -26,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **CollectionResponse timestamps**: `CreatedAt`, `UpdatedAt`, and `DataUpdatedAt` (API sends Unix epoch seconds; SDK exposes as `types.UnixTime` and `GetCreatedAt()` / `GetUpdatedAt()` / `GetDataUpdatedAt()` for `time.Time`). Documented in [CollectionResponse](../../docs/models/components/collectionresponse.md) and [Collections Get](../../docs/sdks/collections/README.md#get).
+- **CollectionResponse timestamps**: `CreatedAt`, `UpdatedAt`, and `DataUpdatedAt` (API sends Unix epoch seconds; SDK exposes as `types.UnixTime` and `GetCreatedAt()` / `GetUpdatedAt()` / `GetDataUpdatedAt()` for `time.Time`). Documented in [CollectionResponse](docs/models/components/collectionresponse.md) and [Collections Get](docs/sdks/collections/README.md#get).
 
 ## [0.2.0] - 2025-02-26
 

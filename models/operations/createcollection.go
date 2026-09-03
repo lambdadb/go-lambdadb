@@ -7,13 +7,15 @@ import (
 
 type CreateCollectionRequest struct {
 	// Collection name must be unique within a project and the supported maximum length is 52.
-	CollectionName       string                                  `json:"collectionName"`
-	IndexConfigs         map[string]components.IndexConfigsUnion `json:"indexConfigs,omitzero"`
-	PartitionConfig      *components.PartitionConfig             `json:"partitionConfig,omitzero"`
-	SourceProjectName    *string                                 `json:"sourceProjectName,omitzero"`
-	SourceCollectionName *string                                 `json:"sourceCollectionName,omitzero"`
-	SourceDatetime       *string                                 `json:"sourceDatetime,omitzero"`
-	SourceProjectAPIKey  *string                                 `json:"sourceProjectApiKey,omitzero"`
+	CollectionName string                                  `json:"collectionName"`
+	IndexConfigs   map[string]components.IndexConfigsUnion `json:"indexConfigs"`
+	// Optional collection description.
+	Description *string `json:"description,omitzero"`
+	// Collection metadata tags. The API accepts up to five entries.
+	Tags            map[string]string           `json:"tags,omitzero"`
+	PartitionConfig *components.PartitionConfig `json:"partitionConfig,omitzero"`
+	// Number of days to retain committed snapshots. Defaults to 30.
+	SnapshotRetentionInDays *int64 `json:"snapshotRetentionInDays,omitzero"`
 }
 
 func (c CreateCollectionRequest) MarshalJSON() ([]byte, error) {
@@ -48,32 +50,25 @@ func (c *CreateCollectionRequest) GetPartitionConfig() *components.PartitionConf
 	return c.PartitionConfig
 }
 
-func (c *CreateCollectionRequest) GetSourceProjectName() *string {
+func (c *CreateCollectionRequest) GetDescription() *string {
 	if c == nil {
 		return nil
 	}
-	return c.SourceProjectName
+	return c.Description
 }
 
-func (c *CreateCollectionRequest) GetSourceCollectionName() *string {
+func (c *CreateCollectionRequest) GetTags() map[string]string {
 	if c == nil {
 		return nil
 	}
-	return c.SourceCollectionName
+	return c.Tags
 }
 
-func (c *CreateCollectionRequest) GetSourceDatetime() *string {
+func (c *CreateCollectionRequest) GetSnapshotRetentionInDays() *int64 {
 	if c == nil {
 		return nil
 	}
-	return c.SourceDatetime
-}
-
-func (c *CreateCollectionRequest) GetSourceProjectAPIKey() *string {
-	if c == nil {
-		return nil
-	}
-	return c.SourceProjectAPIKey
+	return c.SnapshotRetentionInDays
 }
 
 // CreateCollectionResponseBody - Created collection

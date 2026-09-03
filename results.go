@@ -40,4 +40,5 @@ type GetBulkUpsertInfoResult struct {
 	Type           *operations.Type
 	HTTPMethod     *operations.HTTPMethod
 	SizeLimitBytes *int64
+	Headers        map[string]string
 }
