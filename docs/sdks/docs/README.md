@@ -53,12 +53,12 @@ func main() {
 | Parameter                                                | Type                                                     | Required                                                 | Description                                              |
 | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
-| `listOpts`                                               | *[ListDocsOpts](../../../options.go)                     | :heavy_minus_sign:                                       | Optional: Size, PageToken, IncludeVectors, Filter, PartitionFilter, Fields. Pass nil for defaults. isDocsInline and docsUrl are response-only (not request options). |
+| `listOpts`                                               | *[ListDocsOpts](../../../options.go)                     | :heavy_minus_sign:                                       | Optional: Size, PageToken, IncludeVectors, Filter, PartitionFilter, Fields, Ref. Pass nil for defaults. isDocsInline and docsUrl are response-only (not request options). |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
 
 Use `client.Collection("name").Docs().List(ctx, nil)` or `List(ctx, &lambdadb.ListDocsOpts{...})`.
 
-When `Filter`, `PartitionFilter`, or `Fields` is set, the SDK uses the extended list endpoint (`POST /collections/{collectionName}/docs/list`) automatically:
+When `Filter`, `PartitionFilter`, `Fields`, or `Ref` is set, the SDK uses the extended list endpoint (`POST /collections/{collectionName}/docs/list`) automatically:
 
 ```go
 fields := components.CreateFieldsSelectorUnionFieldsSelector1(components.FieldsSelector1{
@@ -168,7 +168,9 @@ func main() {
 
 ## GetBulkUpsertInfo
 
-Request required info to upload documents.
+Request required info to upload documents. The response includes signed
+`Headers`; forward them unchanged on the upload along with `Content-Type` from
+`Type`. `BulkUpsertDocuments` handles both automatically.
 
 ### Example Usage
 

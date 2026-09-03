@@ -10,7 +10,7 @@ type QueryCollectionRequestBody struct {
 	Size *int64 `json:"size,omitzero"`
 	// Query object. For managed embedding vector fields, use knn.queryText. For unmanaged vector fields, use knn.queryVector.
 	Query map[string]any `json:"query"`
-	// If your application requires a strongly consistent read, set consistentRead to true. Although a strongly consistent read might take more time than an eventually consistent read, it always returns the last updated value.
+	// Requests a strongly consistent read. This is valid only when Ref directly selects a branch.
 	ConsistentRead *bool `default:"false" json:"consistentRead"`
 	// If your application need to include vector values in the response, set includeVectors to true.
 	IncludeVectors *bool `default:"false" json:"includeVectors"`
@@ -19,6 +19,8 @@ type QueryCollectionRequestBody struct {
 	// An object to specify a list of field names to include and/or exclude in the result.
 	Fields          *components.FieldsSelectorUnion `json:"fields,omitzero"`
 	PartitionFilter *components.PartitionFilter     `json:"partitionFilter,omitzero"`
+	// Collection branch, tag, or alias to read.
+	Ref *components.RefContext `json:"ref,omitzero"`
 }
 
 func (q QueryCollectionRequestBody) MarshalJSON() ([]byte, error) {
@@ -79,6 +81,13 @@ func (q *QueryCollectionRequestBody) GetPartitionFilter() *components.PartitionF
 		return nil
 	}
 	return q.PartitionFilter
+}
+
+func (q *QueryCollectionRequestBody) GetRef() *components.RefContext {
+	if q == nil {
+		return nil
+	}
+	return q.Ref
 }
 
 type QueryCollectionRequest struct {

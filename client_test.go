@@ -114,8 +114,8 @@ func TestCollectionsList_RequestURLAndHeaders(t *testing.T) {
 }
 
 func TestCollectionGet_RequestURL(t *testing.T) {
-	// Get collection returns 200 with a single collection body (createdAt/updatedAt/dataUpdatedAt are Unix seconds in API)
-	body := `{"collection":{"projectName":"playground","collectionName":"my-coll","indexConfigs":{},"numPartitions":1,"numDocs":0,"collectionStatus":"ACTIVE","createdAt":1700000000,"updatedAt":1700000100,"dataUpdatedAt":1700000200}}`
+	// Get collection returns 200 with Unix epoch millisecond timestamps.
+	body := `{"collection":{"projectName":"playground","collectionName":"my-coll","indexConfigs":{},"description":"","tags":{},"numPartitions":1,"numDocs":0,"defaultBranchName":"main","snapshotRetentionInDays":30,"createdAt":1700000000000,"updatedAt":1700000100000,"dataUpdatedAt":1700000200000}}`
 	rt := &mockRoundTripper{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -447,6 +447,11 @@ func TestBulkUpsertDocuments_Flow(t *testing.T) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		if got := r.Header.Get("If-None-Match"); got != "*" {
+			t.Errorf("upload server: If-None-Match = %q, want *", got)
+			http.Error(w, "missing signed header", http.StatusBadRequest)
+			return
+		}
 		uploadReceived = true
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -459,7 +464,7 @@ func TestBulkUpsertDocuments_Flow(t *testing.T) {
 			callCount++
 			if callCount == 1 {
 				// GetBulkUpsertInfo (GET)
-				body := []byte(`{"url":"` + uploadServer.URL + `","type":"application/json","httpMethod":"PUT","objectKey":"test-key","sizeLimitBytes":209715200}`)
+				body := []byte(`{"url":"` + uploadServer.URL + `","type":"application/json","httpMethod":"PUT","objectKey":"test-key","sizeLimitBytes":209715200,"headers":{"If-None-Match":"*"}}`)
 				return &http.Response{
 					StatusCode: http.StatusOK,
 					Header:     http.Header{"Content-Type": {"application/json"}},
@@ -482,7 +487,7 @@ func TestBulkUpsertDocuments_Flow(t *testing.T) {
 	)
 	ctx := context.Background()
 
-	body := UpsertDocsInput{Docs: []map[string]any{{"id": "1", "name": "a"}}}
+	body := UpsertDocsInput{Docs: []map[string]any{{"id": "1", "name": "a"}}, Branch: String("candidate")}
 	res, err := client.Collection("my-coll").Docs().BulkUpsertDocuments(ctx, body)
 	if err != nil {
 		t.Fatalf("BulkUpsertDocuments err = %v", err)

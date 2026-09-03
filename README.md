@@ -17,6 +17,7 @@ LambdaDB API: LambdaDB Open API Spec
   * [Authentication](#authentication)
   * [Configuration](#configuration)
   * [Available Resources and Operations](#available-resources-and-operations)
+  * [Data Versioning](#data-versioning)
   * [Pagination](#pagination)
   * [Retries](#retries)
   * [Error Handling](#error-handling)
@@ -78,7 +79,7 @@ Use `client.Collection(name)` to work with a single collection without passing t
 	coll := client.Collection("my-collection")
 	meta, err := coll.Get(ctx)
 	docs, err := coll.Docs().List(ctx, nil)
-	err = coll.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: myDocs})
+	_, err = coll.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: myDocs})
 ```
 
 <!-- End SDK Example Usage [usage] -->
@@ -141,10 +142,73 @@ func main() {
 Use `client.Collection("name")` for operations on a single collection (no need to pass the collection name on every call):
 
 * **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `result.Docs` is always populated.
-* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, or `Fields` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
+* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, `Fields`, or `Ref` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete). Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
+* **Collection.Branches()**: Create, List, and Delete writable branches.
+* **Collection.Tags()**: Create, List, and Delete immutable tags.
+* **Collection.Aliases()**: Create, List, Retarget, and Delete aliases. See the [Data Versioning API guide](docs/sdks/versioning/README.md).
 
 </details>
 <!-- End Available Resources and Operations [operations] -->
+
+## Data Versioning
+
+Every collection has a default writable `main` branch. Create branches for
+isolated writes, tags for immutable snapshots, and aliases for movable read
+references.
+
+```go
+collection := client.Collection("my-collection")
+
+branch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
+	BranchName: "candidate",
+	Source: &lambdadb.RefSource{
+		Kind: lambdadb.RefSourceKindBranch,
+		Name: "main",
+	},
+})
+
+tag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
+	TagName: "validated-2026-09",
+	Source: &lambdadb.RefSource{
+		Kind: lambdadb.RefSourceKindBranch,
+		Name: branch.Name,
+	},
+})
+
+_, err = collection.Aliases().Create(ctx, lambdadb.CreateAliasInput{
+	AliasName: "production",
+	Target: lambdadb.AliasTarget{
+		Kind: lambdadb.RefSourceKindTag,
+		Name: tag.Name,
+	},
+})
+```
+
+Select a branch, tag, or alias for reads with `Ref`. Simple document lists
+automatically use the extended list endpoint when a ref is supplied.
+
+```go
+result, err := collection.Query(ctx, lambdadb.QueryInput{
+	Query: map[string]any{"matchAll": map[string]any{}},
+	Ref: &lambdadb.RefContext{
+		Kind: lambdadb.RefKindAlias,
+		Name: "production",
+	},
+})
+```
+
+Select a writable branch for document mutations with `Branch`:
+
+```go
+_, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
+	Docs:   myDocs,
+	Branch: lambdadb.String("candidate"),
+})
+```
+
+`ConsistentRead` is supported only when `Ref` directly selects a branch. Tags
+are immutable, while aliases can be retargeted and therefore resolve at request
+time.
 
 <!-- Start Pagination [pagination] -->
 ## Pagination

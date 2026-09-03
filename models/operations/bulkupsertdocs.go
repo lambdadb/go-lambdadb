@@ -8,6 +8,24 @@ import (
 type BulkUpsertDocsRequestBody struct {
 	// Object key uploaded based on bulk upsert info.
 	ObjectKey string `json:"objectKey"`
+	// Content type used for the uploaded object.
+	Type *Type `default:"application/json" json:"type,omitzero"`
+	// Write target branch. Defaults to main when omitted.
+	Branch *string `json:"branch,omitzero"`
+}
+
+func (b *BulkUpsertDocsRequestBody) GetType() *Type {
+	if b == nil {
+		return nil
+	}
+	return b.Type
+}
+
+func (b *BulkUpsertDocsRequestBody) GetBranch() *string {
+	if b == nil {
+		return nil
+	}
+	return b.Branch
 }
 
 func (b *BulkUpsertDocsRequestBody) GetObjectKey() string {

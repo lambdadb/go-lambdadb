@@ -1,20 +1,22 @@
 # CollectionResponse
 
-
 ## Fields
 
-| Field                                                                                   | Type                                                                                    | Required                                                                                | Description                                                                             |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `ProjectName`                                                                           | *string*                                                                                | :heavy_check_mark:                                                                      | Project name.                                                                           |
-| `CollectionName`                                                                        | *string*                                                                                | :heavy_check_mark:                                                                      | Collection name.                                                                        |
-| `IndexConfigs`                                                                          | map[string][components.IndexConfigsUnion](../../models/components/indexconfigsunion.md) | :heavy_check_mark:                                                                      | N/A                                                                                     |
-| `PartitionConfig`                                                                       | [*components.PartitionConfig](../../models/components/partitionconfig.md)               | :heavy_minus_sign:                                                                      | N/A                                                                                     |
-| `NumPartitions`                                                                         | *int64*                                                                                 | :heavy_check_mark:                                                                      | Total number of partitions including the default partition.                             |
-| `NumDocs`                                                                               | *int64*                                                                                 | :heavy_check_mark:                                                                      | Total number of documents.                                                              |
-| `SourceProjectName`                                                                     | **string*                                                                               | :heavy_minus_sign:                                                                      | Source project name.                                                                    |
-| `SourceCollectionName`                                                                  | **string*                                                                               | :heavy_minus_sign:                                                                      | Source collection name.                                                                 |
-| `SourceCollectionVersionID`                                                             | **string*                                                                               | :heavy_minus_sign:                                                                      | Source collection version.                                                              |
-| `CollectionStatus`                                                                      | [components.Status](../../models/components/status.md)                                  | :heavy_check_mark:                                                                      | Status                                                                                  |
-| `CreatedAt`                                                                             | [types.UnixTime](https://pkg.go.dev/github.com/lambdadb/go-lambdadb/types#UnixTime)     | :heavy_check_mark:                                                                      | Collection creation time. API sends seconds since Unix epoch; SDK exposes as time (use `.Time` or `GetCreatedAt()` for `time.Time`). |
-| `UpdatedAt`                                                                             | [types.UnixTime](https://pkg.go.dev/github.com/lambdadb/go-lambdadb/types#UnixTime)     | :heavy_check_mark:                                                                      | Collection last update time. API sends Unix epoch seconds; SDK exposes as time.         |
-| `DataUpdatedAt`                                                                         | [types.UnixTime](https://pkg.go.dev/github.com/lambdadb/go-lambdadb/types#UnixTime)     | :heavy_check_mark:                                                                      | Collection data last update time. API sends Unix epoch seconds; SDK exposes as time.    |
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ProjectName` | `string` | Yes | Project name. |
+| `CollectionName` | `string` | Yes | Collection name. |
+| `IndexConfigs` | `map[string]components.IndexConfigsUnion` | Yes | Collection index configuration. |
+| `Description` | `string` | Yes | Collection description. |
+| `Tags` | `map[string]string` | Yes | Collection metadata tags. |
+| `PartitionConfig` | `*components.PartitionConfig` | No | Partition configuration. |
+| `NumPartitions` | `int64` | Yes | Total partitions including the default partition. |
+| `NumDocs` | `int64` | Yes | Total documents. |
+| `DefaultBranchName` | `string` | Yes | Default writable branch, currently `main`. |
+| `SnapshotRetentionInDays` | `int64` | Yes | Committed snapshot retention period. |
+| `CreatedAt` | `types.UnixMilliTime` | Yes | Collection creation time as Unix epoch milliseconds. |
+| `UpdatedAt` | `types.UnixMilliTime` | Yes | Collection update time as Unix epoch milliseconds. |
+| `DataUpdatedAt` | `types.UnixMilliTime` | No | Data update time as Unix epoch milliseconds. |
+
+The timestamp fields expose the embedded `time.Time`. The `GetCreatedAt`,
+`GetUpdatedAt`, and `GetDataUpdatedAt` methods return `time.Time` values.

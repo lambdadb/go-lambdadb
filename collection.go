@@ -185,6 +185,21 @@ func (c *Collection) Docs() *CollectionDocs {
 	return &CollectionDocs{client: c.client, name: c.name}
 }
 
+// Branches returns a handle for branch operations on this collection.
+func (c *Collection) Branches() *CollectionBranches {
+	return &CollectionBranches{collection: c}
+}
+
+// Tags returns a handle for tag operations on this collection.
+func (c *Collection) Tags() *CollectionTags {
+	return &CollectionTags{collection: c}
+}
+
+// Aliases returns a handle for alias operations on this collection.
+func (c *Collection) Aliases() *CollectionAliases {
+	return &CollectionAliases{collection: c}
+}
+
 // CollectionDocs provides document operations for a single collection.
 type CollectionDocs struct {
 	client *Client
@@ -200,6 +215,7 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 	var filter map[string]any
 	var partitionFilter *components.PartitionFilter
 	var fields *components.FieldsSelectorUnion
+	var ref *components.RefContext
 	if listOpts != nil {
 		size = listOpts.Size
 		pageToken = listOpts.PageToken
@@ -207,10 +223,11 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 		filter = listOpts.Filter
 		partitionFilter = listOpts.PartitionFilter
 		fields = listOpts.Fields
+		ref = listOpts.Ref
 	}
 	var res *operations.ListDocsResponse
 	var err error
-	if filter != nil || partitionFilter != nil || fields != nil {
+	if filter != nil || partitionFilter != nil || fields != nil || ref != nil {
 		res, err = d.client.docs.ListExtended(ctx, d.name, operations.ListDocsExtendedRequestBody{
 			Size:            size,
 			PageToken:       pageToken,
@@ -218,6 +235,7 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 			PartitionFilter: partitionFilter,
 			Fields:          fields,
 			IncludeVectors:  includeVectors,
+			Ref:             ref,
 		}, opts...)
 	} else {
 		res, err = d.client.docs.List(ctx, d.name, size, pageToken, includeVectors, opts...)
@@ -369,6 +387,7 @@ func (d *CollectionDocs) GetBulkUpsertInfo(ctx context.Context, opts ...operatio
 		Type:           o.Type,
 		HTTPMethod:     o.HTTPMethod,
 		SizeLimitBytes: o.SizeLimitBytes,
+		Headers:        o.Headers,
 	}, nil
 }
 
@@ -407,7 +426,14 @@ func (d *CollectionDocs) BulkUpsertDocuments(ctx context.Context, body UpsertDoc
 	if err != nil {
 		return nil, fmt.Errorf("create upload request: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	for key, value := range info.Headers {
+		req.Header.Set(key, value)
+	}
+	contentType := "application/json"
+	if info.Type != nil && string(*info.Type) != "" {
+		contentType = string(*info.Type)
+	}
+	req.Header.Set("Content-Type", contentType)
 	if info.HTTPMethod != nil && string(*info.HTTPMethod) != "" {
 		req.Method = string(*info.HTTPMethod)
 	}
@@ -423,7 +449,11 @@ func (d *CollectionDocs) BulkUpsertDocuments(ctx context.Context, body UpsertDoc
 		return nil, fmt.Errorf("upload failed: status %d, body: %s", resp.StatusCode, string(respBody))
 	}
 
-	return d.client.docs.BulkUpsert(ctx, d.name, operations.BulkUpsertDocsRequestBody{ObjectKey: info.ObjectKey}, opts...)
+	return d.client.docs.BulkUpsert(ctx, d.name, operations.BulkUpsertDocsRequestBody{
+		ObjectKey: info.ObjectKey,
+		Type:      info.Type,
+		Branch:    body.Branch,
+	}, opts...)
 }
 
 // Update updates documents in the collection.

@@ -22,6 +22,9 @@ type ListDocsOpts struct {
 	PartitionFilter *components.PartitionFilter
 	// Field selector. When set, the SDK uses the extended list endpoint.
 	Fields *components.FieldsSelectorUnion
+	// Collection branch, tag, or alias to read. When set, the SDK uses the
+	// extended list endpoint.
+	Ref *components.RefContext
 }
 
 // ListCollectionsOpts holds optional parameters for listing collections.
@@ -59,3 +62,38 @@ type FetchDocsInput = operations.FetchDocsRequestBody
 
 // BulkUpsertInput is the body for bulk upsert (alias of operations.BulkUpsertDocsRequestBody).
 type BulkUpsertInput = operations.BulkUpsertDocsRequestBody
+
+// RefContext selects a branch, tag, or alias for a read.
+type RefContext = components.RefContext
+
+// RefKind identifies the kind of ref selected for a read.
+type RefKind = components.RefKind
+
+// RefSource selects a branch or tag as the source of a new branch or tag.
+type RefSource = components.RefSource
+
+// RefSourceKind identifies a branch or tag source.
+type RefSourceKind = components.RefSourceKind
+
+// AliasTarget selects a branch or tag for an alias.
+type AliasTarget = components.AliasTarget
+
+// RefDetails describes a branch or tag returned by the Data Versioning API.
+type RefDetails = components.RefDetails
+
+// AliasDetails describes an alias returned by the Data Versioning API.
+type AliasDetails = components.AliasDetails
+
+// AliasTargetKind is the resolved target kind returned by the API.
+type AliasTargetKind = components.AliasTargetKind
+
+const (
+	RefKindBranch = components.RefKindBranch
+	RefKindTag    = components.RefKindTag
+	RefKindAlias  = components.RefKindAlias
+
+	RefSourceKindBranch   = components.RefSourceKindBranch
+	RefSourceKindTag      = components.RefSourceKindTag
+	AliasTargetKindBranch = components.AliasTargetKindBranch
+	AliasTargetKindTag    = components.AliasTargetKindTag
+)

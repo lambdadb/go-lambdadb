@@ -57,6 +57,8 @@ type ListDocsExtendedRequestBody struct {
 	Fields *components.FieldsSelectorUnion `json:"fields,omitzero"`
 	// Set to true to include vector values in the response. Defaults to false.
 	IncludeVectors *bool `default:"false" json:"includeVectors"`
+	// Collection branch, tag, or alias to read.
+	Ref *components.RefContext `json:"ref,omitzero"`
 }
 
 func (l ListDocsExtendedRequestBody) MarshalJSON() ([]byte, error) {
@@ -110,6 +112,13 @@ func (l *ListDocsExtendedRequestBody) GetIncludeVectors() *bool {
 		return nil
 	}
 	return l.IncludeVectors
+}
+
+func (l *ListDocsExtendedRequestBody) GetRef() *components.RefContext {
+	if l == nil {
+		return nil
+	}
+	return l.Ref
 }
 
 type ListDocsExtendedRequest struct {
