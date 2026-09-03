@@ -13,6 +13,29 @@ Implemented against the Data Versioning API contract in
 `lambdadb/docs@63e07d6b2e281704aa3367fbeb94f40f519241b8` (OpenAPI `1.1.1`).
 This source revision does not by itself indicate that the API is deployed.
 
+### Breaking changes
+
+- `CollectionResponse` no longer exposes `CollectionStatus`,
+  `SourceProjectName`, `SourceCollectionName`, or
+  `SourceCollectionVersionID`, and their corresponding getters have been
+  removed. The current Collection response contract has no direct replacements
+  for these fields.
+- `CreateCollectionOptions` no longer exposes `SourceProjectName`,
+  `SourceCollectionName`, `SourceDatetime`, or `SourceProjectAPIKey`, and their
+  corresponding getters have been removed. Create Collections using the
+  current metadata and retention options. Data Versioning Branches and Tags
+  version data within an existing Collection and are not a direct replacement
+  for the removed cross-collection source behavior.
+- `CollectionResponse.CreatedAt`, `UpdatedAt`, and `DataUpdatedAt` now use
+  `types.UnixMilliTime` instead of `types.UnixTime` because the current API
+  returns Unix epoch milliseconds. Code that depends on the concrete field
+  type must migrate; the `GetCreatedAt`, `GetUpdatedAt`, and `GetDataUpdatedAt`
+  helpers continue to return `time.Time`.
+- Collection creation now requires HTTP 201 instead of HTTP 202, and deletion
+  requires HTTP 200 instead of HTTP 202, in accordance with the current API
+  contract. Update test servers and custom transports that return the previous
+  status codes.
+
 ### Added
 
 - Collection-scoped Branch, Tag, and Alias lifecycle operations.
@@ -27,10 +50,6 @@ This source revision does not by itself indicate that the API is deployed.
 
 ### Changed
 
-- Collection timestamps now decode Unix epoch milliseconds.
-- Collection creation now expects HTTP 201 and deletion expects HTTP 200.
-- Collection creation uses the current metadata and retention contract instead
-  of the removed cross-collection source fields.
 - Public Data Versioning method signatures use top-level SDK type names, and
   paginated document reads preserve their Ref across every page.
 
