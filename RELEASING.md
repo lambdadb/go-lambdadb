@@ -71,10 +71,15 @@ the final validation checklist passes.
 4. Validate the exact `develop` commit through a commit-SHA dependency.
 5. Run smoke tests against the intended LambdaDB development or staging environment.
 6. Merge the validated SDK commit into `main`.
-7. Publish `vX.Y.Z-rc.1` and mark its GitHub Release as a prerelease.
-8. Address feedback with a new commit and increment the RC number. Never move
+7. Synchronize the resulting reviewed `main` commit back into `develop` before
+   further development so release-only version and changelog changes do not
+   diverge. Use a `main` to `develop` pull request when the branch is protected.
+8. Publish `vX.Y.Z-rc.1` from that reviewed `main` commit and mark its GitHub
+   Release as a prerelease.
+9. Address feedback with a new commit and increment the RC number. Never move
    an existing tag.
-9. Publish `vX.Y.Z` only after the release candidate is accepted.
+10. Publish `vX.Y.Z` only after the release candidate is accepted, then
+    synchronize any stable-release-only commit from `main` back into `develop`.
 
 ## Validation checklist
 
