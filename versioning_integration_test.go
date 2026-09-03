@@ -2,12 +2,14 @@ package lambdadb_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	lambdadb "github.com/lambdadb/go-lambdadb"
+	"github.com/lambdadb/go-lambdadb/models/apierrors"
 	"github.com/lambdadb/go-lambdadb/models/components"
 	"github.com/lambdadb/go-lambdadb/models/operations"
 )
@@ -27,7 +29,10 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	suffix := time.Now().UTC().Format("20060102-150405")
 	collectionName := "go-sdk-versioning-" + suffix
 	branchName := "candidate-" + suffix
+	defaultBranchName := "default-" + suffix
+	asOfBranchName := "asof-" + suffix
 	tagName := "validated-" + suffix
+	defaultTagName := "default-tag-" + suffix
 	aliasName := "production-" + suffix
 	seedID := "seed-" + suffix
 	docID := "doc-" + suffix
@@ -108,6 +113,41 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	waitForIntegrationMainDoc(t, ctx, collection, seedID, "seed")
 	waitForIntegrationBranchSnapshot(t, ctx, collection, "main")
 
+	defaultBranch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
+		BranchName: defaultBranchName,
+	})
+	if err != nil {
+		t.Fatalf("create branch with omitted source: %v", err)
+	}
+	if defaultBranch == nil || defaultBranch.Name != defaultBranchName || defaultBranch.SnapshotID == nil {
+		t.Fatalf("unexpected default-source branch: %#v", defaultBranch)
+	}
+	_, err = collection.Branches().Create(ctx, lambdadb.CreateBranchInput{BranchName: defaultBranchName})
+	requireIntegrationAlreadyExists(t, err, "create duplicate branch")
+
+	asOfBranch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
+		BranchName: asOfBranchName,
+		Source: &lambdadb.RefSource{
+			Kind: lambdadb.RefSourceKindBranch,
+			Name: "main",
+			AsOf: lambdadb.Int64(time.Now().Add(time.Minute).UnixMilli()),
+		},
+	})
+	if err != nil {
+		t.Fatalf("create branch with asOf source: %v", err)
+	}
+	if asOfBranch == nil || asOfBranch.Name != asOfBranchName || asOfBranch.SnapshotID == nil {
+		t.Fatalf("unexpected asOf branch: %#v", asOfBranch)
+	}
+
+	defaultTag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{TagName: defaultTagName})
+	if err != nil {
+		t.Fatalf("create tag with omitted source: %v", err)
+	}
+	if defaultTag == nil || defaultTag.Name != defaultTagName || defaultTag.SnapshotID == nil {
+		t.Fatalf("unexpected default-source tag: %#v", defaultTag)
+	}
+
 	branch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 		BranchName: branchName,
 		Source: &lambdadb.RefSource{
@@ -181,6 +221,23 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 		t.Fatalf("unexpected created alias: %#v", alias)
 	}
 
+	_, err = collection.Docs().Fetch(ctx, lambdadb.FetchDocsInput{
+		Ids:            []string{seedID},
+		ConsistentRead: lambdadb.Bool(true),
+		Ref:            &lambdadb.RefContext{Kind: lambdadb.RefKindTag, Name: tagName},
+	})
+	requireIntegrationBadRequest(t, err, "fetch tag with consistentRead")
+
+	_, err = collection.Query(ctx, lambdadb.QueryInput{
+		Query:          map[string]any{"queryString": map[string]any{"query": "*:*"}},
+		ConsistentRead: lambdadb.Bool(true),
+		Ref:            &lambdadb.RefContext{Kind: lambdadb.RefKindAlias, Name: aliasName},
+	})
+	requireIntegrationBadRequest(t, err, "query alias with consistentRead")
+
+	_, err = collection.Branches().Delete(ctx, "main")
+	requireIntegrationBadRequest(t, err, "delete main branch")
+
 	branches, err := collection.Branches().List(ctx)
 	if err != nil || !containsIntegrationRef(branches, branchName) {
 		t.Fatalf("list branches: found=%v err=%v", containsIntegrationRef(branches, branchName), err)
@@ -250,13 +307,38 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if _, err := collection.Tags().Delete(ctx, tagName); err != nil {
 		t.Fatalf("delete tag: %v", err)
 	}
+	if _, err := collection.Tags().Delete(ctx, defaultTagName); err != nil {
+		t.Fatalf("delete default-source tag: %v", err)
+	}
 	if _, err := collection.Branches().Delete(ctx, branchName); err != nil {
 		t.Fatalf("delete branch: %v", err)
+	}
+	if _, err := collection.Branches().Delete(ctx, asOfBranchName); err != nil {
+		t.Fatalf("delete asOf branch: %v", err)
+	}
+	if _, err := collection.Branches().Delete(ctx, defaultBranchName); err != nil {
+		t.Fatalf("delete default-source branch: %v", err)
 	}
 	if _, err := collection.Delete(ctx); err != nil {
 		t.Fatalf("delete collection: %v", err)
 	}
 	collectionDeleted = true
+}
+
+func requireIntegrationBadRequest(t *testing.T, err error, operation string) {
+	t.Helper()
+	var target *apierrors.BadRequestError
+	if !errors.As(err, &target) {
+		t.Fatalf("%s error = %T %v, want BadRequestError", operation, err, err)
+	}
+}
+
+func requireIntegrationAlreadyExists(t *testing.T, err error, operation string) {
+	t.Helper()
+	var target *apierrors.ResourceAlreadyExistsError
+	if !errors.As(err, &target) {
+		t.Fatalf("%s error = %T %v, want ResourceAlreadyExistsError", operation, err, err)
+	}
 }
 
 func checkIntegrationFetchRef(t *testing.T, ctx context.Context, collection *lambdadb.Collection, branchName, id string) bool {
