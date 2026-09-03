@@ -6,7 +6,32 @@ import (
 )
 
 type UpdateCollectionRequestBody struct {
-	IndexConfigs map[string]components.IndexConfigsUnion `json:"indexConfigs"`
+	IndexConfigs map[string]components.IndexConfigsUnion `json:"indexConfigs,omitzero"`
+	Description  *string                                 `json:"description,omitzero"`
+	Tags         map[string]string                       `json:"tags,omitzero"`
+	// Number of days to retain committed snapshots.
+	SnapshotRetentionInDays *int64 `json:"snapshotRetentionInDays,omitzero"`
+}
+
+func (u *UpdateCollectionRequestBody) GetDescription() *string {
+	if u == nil {
+		return nil
+	}
+	return u.Description
+}
+
+func (u *UpdateCollectionRequestBody) GetTags() map[string]string {
+	if u == nil {
+		return nil
+	}
+	return u.Tags
+}
+
+func (u *UpdateCollectionRequestBody) GetSnapshotRetentionInDays() *int64 {
+	if u == nil {
+		return nil
+	}
+	return u.SnapshotRetentionInDays
 }
 
 func (u *UpdateCollectionRequestBody) GetIndexConfigs() map[string]components.IndexConfigsUnion {

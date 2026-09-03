@@ -757,9 +757,10 @@ func (s *Docs) Upsert(ctx context.Context, collectionName string, body operation
 }
 
 // GetBulkUpsertInfo - Request required info to upload documents.
-func (s *Docs) GetBulkUpsertInfo(ctx context.Context, collectionName string, opts ...operations.Option) (*operations.GetBulkUpsertDocsResponse, error) {
+func (s *Docs) GetBulkUpsertInfo(ctx context.Context, collectionName string, branch *string, opts ...operations.Option) (*operations.GetBulkUpsertDocsResponse, error) {
 	request := operations.GetBulkUpsertDocsRequest{
 		CollectionName: collectionName,
+		Branch:         branch,
 	}
 
 	o := operations.Options{}
@@ -815,6 +816,10 @@ func (s *Docs) GetBulkUpsertInfo(ctx context.Context, collectionName string, opt
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", s.sdkConfiguration.UserAgent)
+
+	if err := utils.PopulateQueryParams(ctx, req, &request, nil, nil); err != nil {
+		return nil, fmt.Errorf("error populating query params: %w", err)
+	}
 
 	if err := utils.PopulateSecurity(ctx, req, s.sdkConfiguration.Security); err != nil {
 		return nil, err

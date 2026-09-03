@@ -11,27 +11,27 @@ type CollectionResponse struct {
 	// Project name.
 	ProjectName string `json:"projectName"`
 	// Collection name.
-	CollectionName  string                       `json:"collectionName"`
-	IndexConfigs    map[string]IndexConfigsUnion `json:"indexConfigs"`
-	PartitionConfig *PartitionConfig             `json:"partitionConfig,omitzero"`
+	CollectionName string                       `json:"collectionName"`
+	IndexConfigs   map[string]IndexConfigsUnion `json:"indexConfigs"`
+	// Collection description.
+	Description string `json:"description"`
+	// Collection metadata tags.
+	Tags            map[string]string `json:"tags"`
+	PartitionConfig *PartitionConfig  `json:"partitionConfig,omitzero"`
 	// Total number of partitions including the default partition.
 	NumPartitions int64 `json:"numPartitions"`
 	// Total number of documents.
 	NumDocs int64 `json:"numDocs"`
-	// Source project name.
-	SourceProjectName *string `json:"sourceProjectName,omitzero"`
-	// Source collection name.
-	SourceCollectionName *string `json:"sourceCollectionName,omitzero"`
-	// Source collection version.
-	SourceCollectionVersionID *string `json:"sourceCollectionVersionId,omitzero"`
-	// Status
-	CollectionStatus Status `json:"collectionStatus"`
-	// Collection creation time (seconds since Unix epoch in API; exposed as time).
-	CreatedAt types.UnixTime `json:"createdAt"`
-	// Collection last update time (seconds since Unix epoch in API; exposed as time).
-	UpdatedAt types.UnixTime `json:"updatedAt"`
-	// Collection data last update time (seconds since Unix epoch in API; exposed as time).
-	DataUpdatedAt types.UnixTime `json:"dataUpdatedAt"`
+	// Default writable branch. The current API always returns main.
+	DefaultBranchName string `json:"defaultBranchName"`
+	// Number of days committed snapshots are retained.
+	SnapshotRetentionInDays int64 `json:"snapshotRetentionInDays"`
+	// Collection creation time as Unix epoch milliseconds, exposed as time.
+	CreatedAt types.UnixMilliTime `json:"createdAt"`
+	// Collection last update time as Unix epoch milliseconds, exposed as time.
+	UpdatedAt types.UnixMilliTime `json:"updatedAt"`
+	// Collection data last update time as Unix epoch milliseconds, exposed as time.
+	DataUpdatedAt types.UnixMilliTime `json:"dataUpdatedAt,omitzero"`
 }
 
 func (c CollectionResponse) MarshalJSON() ([]byte, error) {
@@ -73,6 +73,20 @@ func (c *CollectionResponse) GetPartitionConfig() *PartitionConfig {
 	return c.PartitionConfig
 }
 
+func (c *CollectionResponse) GetDescription() string {
+	if c == nil {
+		return ""
+	}
+	return c.Description
+}
+
+func (c *CollectionResponse) GetTags() map[string]string {
+	if c == nil {
+		return nil
+	}
+	return c.Tags
+}
+
 func (c *CollectionResponse) GetNumPartitions() int64 {
 	if c == nil {
 		return 0
@@ -87,32 +101,18 @@ func (c *CollectionResponse) GetNumDocs() int64 {
 	return c.NumDocs
 }
 
-func (c *CollectionResponse) GetSourceProjectName() *string {
+func (c *CollectionResponse) GetDefaultBranchName() string {
 	if c == nil {
-		return nil
+		return ""
 	}
-	return c.SourceProjectName
+	return c.DefaultBranchName
 }
 
-func (c *CollectionResponse) GetSourceCollectionName() *string {
+func (c *CollectionResponse) GetSnapshotRetentionInDays() int64 {
 	if c == nil {
-		return nil
+		return 0
 	}
-	return c.SourceCollectionName
-}
-
-func (c *CollectionResponse) GetSourceCollectionVersionID() *string {
-	if c == nil {
-		return nil
-	}
-	return c.SourceCollectionVersionID
-}
-
-func (c *CollectionResponse) GetCollectionStatus() Status {
-	if c == nil {
-		return Status("")
-	}
-	return c.CollectionStatus
+	return c.SnapshotRetentionInDays
 }
 
 // GetCreatedAt returns the collection creation time.

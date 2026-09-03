@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.4.0-rc.1] - 2026-09-03
+
+Implemented against the Data Versioning API contract in
+`lambdadb/docs@63e07d6b2e281704aa3367fbeb94f40f519241b8` (OpenAPI `1.1.1`).
+This source revision does not by itself indicate that the API is deployed.
+
+### Breaking changes
+
+- `CollectionResponse` no longer exposes `CollectionStatus`,
+  `SourceProjectName`, `SourceCollectionName`, or
+  `SourceCollectionVersionID`, and their corresponding getters have been
+  removed. The current Collection response contract has no direct replacements
+  for these fields.
+- `CreateCollectionOptions` no longer exposes `SourceProjectName`,
+  `SourceCollectionName`, `SourceDatetime`, or `SourceProjectAPIKey`, and their
+  corresponding getters have been removed. Create Collections using the
+  current metadata and retention options. Data Versioning Branches and Tags
+  version data within an existing Collection and are not a direct replacement
+  for the removed cross-collection source behavior.
+- `CollectionResponse.CreatedAt`, `UpdatedAt`, and `DataUpdatedAt` now use
+  `types.UnixMilliTime` instead of `types.UnixTime` because the current API
+  returns Unix epoch milliseconds. Code that depends on the concrete field
+  type must migrate; the `GetCreatedAt`, `GetUpdatedAt`, and `GetDataUpdatedAt`
+  helpers continue to return `time.Time`.
+- Collection creation now requires HTTP 201 instead of HTTP 202, and deletion
+  requires HTTP 200 instead of HTTP 202, in accordance with the current API
+  contract. Update test servers and custom transports that return the previous
+  status codes.
+
+### Added
+
+- Collection-scoped Branch, Tag, and Alias lifecycle operations.
+- Ref-scoped Query, Fetch, and extended List reads.
+- Branch-scoped Upsert, Update, Delete, and Bulk Upsert writes.
+- Collection descriptions, metadata tags, default branch, and snapshot
+  retention fields.
+- Signed bulk-upload header forwarding and Branch-scoped upload URL requests.
+- Ref and source constructors for concise, safer Branch, Tag, and Alias usage.
+- `WithTransferClient` for configuring presigned uploads and out-of-line result
+  downloads independently from authenticated API requests.
+
+### Changed
+
+- Public Data Versioning method signatures use top-level SDK type names, and
+  paginated document reads preserve their Ref across every page.
 
 ## [0.3.3] - 2026-05-28
 
@@ -26,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **CollectionResponse timestamps**: `CreatedAt`, `UpdatedAt`, and `DataUpdatedAt` (API sends Unix epoch seconds; SDK exposes as `types.UnixTime` and `GetCreatedAt()` / `GetUpdatedAt()` / `GetDataUpdatedAt()` for `time.Time`). Documented in [CollectionResponse](../../docs/models/components/collectionresponse.md) and [Collections Get](../../docs/sdks/collections/README.md#get).
+- **CollectionResponse timestamps**: `CreatedAt`, `UpdatedAt`, and `DataUpdatedAt` (API sends Unix epoch seconds; SDK exposes as `types.UnixTime` and `GetCreatedAt()` / `GetUpdatedAt()` / `GetDataUpdatedAt()` for `time.Time`). Documented in [CollectionResponse](docs/models/components/collectionresponse.md) and [Collections Get](docs/sdks/collections/README.md#get).
 
 ## [0.2.0] - 2025-02-26
 
