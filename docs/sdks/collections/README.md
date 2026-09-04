@@ -502,6 +502,10 @@ func main() {
 
 **[*operations.QueryCollectionResponse](../../models/operations/querycollectionresponse.md), error**
 
+When `Ref` selects a ref that does not exist, Query returns
+`apierrors.ResourceNotFoundError`. A dangling Alias returns
+`apierrors.BadRequestError` until it is retargeted.
+
 ### Errors
 
 | Error Type                      | Status Code                     | Content Type                    |

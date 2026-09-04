@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Clarified and regression-tested ref read errors against
+  `lambdadb/docs@a52ce19f5a1ce5ad3a30a55a5560e4591f0be9fa`: selecting a ref
+  that does not exist returns `ResourceNotFoundError`, while reading through an
+  Alias whose target is dangling returns `BadRequestError`. The SDK already
+  decoded these HTTP statuses into the corresponding error types.
+
 ## [0.4.0-rc.1] - 2026-09-03
 
 Implemented against the Data Versioning API contract in

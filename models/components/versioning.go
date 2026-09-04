@@ -15,7 +15,9 @@ const (
 	RefKindAlias  RefKind = "alias"
 )
 
-// RefContext selects the collection ref used for a read operation.
+// RefContext selects the collection ref used for a read operation. A ref that
+// does not exist returns ResourceNotFoundError; an alias whose target is
+// dangling returns BadRequestError.
 type RefContext struct {
 	Kind RefKind `json:"kind"`
 	Name string  `json:"name"`

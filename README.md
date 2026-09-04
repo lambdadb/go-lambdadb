@@ -185,6 +185,10 @@ result, err := collection.Query(ctx, lambdadb.QueryInput{
 })
 ```
 
+A ref that does not exist returns `apierrors.ResourceNotFoundError`. An Alias
+whose target has been deleted returns `apierrors.BadRequestError` until it is
+retargeted to an existing Branch or Tag.
+
 Select a writable branch for document mutations with `Branch`:
 
 ```go

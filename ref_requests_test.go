@@ -2,10 +2,12 @@ package lambdadb_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
 
 	lambdadb "github.com/lambdadb/go-lambdadb"
+	"github.com/lambdadb/go-lambdadb/models/apierrors"
 	"github.com/lambdadb/go-lambdadb/models/operations"
 )
 
@@ -112,6 +114,91 @@ func TestPublicAPI_RefReadsAndBranchWrites(t *testing.T) {
 	mock.assertDone()
 }
 
+func TestPublicAPI_RefReadErrorSemantics(t *testing.T) {
+	type readOperation struct {
+		name string
+		path string
+		call func(context.Context, *lambdadb.Client, *lambdadb.RefContext) error
+	}
+	operations := []readOperation{
+		{
+			name: "list",
+			path: "https://api.example.com/projects/project-refs/collections/articles/docs/list",
+			call: func(ctx context.Context, client *lambdadb.Client, ref *lambdadb.RefContext) error {
+				_, err := client.Collection("articles").Docs().List(ctx, &lambdadb.ListDocsOpts{Ref: ref})
+				return err
+			},
+		},
+		{
+			name: "query",
+			path: "https://api.example.com/projects/project-refs/collections/articles/query",
+			call: func(ctx context.Context, client *lambdadb.Client, ref *lambdadb.RefContext) error {
+				_, err := client.Collection("articles").Query(ctx, lambdadb.QueryInput{
+					Query: map[string]any{"queryString": map[string]any{"query": "*:*"}},
+					Ref:   ref,
+				})
+				return err
+			},
+		},
+		{
+			name: "fetch",
+			path: "https://api.example.com/projects/project-refs/collections/articles/docs/fetch",
+			call: func(ctx context.Context, client *lambdadb.Client, ref *lambdadb.RefContext) error {
+				_, err := client.Collection("articles").Docs().Fetch(ctx, lambdadb.FetchDocsInput{
+					Ids: []string{"doc-1"},
+					Ref: ref,
+				})
+				return err
+			},
+		},
+	}
+	errorCases := []struct {
+		name       string
+		statusCode int
+		message    string
+		ref        *lambdadb.RefContext
+	}{
+		{
+			name:       "dangling_alias",
+			statusCode: http.StatusBadRequest,
+			message:    "alias target does not exist",
+			ref:        lambdadb.AliasRef("production"),
+		},
+		{
+			name:       "missing_ref",
+			statusCode: http.StatusNotFound,
+			message:    "ref does not exist",
+			ref:        lambdadb.BranchRef("missing"),
+		},
+	}
+
+	for _, errorCase := range errorCases {
+		for _, operation := range operations {
+			t.Run(errorCase.name+"/"+operation.name, func(t *testing.T) {
+				mock := &publicAPIMockClient{
+					t: t,
+					handlers: []func(*http.Request) *http.Response{
+						func(req *http.Request) *http.Response {
+							assertRequest(t, req, http.MethodPost, operation.path)
+							assertRefBody(t, req, string(errorCase.ref.Kind), errorCase.ref.Name)
+							return jsonResponse(errorCase.statusCode, `{"message":"`+errorCase.message+`"}`)
+						},
+					},
+				}
+				client := lambdadb.New(
+					lambdadb.WithBaseURL("https://api.example.com"),
+					lambdadb.WithProjectName("project-refs"),
+					lambdadb.WithClient(mock),
+				)
+
+				err := operation.call(context.Background(), client, errorCase.ref)
+				assertRefReadError(t, err, errorCase.statusCode, errorCase.message)
+				mock.assertDone()
+			})
+		}
+	}
+}
+
 func TestPublicAPI_RefIsPreservedAcrossPaginatedDocumentReads(t *testing.T) {
 	assertListRequest := func(t *testing.T, req *http.Request, kind, name, pageToken string) {
 		t.Helper()
@@ -175,6 +262,40 @@ func TestPublicAPI_RefIsPreservedAcrossPaginatedDocumentReads(t *testing.T) {
 		t.Fatalf("ListAll() docs = %#v, want all-1 and all-2", allDocs)
 	}
 	mock.assertDone()
+}
+
+func assertRefReadError(t *testing.T, err error, statusCode int, message string) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("ref read error = nil")
+	}
+
+	switch statusCode {
+	case http.StatusBadRequest:
+		var target *apierrors.BadRequestError
+		if !errors.As(err, &target) {
+			t.Fatalf("ref read error = %T %v, want BadRequestError", err, err)
+		}
+		if target.Message == nil || *target.Message != message {
+			t.Fatalf("BadRequestError message = %v, want %q", target.Message, message)
+		}
+		if target.HTTPMeta.Response == nil || target.HTTPMeta.Response.StatusCode != statusCode {
+			t.Fatalf("BadRequestError status = %#v, want %d", target.HTTPMeta.Response, statusCode)
+		}
+	case http.StatusNotFound:
+		var target *apierrors.ResourceNotFoundError
+		if !errors.As(err, &target) {
+			t.Fatalf("ref read error = %T %v, want ResourceNotFoundError", err, err)
+		}
+		if target.Message == nil || *target.Message != message {
+			t.Fatalf("ResourceNotFoundError message = %v, want %q", target.Message, message)
+		}
+		if target.HTTPMeta.Response == nil || target.HTTPMeta.Response.StatusCode != statusCode {
+			t.Fatalf("ResourceNotFoundError status = %#v, want %d", target.HTTPMeta.Response, statusCode)
+		}
+	default:
+		t.Fatalf("unsupported status code %d", statusCode)
+	}
 }
 
 func assertRefBody(t *testing.T, req *http.Request, kind, name string) {
