@@ -316,6 +316,33 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 		waitForIntegrationDocAbsent(t, ctx, collection, branchName, bulkDocID)
 	}
 
+	if _, err := collection.Branches().Delete(ctx, branchName); err != nil {
+		t.Fatalf("delete alias target branch: %v", err)
+	}
+	waitForIntegrationCondition(t, ctx, "alias "+aliasName+" to become dangling", func() (bool, error) {
+		aliases, err := collection.Aliases().List(ctx)
+		if err != nil {
+			return false, err
+		}
+		for _, candidate := range aliases {
+			if candidate.AliasName == aliasName {
+				return candidate.Dangling, nil
+			}
+		}
+		return false, nil
+	})
+
+	_, err = collection.Docs().List(ctx, &lambdadb.ListDocsOpts{
+		Ref: lambdadb.AliasRef(aliasName),
+	})
+	requireIntegrationBadRequest(t, err, "list through dangling alias")
+
+	_, err = collection.Docs().Fetch(ctx, lambdadb.FetchDocsInput{
+		Ids: []string{seedID},
+		Ref: lambdadb.BranchRef("missing-" + suffix),
+	})
+	requireIntegrationResourceNotFound(t, err, "fetch through missing ref")
+
 	if _, err := collection.Aliases().Delete(ctx, aliasName); err != nil {
 		t.Fatalf("delete alias: %v", err)
 	}
@@ -324,9 +351,6 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	}
 	if _, err := collection.Tags().Delete(ctx, defaultTagName); err != nil {
 		t.Fatalf("delete default-source tag: %v", err)
-	}
-	if _, err := collection.Branches().Delete(ctx, branchName); err != nil {
-		t.Fatalf("delete branch: %v", err)
 	}
 	if _, err := collection.Branches().Delete(ctx, asOfBranchName); err != nil {
 		t.Fatalf("delete asOf branch: %v", err)
@@ -345,6 +369,14 @@ func requireIntegrationBadRequest(t *testing.T, err error, operation string) {
 	var target *apierrors.BadRequestError
 	if !errors.As(err, &target) {
 		t.Fatalf("%s error = %T %v, want BadRequestError", operation, err, err)
+	}
+}
+
+func requireIntegrationResourceNotFound(t *testing.T, err error, operation string) {
+	t.Helper()
+	var target *apierrors.ResourceNotFoundError
+	if !errors.As(err, &target) {
+		t.Fatalf("%s error = %T %v, want ResourceNotFoundError", operation, err, err)
 	}
 }
 

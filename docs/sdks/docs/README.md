@@ -79,6 +79,10 @@ res, err := client.Collection("my-collection").Docs().List(ctx, &lambdadb.ListDo
 
 **\*ListDocsResult** (one page): `Docs` is `[]operations.ListDocsDoc` (each has `Collection` and `Doc`), `Total`, `NextPageToken`. When the API returns `isDocsInline=false` and `docsUrl`, the SDK fetches the document list from the presigned URL automatically so `result.Docs` is always populated. See [ListDocsResponseBody](../../models/operations/listdocsresponsebody.md) for the API response shape.
 
+When `Ref` selects a ref that does not exist, List returns
+`apierrors.ResourceNotFoundError`. A dangling Alias returns
+`apierrors.BadRequestError` until it is retargeted.
+
 ### Errors
 
 | Error Type                      | Status Code                     | Content Type                    |
@@ -550,6 +554,10 @@ func main() {
 ### Response
 
 **[*operations.FetchDocsResponse](../../models/operations/fetchdocsresponse.md), error**
+
+When `Ref` selects a ref that does not exist, Fetch returns
+`apierrors.ResourceNotFoundError`. A dangling Alias returns
+`apierrors.BadRequestError` until it is retargeted.
 
 ### Errors
 

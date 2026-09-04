@@ -15,7 +15,8 @@ type FetchDocsRequestBody struct {
 	// An object to specify a list of field names to include and/or exclude in the result.
 	Fields          *components.FieldsSelectorUnion `json:"fields,omitzero"`
 	PartitionFilter *components.PartitionFilter     `json:"partitionFilter,omitzero"`
-	// Collection branch, tag, or alias to read.
+	// Collection branch, tag, or alias to read. A missing ref returns
+	// ResourceNotFoundError; a dangling alias returns BadRequestError.
 	Ref *components.RefContext `json:"ref,omitzero"`
 }
 
