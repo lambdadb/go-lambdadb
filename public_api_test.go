@@ -242,8 +242,8 @@ func TestPublicAPI_WriteRequestBodiesFromExternalPackage(t *testing.T) {
 				if got := body["collectionName"]; got != "articles" {
 					t.Fatalf("collectionName body = %v, want articles", got)
 				}
-				if _, ok := body["indexConfigs"].(map[string]any); !ok {
-					t.Fatalf("indexConfigs body = %#v, want object", body["indexConfigs"])
+				if configs, ok := body["indexConfigs"].(map[string]any); !ok || len(configs) == 0 {
+					t.Fatalf("indexConfigs body = %#v, want nonempty object", body["indexConfigs"])
 				}
 				if body["description"] != "Versioned articles" || body["snapshotRetentionInDays"] != float64(14) {
 					t.Fatalf("collection metadata body = %#v", body)
@@ -254,18 +254,12 @@ func TestPublicAPI_WriteRequestBodiesFromExternalPackage(t *testing.T) {
 				}
 				return jsonResponse(http.StatusCreated, `{
 					"collection": {
-						"projectName": "project-c",
 						"collectionName": "articles",
-						"indexConfigs": {},
-						"numPartitions": 1,
-						"numDocs": 0,
 						"description": "",
 						"tags": {},
 						"defaultBranchName": "main",
 						"snapshotRetentionInDays": 30,
-						"createdAt": 1700000000000,
-						"updatedAt": 1700000000000,
-						"dataUpdatedAt": 1700000000000
+						"createdAt": 1700000000000
 					}
 				}`)
 			},
@@ -293,8 +287,10 @@ func TestPublicAPI_WriteRequestBodiesFromExternalPackage(t *testing.T) {
 	)
 
 	created, err := client.Collections.Create(context.Background(), lambdadb.CreateCollectionOptions{
-		CollectionName:          "articles",
-		IndexConfigs:            map[string]components.IndexConfigsUnion{},
+		CollectionName: "articles",
+		IndexConfigs: map[string]components.IndexConfigsUnion{
+			"title": components.CreateIndexConfigsUnionText(components.IndexConfigsText{Type: components.TypeTextText}),
+		},
 		Description:             lambdadb.String("Versioned articles"),
 		Tags:                    map[string]string{"environment": "test"},
 		SnapshotRetentionInDays: lambdadb.Int64(14),

@@ -25,6 +25,8 @@ branch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 	Source:     lambdadb.BranchSource("main"),
 })
 
+// First verify the intended committed data on candidate with ConsistentRead: false.
+// Tag creation requires a nonempty committed head.
 tag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
 	TagName: "validated-2026-09",
 	Source:  lambdadb.BranchSource(branch.Name),
@@ -47,9 +49,17 @@ historical, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 })
 ```
 
-Use `TagSource(name)` when creating from a Tag. Tags are immutable.
+Use `TagSource(name)` when creating from a Tag. Tags are immutable. Branch
+creation copies committed data only, excluding pending writes. An empty source
+can produce an empty Branch; a Tag requires a nonempty committed head.
+Unavailable `asOf` history returns 400 for either Branch or Tag creation.
+Schema and retention updates are Collection scoped; Tag reads retain their
+pinned schema.
 
 ## Retarget an alias
+
+Aliases bind to target identity. Recreating a deleted target under the same
+name leaves the Alias dangling until explicitly retargeted.
 
 ```go
 alias, err := collection.Aliases().Retarget(
@@ -83,8 +93,16 @@ docs, err := collection.Docs().ListAll(ctx, &lambdadb.ListDocsOpts{
 })
 ```
 
-`ConsistentRead` is valid only when `Ref` directly selects a Branch. Tags are
-immutable, while Aliases resolve at request time and may be retargeted. `List`
+`ConsistentRead` is valid only for a directly selected Branch, including the
+omitted-ref default `main`. It overlays eligible pending writes, excludes
+pending bulk imports, and can return 429 when the pending payload exceeds the
+limit. Tag and Alias reads reject true, even when an Alias targets a Branch.
+List does not support consistent reads.
+
+Page tokens are opaque search positions and do not pin a Snapshot. For a stable
+export, keep the same immutable Tag and unchanged filters/projection on every
+page, as in the `ListAll` example above. Tags are immutable, while Aliases
+resolve at request time and may be retargeted. `List`
 and iterator pages return `ListDocsDoc` wrappers; `ListAll` returns document
 content directly as `[]map[string]any`.
 
@@ -119,7 +137,10 @@ need a custom proxy, TLS configuration, timeout, or instrumentation.
 
 ## Handle errors
 
-Lifecycle operations return the same typed API errors as generated operations:
+Lifecycle operations preserve server messages and HTTP response metadata.
+Their 409 errors use `ResourceAlreadyExistsError`, including conditional
+catalog conflicts. See [Error Handling](../../../README.md#error-handling)
+for Gateway status handling and retry control:
 
 ```go
 _, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
@@ -127,7 +148,7 @@ _, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 })
 var conflict *apierrors.ResourceAlreadyExistsError
 if errors.As(err, &conflict) {
-	// The Branch already exists.
+	// Refresh state: this can be a name collision or conditional catalog conflict.
 }
 ```
 
