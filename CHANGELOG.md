@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-rc.2] - 2026-09-09
+
 Aligned with `lambdadb/docs@b171ff0a408bbeb024535941b83b861d205a829f`
 (`reference/api/openapi.json`), reviewing `a52ce19..b171ff0`. This pins the
 source contract and does not establish deployment or general availability.
+
+### Compatibility
+
+No additional public API breaking changes relative to `0.4.0-rc.1`. The
+breaking changes documented under RC1 still apply when upgrading from `0.3.x`.
 
 ### Fixed
 
@@ -23,6 +30,9 @@ source contract and does not establish deployment or general availability.
   pagination, bulk upload retries, and Gateway error handling. Corrected empty
   schema and empty deletion examples. Regression tests cover PATCH clearing
   versus omission, Gateway response context, and storage 412 handling.
+- Extended the live smoke test to verify metadata clearing and omitted-Type
+  bulk completion, wait for committed data, and allow an eight-minute total
+  budget for the additional indexing commits.
 - Clarified and regression-tested ref read errors against
   `lambdadb/docs@a52ce19f5a1ce5ad3a30a55a5560e4591f0be9fa`: selecting a ref
   that does not exist returns `ResourceNotFoundError`, while reading through an
