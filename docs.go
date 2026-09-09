@@ -1082,6 +1082,11 @@ func (s *Docs) GetBulkUpsertInfo(ctx context.Context, collectionName string, bra
 
 // BulkUpsert - Bulk upsert documents into a collection. Note that the maximum supported object size is 200MB.
 func (s *Docs) BulkUpsert(ctx context.Context, collectionName string, body operations.BulkUpsertDocsRequestBody, opts ...operations.Option) (*operations.BulkUpsertDocsResponse, error) {
+	// The server does not provide a reliable default. Preserve callers that omit
+	// Type by sending the supported content type explicitly on the wire.
+	if body.Type == nil {
+		body.Type = operations.TypeApplicationJSON.ToPointer()
+	}
 	request := operations.BulkUpsertDocsRequest{
 		CollectionName: collectionName,
 		Body:           body,

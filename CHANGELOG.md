@@ -7,8 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Aligned with `lambdadb/docs@b171ff0a408bbeb024535941b83b861d205a829f`
+(`reference/api/openapi.json`), reviewing `a52ce19..b171ff0`. This pins the
+source contract and does not establish deployment or general availability.
+
+### Fixed
+
+- Bulk completion now explicitly sends `type: "application/json"` when callers
+  omit `Type`, preserving the existing optional Go field without relying on a
+  server default.
+
 ### Changed
 
+- Clarified Collection PATCH, default-Branch statistics, committed-data reads,
+  pagination, bulk upload retries, and Gateway error handling. Corrected empty
+  schema and empty deletion examples. Regression tests cover PATCH clearing
+  versus omission, Gateway response context, and storage 412 handling.
 - Clarified and regression-tested ref read errors against
   `lambdadb/docs@a52ce19f5a1ce5ad3a30a55a5560e4591f0be9fa`: selecting a ref
   that does not exist returns `ResourceNotFoundError`, while reading through an

@@ -237,6 +237,22 @@ Branch for both control requests.
 
 ## BulkUpsert
 
+Completion sends an explicit content type: `BulkUpsert` uses `application/json`
+when `Type` is nil. When handling the upload manually, pass the returned `Type`
+and use the same Branch for both control calls. An object key is bound to that
+Branch's identity and cannot be reused after deleting and recreating it.
+
+Presigned uploads are create-only (`If-None-Match: *`). `BulkUpsertDocuments`
+forwards signed headers and stops on a storage 412 without another PUT or a
+completion request. Storage errors retain their status and body and are not
+LambdaDB JSON errors. Get a new URL for a new upload attempt, after resolving
+any uncertain prior outcome. Custom transfer clients must also respect this
+create-only behavior. API control calls retain the SDK's configured retries;
+see [Errors and retries](../../../README.md#error-handling).
+
+An accepted bulk import becomes visible only after indexing commits it;
+`ConsistentRead: true` does not include pending bulk imports.
+
 Bulk upsert documents into a collection. The uploaded object (via presigned URL) must not exceed **200MB**; use `lambdadb.MaxBulkUpsertPayloadBytes` when validating payload size.
 
 ### Example Usage
@@ -376,7 +392,10 @@ func main() {
 
 ## Delete
 
-Delete documents by document IDs or query filter from a collection.
+Delete documents by document IDs or query filter from a collection. Specify
+exactly one of `Ids` or `Filter`. An empty body, both selectors together, or
+`PartitionFilter` alone returns `BadRequestError`; partition filters only
+narrow an IDs or filter selection.
 
 ### Example Usage: deleteByIds
 
@@ -470,7 +489,9 @@ func main() {
         lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
-    res, err := client.Collection("my-collection").Docs().Delete(ctx, lambdadb.DeleteDocsInput{})
+    res, err := client.Collection("my-collection").Docs().Delete(ctx, lambdadb.DeleteDocsInput{
+        Ids: []string{"doc-1"},
+    })
     if err != nil {
         log.Fatal(err)
     }
