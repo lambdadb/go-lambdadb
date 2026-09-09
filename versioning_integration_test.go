@@ -1,8 +1,12 @@
 package lambdadb_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -25,7 +29,8 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	projectName := requireIntegrationEnv(t, "LAMBDADB_PROJECT_NAME")
 	apiKey := requireIntegrationEnv(t, "LAMBDADB_PROJECT_API_KEY")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)
+	// Allow separate indexing commits for the seed, writes, and both bulk paths.
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
 	defer cancel()
 
 	suffix := time.Now().UTC().Format("20060102-150405")
@@ -39,6 +44,7 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	seedID := "seed-" + suffix
 	docID := "doc-" + suffix
 	bulkDocID := "bulk-" + suffix
+	manualBulkDocID := "manual-bulk-" + suffix
 
 	client := lambdadb.New(
 		lambdadb.WithBaseURL(baseURL),
@@ -55,6 +61,8 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 		defer cleanupCancel()
 		if _, err := collection.Delete(cleanupCtx); err != nil {
 			t.Logf("cleanup collection %q: %v", collectionName, err)
+		} else {
+			t.Logf("cleanup deleted temporary collection %q", collectionName)
 		}
 	})
 
@@ -106,6 +114,17 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if updated == nil || updated.Description != "Go SDK Data Versioning smoke test (updated)" || updated.SnapshotRetentionInDays != 2 {
 		t.Fatalf("unexpected updated collection: %#v", updated)
 	}
+	cleared, err := collection.Update(ctx, lambdadb.UpdateCollectionOptions{
+		Description: lambdadb.String(""),
+		Tags:        map[string]string{},
+	})
+	if err != nil {
+		t.Fatalf("clear collection metadata: %v", err)
+	}
+	if cleared == nil || cleared.Description != "" || len(cleared.Tags) != 0 || cleared.SnapshotRetentionInDays != 2 {
+		t.Fatalf("metadata clearing or omitted retention mismatch: %#v", cleared)
+	}
+	t.Log("metadata clearing and omitted retention verified")
 
 	if _, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
 		Docs: []map[string]any{{"id": seedID, "title": "seed"}},
@@ -194,6 +213,50 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if refFetchSupported {
 		waitForIntegrationDoc(t, ctx, collection, branchName, bulkDocID, "bulk")
 	}
+	// Exercise the manual completion path with Type omitted, in addition to the
+	// one-step helper above, which passes the returned Type explicitly.
+	info, err := collection.Docs().GetBulkUpsertInfoForBranch(ctx, branchName)
+	if err != nil {
+		t.Fatalf("get manual bulk upload info: %v", err)
+	}
+	if info == nil || info.Type == nil || info.HTTPMethod == nil {
+		t.Fatalf("manual bulk upload info is incomplete")
+	}
+	payload, err := json.Marshal(map[string]any{"docs": []map[string]any{{"id": manualBulkDocID, "title": "manual bulk"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.SizeLimitBytes != nil && int64(len(payload)) > *info.SizeLimitBytes {
+		t.Fatal("manual bulk payload exceeds returned size limit")
+	}
+	upload, err := http.NewRequestWithContext(ctx, string(*info.HTTPMethod), info.URL, bytes.NewReader(payload))
+	if err != nil {
+		t.Fatal("create manual bulk upload request")
+	}
+	upload.Header.Set("Content-Type", string(*info.Type))
+	for key, value := range info.Headers {
+		upload.Header.Set(key, value)
+	}
+	response, err := http.DefaultClient.Do(upload)
+	if err != nil {
+		// Do not log a presigned URL contained in a transport error.
+		t.Fatal("manual bulk upload transport failure")
+	}
+	_, _ = io.Copy(io.Discard, response.Body)
+	response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		t.Fatalf("manual bulk upload status: %d", response.StatusCode)
+	}
+	if _, err := collection.Docs().BulkUpsert(ctx, lambdadb.BulkUpsertInput{
+		ObjectKey: info.ObjectKey,
+		Branch:    lambdadb.String(branchName),
+	}); err != nil {
+		t.Fatalf("bulk completion with omitted Type: %v", err)
+	}
+	if refFetchSupported {
+		waitForIntegrationDoc(t, ctx, collection, branchName, manualBulkDocID, "manual bulk")
+	}
+	t.Log("helper and omitted-Type bulk imports verified with committed reads")
 
 	branchDocs, err := collection.Docs().ListAll(ctx, &lambdadb.ListDocsOpts{
 		Size: lambdadb.Int64(1),
@@ -204,7 +267,8 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	}
 	if !containsIntegrationRawDoc(branchDocs, seedID) ||
 		!containsIntegrationRawDoc(branchDocs, docID) ||
-		!containsIntegrationRawDoc(branchDocs, bulkDocID) {
+		!containsIntegrationRawDoc(branchDocs, bulkDocID) ||
+		!containsIntegrationRawDoc(branchDocs, manualBulkDocID) {
 		t.Fatalf("paginated branch list did not contain expected documents: %#v", branchDocs)
 	}
 
@@ -362,6 +426,7 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 		t.Fatalf("delete collection: %v", err)
 	}
 	collectionDeleted = true
+	t.Log("temporary collection deleted")
 }
 
 func requireIntegrationBadRequest(t *testing.T, err error, operation string) {
@@ -428,7 +493,7 @@ func waitForIntegrationDoc(t *testing.T, ctx context.Context, collection *lambda
 	waitForIntegrationCondition(t, ctx, "document "+id, func() (bool, error) {
 		result, err := collection.Docs().Fetch(ctx, lambdadb.FetchDocsInput{
 			Ids:            []string{id},
-			ConsistentRead: lambdadb.Bool(true),
+			ConsistentRead: lambdadb.Bool(false),
 			Ref:            &lambdadb.RefContext{Kind: lambdadb.RefKindBranch, Name: branchName},
 		})
 		if err != nil {
@@ -448,7 +513,7 @@ func waitForIntegrationMainDoc(t *testing.T, ctx context.Context, collection *la
 	waitForIntegrationCondition(t, ctx, "main document "+id, func() (bool, error) {
 		result, err := collection.Docs().Fetch(ctx, lambdadb.FetchDocsInput{
 			Ids:            []string{id},
-			ConsistentRead: lambdadb.Bool(true),
+			ConsistentRead: lambdadb.Bool(false),
 		})
 		if err != nil {
 			return false, err
@@ -467,7 +532,7 @@ func waitForIntegrationDocAbsent(t *testing.T, ctx context.Context, collection *
 	waitForIntegrationCondition(t, ctx, "document deletion "+id, func() (bool, error) {
 		result, err := collection.Docs().Fetch(ctx, lambdadb.FetchDocsInput{
 			Ids:            []string{id},
-			ConsistentRead: lambdadb.Bool(true),
+			ConsistentRead: lambdadb.Bool(false),
 			Ref:            &lambdadb.RefContext{Kind: lambdadb.RefKindBranch, Name: branchName},
 		})
 		if err != nil {
