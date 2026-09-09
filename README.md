@@ -185,6 +185,10 @@ result, err := collection.Query(ctx, lambdadb.QueryInput{
 })
 ```
 
+A ref that does not exist returns `apierrors.ResourceNotFoundError`. An Alias
+whose target has been deleted returns `apierrors.BadRequestError` until it is
+retargeted to an existing Branch or Tag.
+
 Select a writable branch for document mutations with `Branch`:
 
 ```go
@@ -339,6 +343,23 @@ func main() {
 
 <!-- Start Error Handling [errors] -->
 ## Error Handling
+
+Gateway errors preserve the server message and HTTP response metadata. New
+contract statuses 413, 502, 503, and 504 remain available through the existing
+error types: generated Collection/document operations use `APIError` for
+these statuses; Ref operations use `InternalServerError` for 5xx and `APIError`
+for 413. Inspect `APIError.StatusCode` / `RawResponse`, or a typed error's
+`HTTPMeta.Response`. A 409 can mean a conditional catalog conflict as well as
+a name collision. A 429 can also mean too much pending data for a consistent
+read; `Retry-After` is honored when present and is not guaranteed.
+
+The existing retry policy retries 429 and 5xx responses. A failed or timed-out
+write may already have been applied. To check the outcome before repeating a
+mutation, disable automatic retries for that call with
+`operations.WithRetries(retry.Config{Strategy: "none"})`, then verify its
+resulting state. This also applies to bulk completion API calls; the presigned
+storage upload is a separate request. Reduce request size or use supported
+bulk upsert for 413; refresh state before retrying a 409.
 
 Handling errors in this SDK should largely match your expectations. All operations return a response object or an error, they will never return both.
 

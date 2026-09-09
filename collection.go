@@ -157,6 +157,7 @@ func (c *Collection) Delete(ctx context.Context, opts ...operations.Option) (*op
 
 // Query runs a search query on the collection.
 // When the API returns isDocsInline=false and docsUrl, the SDK fetches docs from the presigned URL automatically so result.Docs is always populated.
+// A missing input Ref returns ResourceNotFoundError; a dangling Alias returns BadRequestError.
 func (c *Collection) Query(ctx context.Context, input QueryInput, opts ...operations.Option) (*QueryResult, error) {
 	res, err := c.client.collections.Query(ctx, c.name, input, opts...)
 	if err != nil {
@@ -207,6 +208,7 @@ type CollectionDocs struct {
 
 // List lists documents in the collection (one page).
 // Pass nil for listOpts to use defaults (no size limit, no page token).
+// A missing listOpts Ref returns ResourceNotFoundError; a dangling Alias returns BadRequestError.
 func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts ...operations.Option) (*ListDocsResult, error) {
 	var size *int64
 	var pageToken *string
@@ -480,6 +482,7 @@ func (d *CollectionDocs) Delete(ctx context.Context, body DeleteDocsInput, opts 
 
 // Fetch fetches documents by IDs from the collection.
 // When the API returns isDocsInline=false and docsUrl, the SDK fetches docs from the presigned URL automatically so result.Docs is always populated.
+// A missing body Ref returns ResourceNotFoundError; a dangling Alias returns BadRequestError.
 func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ...operations.Option) (*FetchResult, error) {
 	res, err := d.client.docs.Fetch(ctx, d.name, body, opts...)
 	if err != nil {

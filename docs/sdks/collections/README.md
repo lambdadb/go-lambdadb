@@ -24,7 +24,6 @@ package main
 import(
 	"context"
 	lambdadb "github.com/lambdadb/go-lambdadb"
-	"github.com/lambdadb/go-lambdadb/models/components"
 	"log"
 )
 
@@ -100,6 +99,11 @@ func main() {
 
 ## Create
 
+Use a nonempty `IndexConfigs`. Nil retention selects the server default of 30
+days; valid explicit values are 1–31. The compact 201 response confirms catalog
+creation. Use Get or List for the full model and actual reads to verify indexed
+data; there is no Collection readiness status to poll.
+
 Create a collection.
 
 ### Example Usage: example
@@ -111,6 +115,7 @@ package main
 import(
 	"context"
 	lambdadb "github.com/lambdadb/go-lambdadb"
+	"github.com/lambdadb/go-lambdadb/models/components"
 	"log"
 )
 
@@ -124,8 +129,12 @@ func main() {
     )
 
     res, err := client.Collections.Create(ctx, lambdadb.CreateCollectionOptions{
-        CollectionName: "<value>",
-        IndexConfigs: map[string]components.IndexConfigsUnion{},
+        CollectionName: "articles",
+        IndexConfigs: map[string]components.IndexConfigsUnion{
+            "title": components.CreateIndexConfigsUnionText(components.IndexConfigsText{
+                Type: components.TypeTextText,
+            }),
+        },
     })
     if err != nil {
         log.Fatal(err)
@@ -210,7 +219,9 @@ func main() {
 
 ## Delete
 
-Delete an existing collection.
+Delete an existing collection. HTTP 200 confirms logical deletion; physical
+cleanup may continue. Recreating the name gives a new identity. Discard cached
+state, and expect 404 when deleting an already absent Collection.
 
 ### Example Usage
 
@@ -327,7 +338,15 @@ Collection is specified via `client.Collection("name")`. The returned [Collectio
 
 ## Update
 
-Configure a collection.
+Configure a collection. Nil fields remain unchanged. An empty description
+clears it; a supplied metadata map replaces all tags, and `map[string]string{}`
+clears them. Send at least one non-nil field. Retention is 1–31 days. See the
+[PATCH field rules](../../models/operations/updatecollectionrequestbody.md).
+
+Schema updates require the nonempty full schema, preserving every existing
+field definition. Adding nested children to an existing object is rejected;
+new top-level fields are supported. The schema example below assumes the
+Collection has the two fields shown in the create example, unchanged.
 
 ### Example Usage: example
 
@@ -382,47 +401,13 @@ func main() {
     }
 }
 ```
-### Example Usage: normalCollection
+### Example Usage: clear metadata
 
-<!-- UsageSnippet language="go" operationID="updateCollection" method="patch" path="/collections/{collectionName}" example="normalCollection" -->
 ```go
-package main
-
-import(
-	"context"
-	lambdadb "github.com/lambdadb/go-lambdadb"
-	"github.com/lambdadb/go-lambdadb/models/components"
-	"log"
-)
-
-func main() {
-    ctx := context.Background()
-
-    client := lambdadb.New(
-        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
-        lambdadb.WithProjectName("playground"),
-        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
-    )
-
-    res, err := client.Collection("my-collection").Update(ctx, lambdadb.UpdateCollectionOptions{
-        IndexConfigs: map[string]components.IndexConfigsUnion{
-            "key": components.CreateIndexConfigsUnionObject(
-                components.IndexConfigsObject{
-                    Type: components.TypeObjectObject,
-                    ObjectIndexConfigs: map[string]any{
-
-                    },
-                },
-            ),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    if res != nil {
-        // handle response
-    }
-}
+updated, err := client.Collection("my-collection").Update(ctx, lambdadb.UpdateCollectionOptions{
+    Description: lambdadb.String(""),
+    Tags:        map[string]string{},
+})
 ```
 
 ### Parameters
@@ -501,6 +486,10 @@ func main() {
 ### Response
 
 **[*operations.QueryCollectionResponse](../../models/operations/querycollectionresponse.md), error**
+
+When `Ref` selects a ref that does not exist, Query returns
+`apierrors.ResourceNotFoundError`. A dangling Alias returns
+`apierrors.BadRequestError` until it is retargeted.
 
 ### Errors
 

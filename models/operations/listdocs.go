@@ -57,7 +57,8 @@ type ListDocsExtendedRequestBody struct {
 	Fields *components.FieldsSelectorUnion `json:"fields,omitzero"`
 	// Set to true to include vector values in the response. Defaults to false.
 	IncludeVectors *bool `default:"false" json:"includeVectors"`
-	// Collection branch, tag, or alias to read.
+	// Collection branch, tag, or alias to read. A missing ref returns
+	// ResourceNotFoundError; a dangling alias returns BadRequestError.
 	Ref *components.RefContext `json:"ref,omitzero"`
 }
 

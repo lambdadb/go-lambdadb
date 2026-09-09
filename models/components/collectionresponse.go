@@ -20,7 +20,7 @@ type CollectionResponse struct {
 	PartitionConfig *PartitionConfig  `json:"partitionConfig,omitzero"`
 	// Total number of partitions including the default partition.
 	NumPartitions int64 `json:"numPartitions"`
-	// Total number of documents.
+	// Document count in the default main branch's committed head.
 	NumDocs int64 `json:"numDocs"`
 	// Default writable branch. The current API always returns main.
 	DefaultBranchName string `json:"defaultBranchName"`
@@ -30,7 +30,9 @@ type CollectionResponse struct {
 	CreatedAt types.UnixMilliTime `json:"createdAt"`
 	// Collection last update time as Unix epoch milliseconds, exposed as time.
 	UpdatedAt types.UnixMilliTime `json:"updatedAt"`
-	// Collection data last update time as Unix epoch milliseconds, exposed as time.
+	// Last data update recorded in the default main branch's committed head,
+	// as Unix epoch milliseconds. Commits without data mutations retain the
+	// previous value. Zero when absent before a committed head exists.
 	DataUpdatedAt types.UnixMilliTime `json:"dataUpdatedAt,omitzero"`
 }
 
@@ -131,7 +133,8 @@ func (c *CollectionResponse) GetUpdatedAt() time.Time {
 	return c.UpdatedAt.Time
 }
 
-// GetDataUpdatedAt returns the collection data last update time.
+// GetDataUpdatedAt returns the last data update recorded in main's committed
+// head, or zero when absent. It is not necessarily the latest head commit time.
 func (c *CollectionResponse) GetDataUpdatedAt() time.Time {
 	if c == nil {
 		return time.Time{}

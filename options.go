@@ -25,7 +25,8 @@ type ListDocsOpts struct {
 	// Field selector. When set, the SDK uses the extended list endpoint.
 	Fields *components.FieldsSelectorUnion
 	// Collection branch, tag, or alias to read. When set, the SDK uses the
-	// extended list endpoint.
+	// extended list endpoint. A missing ref returns ResourceNotFoundError; a
+	// dangling alias returns BadRequestError.
 	Ref *RefContext
 }
 
@@ -65,7 +66,8 @@ type FetchDocsInput = operations.FetchDocsRequestBody
 // BulkUpsertInput is the body for bulk upsert (alias of operations.BulkUpsertDocsRequestBody).
 type BulkUpsertInput = operations.BulkUpsertDocsRequestBody
 
-// RefContext selects a branch, tag, or alias for a read.
+// RefContext selects a branch, tag, or alias for a read. A missing ref returns
+// ResourceNotFoundError; a dangling alias returns BadRequestError.
 type RefContext = components.RefContext
 
 // RefKind identifies the kind of ref selected for a read.

@@ -3,7 +3,10 @@
 ## RefContext
 
 `RefContext` selects a Branch, Tag, or Alias for Query, Fetch, or extended List
-reads.
+reads. Selecting a ref that does not exist returns `ResourceNotFoundError` (HTTP
+404). Reading through an Alias whose target is dangling returns
+`BadRequestError` (HTTP 400) until the Alias is retargeted to an existing Branch
+or Tag.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
