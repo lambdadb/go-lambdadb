@@ -2,9 +2,11 @@ package lambdadb_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -14,7 +16,7 @@ import (
 	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// Contract: lambdadb/docs@b171ff0a408bbeb024535941b83b861d205a829f,
+// Contract: lambdadb/docs@c8495bf47cd8918cfd546b4742823fd4cf3d0814,
 // reference/api/openapi.json. These tests exercise the public SDK wire boundary.
 func TestPublicAPI_BulkCompletionExplicitType(t *testing.T) {
 	for _, contentType := range []*operations.Type{nil, operations.TypeApplicationJSON.ToPointer()} {
@@ -169,4 +171,86 @@ func TestPublicAPI_BulkUploadPreconditionFailure(t *testing.T) {
 	}
 	api.assertDone()      // No completion request after an unsuccessful upload.
 	transfer.assertDone() // No repeat PUT to the create-only URL.
+}
+
+func TestPublicAPI_NestedSchemaUpdate(t *testing.T) {
+	// Full schema retains profile.name and profile.address.country while adding
+	// profile.city, profile.address.postcode, and a top-level category field.
+	const schema = `{"title":{"type":"text","analyzers":["standard"]},"profile":{"type":"object","objectIndexConfigs":{"name":{"type":"keyword"},"city":{"type":"keyword"},"address":{"type":"object","objectIndexConfigs":{"country":{"type":"keyword"},"postcode":{"type":"keyword"}}}}},"category":{"type":"keyword"}}`
+	var input lambdadb.UpdateCollectionOptions
+	if err := json.Unmarshal([]byte(`{"indexConfigs":`+schema+`}`), &input); err != nil {
+		t.Fatal(err)
+	}
+	var want map[string]any
+	if err := json.Unmarshal([]byte(`{"indexConfigs":`+schema+`}`), &want); err != nil {
+		t.Fatal(err)
+	}
+	mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+		func(req *http.Request) *http.Response {
+			if req.Method != http.MethodPatch {
+				t.Fatalf("method = %s", req.Method)
+			}
+			if got := decodeJSONBody(t, req); !reflect.DeepEqual(got, want) {
+				t.Fatalf("schema changed in transit: %#v", got)
+			}
+			return jsonResponse(http.StatusOK, `{"collection":{"collectionName":"articles","indexConfigs":`+schema+`}}`)
+		},
+	}}
+	if _, err := lambdadb.New(lambdadb.WithClient(mock)).Collection("articles").Update(context.Background(), input); err != nil {
+		t.Fatal(err)
+	}
+	mock.assertDone()
+}
+
+func TestPublicAPI_ConsistentReadRefConditions(t *testing.T) {
+	for _, operation := range []string{"query", "fetch"} {
+		for _, ref := range []*lambdadb.RefContext{nil, lambdadb.BranchRef("candidate"), lambdadb.TagRef("release"), lambdadb.AliasRef("branch-alias")} {
+			for _, consistent := range []*bool{nil, lambdadb.Bool(false), lambdadb.Bool(true)} {
+				name := operation + "/default"
+				if ref != nil {
+					name = operation + "/" + string(ref.Kind)
+				}
+				mode := "omitted"
+				if consistent != nil {
+					mode = strconv.FormatBool(*consistent)
+				}
+				t.Run(name+"/"+mode, func(t *testing.T) {
+					wantTrue := consistent != nil && *consistent
+					rejected := wantTrue && ref != nil && ref.Kind != lambdadb.RefKindBranch
+					mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+						func(req *http.Request) *http.Response {
+							body := decodeJSONBody(t, req)
+							if got, _ := body["consistentRead"].(bool); got != wantTrue {
+								t.Fatalf("consistentRead = %v, want %v", body["consistentRead"], wantTrue)
+							}
+							if ref == nil {
+								if _, exists := body["ref"]; exists {
+									t.Fatalf("unexpected default ref: %#v", body)
+								}
+							} else {
+								assertRef(t, body, string(ref.Kind), ref.Name)
+							}
+							if rejected {
+								return jsonResponse(http.StatusBadRequest, `{"message":"consistentRead requires a direct branch"}`)
+							}
+							return jsonResponse(http.StatusOK, `{"took":1,"total":0,"docs":[],"isDocsInline":true}`)
+						},
+					}}
+					collection := lambdadb.New(lambdadb.WithClient(mock)).Collection("articles")
+					var err error
+					if operation == "query" {
+						_, err = collection.Query(context.Background(), lambdadb.QueryInput{Query: map[string]any{"queryString": map[string]any{"query": "*:*"}}, Ref: ref, ConsistentRead: consistent})
+					} else {
+						_, err = collection.Docs().Fetch(context.Background(), lambdadb.FetchDocsInput{Ids: []string{"doc-1"}, Ref: ref, ConsistentRead: consistent})
+					}
+					if rejected {
+						assertRefReadError(t, err, http.StatusBadRequest, "consistentRead requires a direct branch")
+					} else if err != nil {
+						t.Fatal(err)
+					}
+					mock.assertDone()
+				})
+			}
+		}
+	}
 }

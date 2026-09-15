@@ -82,8 +82,14 @@ type RefSourceKind = components.RefSourceKind
 // AliasTarget selects a branch or tag for an alias.
 type AliasTarget = components.AliasTarget
 
-// RefDetails describes a branch or tag returned by the Data Versioning API.
-type RefDetails = components.RefDetails
+// SnapshotDetails identifies an immutable committed snapshot.
+type SnapshotDetails = components.SnapshotDetails
+
+// BranchDetails describes a branch and its current head and fixed creation source.
+type BranchDetails = components.BranchDetails
+
+// TagDetails describes a tag and its pinned snapshot.
+type TagDetails = components.TagDetails
 
 // AliasDetails describes an alias returned by the Data Versioning API.
 type AliasDetails = components.AliasDetails
