@@ -74,29 +74,98 @@ func (r *RefSource) GetAsOf() *int64 {
 	return r.AsOf
 }
 
-// RefDetails describes a branch or tag and its committed snapshot.
-type RefDetails struct {
-	Name       string              `json:"name"`
-	SnapshotID *string             `json:"snapshotId"`
-	CreatedAt  types.UnixMilliTime `json:"createdAt"`
+// SnapshotDetails identifies an immutable committed snapshot.
+type SnapshotDetails struct {
+	SnapshotID string `json:"snapshotId"`
+	// Snapshot commit time, independent of ref creation time and collection dataUpdatedAt.
+	SnapshotCommittedAt types.UnixMilliTime `json:"snapshotCommittedAt"`
 }
 
-func (r *RefDetails) GetName() string {
+func (r *SnapshotDetails) GetSnapshotID() string {
+	if r == nil {
+		return ""
+	}
+	return r.SnapshotID
+}
+
+func (r *SnapshotDetails) GetSnapshotCommittedAt() time.Time {
+	if r == nil {
+		return time.Time{}
+	}
+	return r.SnapshotCommittedAt.Time
+}
+
+// BranchDetails describes a writable branch and its snapshot lineage.
+type BranchDetails struct {
+	Name string `json:"name"`
+	// Current committed head; nil for an empty branch.
+	HeadSnapshot *SnapshotDetails `json:"headSnapshot"`
+	// Fixed creation source, not the previous head. Nil for main and branches
+	// created from an empty source, even after their head advances. This metadata
+	// does not extend snapshot retention.
+	ParentSnapshot *SnapshotDetails    `json:"parentSnapshot"`
+	CreatedAt      types.UnixMilliTime `json:"createdAt"`
+}
+
+func (r *BranchDetails) GetName() string {
 	if r == nil {
 		return ""
 	}
 	return r.Name
 }
 
-func (r *RefDetails) GetSnapshotID() *string {
+func (r *BranchDetails) GetHeadSnapshot() *SnapshotDetails {
 	if r == nil {
 		return nil
+	}
+	return r.HeadSnapshot
+}
+
+func (r *BranchDetails) GetParentSnapshot() *SnapshotDetails {
+	if r == nil {
+		return nil
+	}
+	return r.ParentSnapshot
+}
+
+func (r *BranchDetails) GetCreatedAt() time.Time {
+	if r == nil {
+		return time.Time{}
+	}
+	return r.CreatedAt.Time
+}
+
+// TagDetails describes an immutable tag pinning a nonempty committed snapshot.
+type TagDetails struct {
+	Name       string `json:"name"`
+	SnapshotID string `json:"snapshotId"`
+	// Pinned snapshot commit time, independent of tag creation time.
+	SnapshotCommittedAt types.UnixMilliTime `json:"snapshotCommittedAt"`
+	CreatedAt           types.UnixMilliTime `json:"createdAt"`
+}
+
+func (r *TagDetails) GetName() string {
+	if r == nil {
+		return ""
+	}
+	return r.Name
+}
+
+func (r *TagDetails) GetSnapshotID() string {
+	if r == nil {
+		return ""
 	}
 	return r.SnapshotID
 }
 
-// GetCreatedAt returns the ref creation time.
-func (r *RefDetails) GetCreatedAt() time.Time {
+func (r *TagDetails) GetSnapshotCommittedAt() time.Time {
+	if r == nil {
+		return time.Time{}
+	}
+	return r.SnapshotCommittedAt.Time
+}
+
+func (r *TagDetails) GetCreatedAt() time.Time {
 	if r == nil {
 		return time.Time{}
 	}

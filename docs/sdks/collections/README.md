@@ -344,8 +344,9 @@ clears them. Send at least one non-nil field. Retention is 1–31 days. See the
 [PATCH field rules](../../models/operations/updatecollectionrequestbody.md).
 
 Schema updates require the nonempty full schema, preserving every existing
-field definition. Adding nested children to an existing object is rejected;
-new top-level fields are supported. The schema example below assumes the
+field and its settings. New top-level fields and children under existing objects
+at any depth are supported. For example, adding `profile.city` requires retaining
+`profile.name` and its settings. The schema example below assumes the
 Collection has the two fields shown in the create example, unchanged.
 
 ### Example Usage: example

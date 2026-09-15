@@ -10,7 +10,9 @@ type QueryCollectionRequestBody struct {
 	Size *int64 `json:"size,omitzero"`
 	// Query object. For managed embedding vector fields, use knn.queryText. For unmanaged vector fields, use knn.queryVector.
 	Query map[string]any `json:"query"`
-	// Requests a strongly consistent read. This is valid only when Ref directly selects a branch.
+	// True overlays eligible pending writes only for a directly selected branch
+	// (or main when Ref is omitted). Tag and alias refs reject true, even for
+	// aliases targeting branches. False or nil reads committed data.
 	ConsistentRead *bool `default:"false" json:"consistentRead"`
 	// If your application need to include vector values in the response, set includeVectors to true.
 	IncludeVectors *bool `default:"false" json:"includeVectors"`

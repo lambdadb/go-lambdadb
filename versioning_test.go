@@ -2,9 +2,11 @@ package lambdadb_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -65,15 +67,11 @@ func TestPublicAPI_VersioningLifecycle(t *testing.T) {
 				if source["kind"] != "branch" || source["name"] != "main" || source["asOf"] != float64(1788336000000) {
 					t.Fatalf("branch source = %#v", source)
 				}
-				return jsonResponse(http.StatusCreated, `{"branch":{"name":"candidate","snapshotId":"snapshot-1","createdAt":1788336000123}}`)
+				return jsonResponse(http.StatusCreated, `{"branch":{"name":"candidate","headSnapshot":{"snapshotId":"snapshot-1","snapshotCommittedAt":1788335940456},"parentSnapshot":{"snapshotId":"snapshot-1","snapshotCommittedAt":1788335940456},"createdAt":1788336000123}}`)
 			},
 			func(req *http.Request) *http.Response {
 				assertRequest(t, req, http.MethodGet, "https://api.example.com/projects/project-versioning/collections/articles/branches")
-				return jsonResponse(http.StatusOK, `{"branches":[{"name":"candidate","snapshotId":"snapshot-1","createdAt":1788336000123}]}`)
-			},
-			func(req *http.Request) *http.Response {
-				assertRequest(t, req, http.MethodDelete, "https://api.example.com/projects/project-versioning/collections/articles/branches/candidate")
-				return jsonResponse(http.StatusOK, `{"message":"Ref deleted"}`)
+				return jsonResponse(http.StatusOK, `{"branches":[{"name":"candidate","headSnapshot":{"snapshotId":"snapshot-1","snapshotCommittedAt":1788335940456},"parentSnapshot":{"snapshotId":"snapshot-1","snapshotCommittedAt":1788335940456},"createdAt":1788336000123}]}`)
 			},
 			func(req *http.Request) *http.Response {
 				assertRequest(t, req, http.MethodPost, "https://api.example.com/projects/project-versioning/collections/articles/tags")
@@ -81,15 +79,11 @@ func TestPublicAPI_VersioningLifecycle(t *testing.T) {
 				if body["tagName"] != "validated-2026-09" {
 					t.Fatalf("tagName = %v", body["tagName"])
 				}
-				return jsonResponse(http.StatusCreated, `{"tag":{"name":"validated-2026-09","snapshotId":"snapshot-1","createdAt":1788336000123}}`)
+				return jsonResponse(http.StatusCreated, `{"tag":{"name":"validated-2026-09","snapshotId":"snapshot-1","snapshotCommittedAt":1788335940456,"createdAt":1788336000123}}`)
 			},
 			func(req *http.Request) *http.Response {
 				assertRequest(t, req, http.MethodGet, "https://api.example.com/projects/project-versioning/collections/articles/tags")
-				return jsonResponse(http.StatusOK, `{"tags":[{"name":"validated-2026-09","snapshotId":"snapshot-1","createdAt":1788336000123}]}`)
-			},
-			func(req *http.Request) *http.Response {
-				assertRequest(t, req, http.MethodDelete, "https://api.example.com/projects/project-versioning/collections/articles/tags/validated-2026-09")
-				return jsonResponse(http.StatusOK, `{"message":"Ref deleted"}`)
+				return jsonResponse(http.StatusOK, `{"tags":[{"name":"validated-2026-09","snapshotId":"snapshot-1","snapshotCommittedAt":1788335940456,"createdAt":1788336000123}]}`)
 			},
 			func(req *http.Request) *http.Response {
 				assertRequest(t, req, http.MethodPost, "https://api.example.com/projects/project-versioning/collections/articles/aliases")
@@ -117,6 +111,14 @@ func TestPublicAPI_VersioningLifecycle(t *testing.T) {
 				assertRequest(t, req, http.MethodDelete, "https://api.example.com/projects/project-versioning/collections/articles/aliases/production")
 				return jsonResponse(http.StatusOK, `{"message":"Ref deleted"}`)
 			},
+			func(req *http.Request) *http.Response {
+				assertRequest(t, req, http.MethodDelete, "https://api.example.com/projects/project-versioning/collections/articles/branches/candidate")
+				return jsonResponse(http.StatusOK, `{"message":"Ref deleted"}`)
+			},
+			func(req *http.Request) *http.Response {
+				assertRequest(t, req, http.MethodDelete, "https://api.example.com/projects/project-versioning/collections/articles/tags/validated-2026-09")
+				return jsonResponse(http.StatusOK, `{"message":"Ref deleted"}`)
+			},
 		},
 	}
 
@@ -139,7 +141,7 @@ func TestPublicAPI_VersioningLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Branches().Create() error = %v", err)
 	}
-	if branch.Name != "candidate" || branch.SnapshotID == nil || *branch.SnapshotID != "snapshot-1" {
+	if branch.Name != "candidate" || branch.HeadSnapshot == nil || branch.HeadSnapshot.SnapshotID != "snapshot-1" {
 		t.Fatalf("created branch = %#v", branch)
 	}
 	if got := branch.CreatedAt.UnixMilli(); got != createdAt {
@@ -150,9 +152,8 @@ func TestPublicAPI_VersioningLifecycle(t *testing.T) {
 	if err != nil || len(branches) != 1 {
 		t.Fatalf("Branches().List() = %#v, %v", branches, err)
 	}
-	if _, err := collection.Branches().Delete(context.Background(), "candidate"); err != nil {
-		t.Fatalf("Branches().Delete() error = %v", err)
-	}
+	assertBranchSnapshots(t, branch, "snapshot-1", "snapshot-1")
+	assertBranchSnapshots(t, &branches[0], "snapshot-1", "snapshot-1")
 
 	tag, err := collection.Tags().Create(context.Background(), lambdadb.CreateTagInput{
 		TagName: "validated-2026-09",
@@ -165,8 +166,10 @@ func TestPublicAPI_VersioningLifecycle(t *testing.T) {
 	if err != nil || len(tags) != 1 {
 		t.Fatalf("Tags().List() = %#v, %v", tags, err)
 	}
-	if _, err := collection.Tags().Delete(context.Background(), "validated-2026-09"); err != nil {
-		t.Fatalf("Tags().Delete() error = %v", err)
+	for _, got := range []*lambdadb.TagDetails{tag, &tags[0]} {
+		if got.GetSnapshotID() != "snapshot-1" || got.GetSnapshotCommittedAt().UnixMilli() != 1788335940456 || got.GetCreatedAt().UnixMilli() != createdAt {
+			t.Fatalf("tag snapshot metadata = %#v", got)
+		}
 	}
 
 	alias, err := collection.Aliases().Create(context.Background(), lambdadb.CreateAliasInput{
@@ -195,6 +198,12 @@ func TestPublicAPI_VersioningLifecycle(t *testing.T) {
 	if _, err := collection.Aliases().Delete(context.Background(), "production"); err != nil {
 		t.Fatalf("Aliases().Delete() error = %v", err)
 	}
+	if _, err := collection.Branches().Delete(context.Background(), "candidate"); err != nil {
+		t.Fatalf("Branches().Delete() error = %v", err)
+	}
+	if _, err := collection.Tags().Delete(context.Background(), "validated-2026-09"); err != nil {
+		t.Fatalf("Tags().Delete() error = %v", err)
+	}
 	mock.assertDone()
 }
 
@@ -222,4 +231,114 @@ func TestPublicAPI_VersioningTypedError(t *testing.T) {
 
 func aliasResponse(targetName, targetKind string, revision int) string {
 	return `{"alias":{"aliasId":"alias-1","aliasName":"production","targetKind":"` + targetKind + `","targetName":"` + targetName + `","targetId":"target-1","aliasRevision":` + strconv.Itoa(revision) + `,"dangling":false,"createdAt":1788336000123}}`
+}
+
+func assertBranchSnapshots(t *testing.T, branch *lambdadb.BranchDetails, headID, parentID string) {
+	t.Helper()
+	if branch.GetName() != "candidate" || branch.GetCreatedAt().UnixMilli() != 1788336000123 {
+		t.Fatalf("branch metadata = %#v", branch)
+	}
+	for name, snapshot := range map[string]*lambdadb.SnapshotDetails{"head": branch.GetHeadSnapshot(), "parent": branch.GetParentSnapshot()} {
+		wantID := headID
+		if name == "parent" {
+			wantID = parentID
+		}
+		if wantID == "" {
+			if snapshot != nil {
+				t.Fatalf("%s = %#v, want nil", name, snapshot)
+			}
+			continue
+		}
+		wantCommittedAt := int64(1788335940456)
+		if wantID == "head-2" {
+			wantCommittedAt = 1788336060789
+		}
+		if snapshot == nil || snapshot.GetSnapshotID() != wantID || snapshot.GetSnapshotCommittedAt().UnixMilli() != wantCommittedAt {
+			t.Fatalf("%s snapshot = %#v, want %s with millisecond commit time", name, snapshot, wantID)
+		}
+	}
+}
+
+func TestPublicAPI_BranchSnapshotStates(t *testing.T) {
+	for _, tc := range []struct {
+		name, head, parent, headID, parentID string
+	}{
+		{"empty", `null`, `null`, "", ""},
+		{"committed_from_empty", `{"snapshotId":"head-2","snapshotCommittedAt":1788336060789}`, `null`, "head-2", ""},
+		{"advanced_head", `{"snapshotId":"head-2","snapshotCommittedAt":1788336060789}`, `{"snapshotId":"source-1","snapshotCommittedAt":1788335940456}`, "head-2", "source-1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			createdPayload := `{"name":"candidate","createdAt":1788336000123,"headSnapshot":` + tc.parent + `,"parentSnapshot":` + tc.parent + `}`
+			payload := `{"name":"candidate","createdAt":1788336000123,"headSnapshot":` + tc.head + `,"parentSnapshot":` + tc.parent + `}`
+			mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+				func(req *http.Request) *http.Response {
+					return jsonResponse(http.StatusCreated, `{"branch":`+createdPayload+`}`)
+				},
+				func(req *http.Request) *http.Response {
+					return jsonResponse(http.StatusOK, `{"branches":[`+payload+`]}`)
+				},
+			}}
+			collection := lambdadb.New(lambdadb.WithClient(mock)).Collection("articles")
+			branch, err := collection.Branches().Create(context.Background(), lambdadb.CreateBranchInput{BranchName: "candidate"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertBranchSnapshots(t, branch, tc.parentID, tc.parentID)
+			branches, err := collection.Branches().List(context.Background())
+			if err != nil || len(branches) != 1 {
+				t.Fatalf("branches = %#v, %v", branches, err)
+			}
+			assertBranchSnapshots(t, &branches[0], tc.headID, tc.parentID)
+			encoded, err := json.Marshal(&branches[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			var body map[string]any
+			if err := json.Unmarshal(encoded, &body); err != nil {
+				t.Fatal(err)
+			}
+			if _, exists := body["snapshotId"]; exists {
+				t.Fatalf("legacy top-level snapshotId: %s", encoded)
+			}
+			for _, key := range []string{"headSnapshot", "parentSnapshot"} {
+				value, exists := body[key]
+				if !exists {
+					t.Fatalf("missing required nullable %s: %s", key, encoded)
+				}
+				if (key == "headSnapshot" && tc.headID == "" || key == "parentSnapshot" && tc.parentID == "") && value != nil {
+					t.Fatalf("%s must encode as null: %s", key, encoded)
+				}
+			}
+			mock.assertDone()
+		})
+	}
+}
+
+func TestPublicAPI_RefDeletionConflictDoesNotRetry(t *testing.T) {
+	for _, kind := range []string{"branches", "tags"} {
+		t.Run(kind, func(t *testing.T) {
+			const message = "target is referenced by an alias"
+			response := jsonResponse(http.StatusConflict, `{"message":"`+message+`"}`)
+			mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+				func(req *http.Request) *http.Response {
+					if req.Method != http.MethodDelete || !strings.HasSuffix(req.URL.Path, "/"+kind+"/candidate") {
+						t.Fatalf("unexpected request: %s %s", req.Method, req.URL)
+					}
+					return response
+				},
+			}}
+			collection := lambdadb.New(lambdadb.WithClient(mock)).Collection("articles")
+			var err error
+			if kind == "branches" {
+				_, err = collection.Branches().Delete(context.Background(), "candidate")
+			} else {
+				_, err = collection.Tags().Delete(context.Background(), "candidate")
+			}
+			var conflict *apierrors.ResourceAlreadyExistsError
+			if !errors.As(err, &conflict) || conflict.Message == nil || *conflict.Message != message || conflict.HTTPMeta.Response != response {
+				t.Fatalf("lost conflict status/message/metadata: %T %v", err, err)
+			}
+			mock.assertDone() // Default retries must not retry an in-use target.
+		})
+	}
 }

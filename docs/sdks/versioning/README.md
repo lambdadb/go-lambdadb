@@ -12,8 +12,9 @@ and read targets.
 | `collection.Aliases()` | `Create`, `List`, `Retarget`, `Delete` |
 
 All methods accept `context.Context` and optional `operations.Option` values.
-Create methods return the created ref or alias. Delete methods return a
-`MessageResponse`.
+Branch Create/List return `*BranchDetails`/`[]BranchDetails`; Tag Create/List
+return `*TagDetails`/`[]TagDetails`. Alias Create returns `*AliasDetails`.
+Delete methods return a `MessageResponse`.
 
 ## Create refs
 
@@ -49,6 +50,12 @@ historical, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 })
 ```
 
+Branch responses expose nullable `HeadSnapshot` and `ParentSnapshot`, each
+containing `SnapshotID` and `SnapshotCommittedAt`. The parent is the fixed
+creation source, not the previous head. Tag responses expose `SnapshotID` and
+`SnapshotCommittedAt` at the top level. Snapshot commit times and `CreatedAt`
+are independent epoch-millisecond timestamps.
+
 Use `TagSource(name)` when creating from a Tag. Tags are immutable. Branch
 creation copies committed data only, excluding pending writes. An empty source
 can produce an empty Branch; a Tag requires a nonempty committed head.
@@ -58,8 +65,11 @@ pinned schema.
 
 ## Retarget an alias
 
-Aliases bind to target identity. Recreating a deleted target under the same
-name leaves the Alias dangling until explicitly retargeted.
+Aliases bind to target identity. Deleting a non-default Branch or a Tag returns
+409 while any Alias references it. Delete or retarget every referencing Alias
+before deleting the target. Deleting an Alias does not delete its target.
+If a dangling Alias is encountered, reads return 400; recreating the target
+name does not repair its old identity binding.
 
 ```go
 alias, err := collection.Aliases().Retarget(
@@ -93,7 +103,7 @@ docs, err := collection.Docs().ListAll(ctx, &lambdadb.ListDocsOpts{
 })
 ```
 
-`ConsistentRead` is valid only for a directly selected Branch, including the
+`ConsistentRead: true` is valid only for a directly selected Branch, including the
 omitted-ref default `main`. It overlays eligible pending writes, excludes
 pending bulk imports, and can return 429 when the pending payload exceeds the
 limit. Tag and Alias reads reject true, even when an Alias targets a Branch.
@@ -139,8 +149,11 @@ need a custom proxy, TLS configuration, timeout, or instrumentation.
 
 Lifecycle operations preserve server messages and HTTP response metadata.
 Their 409 errors use `ResourceAlreadyExistsError`, including conditional
-catalog conflicts. See [Error Handling](../../../README.md#error-handling)
-for Gateway status handling and retry control:
+catalog conflicts and deletion of alias-referenced targets. For an in-use
+target, delete or retarget all referencing Aliases before retrying; the SDK
+does not automatically retry 409. Deleting `main` returns 400.
+See [Error Handling](../../../README.md#error-handling) for Gateway status
+handling and retry control:
 
 ```go
 _, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
