@@ -6,6 +6,8 @@ import (
 )
 
 type UpdateCollectionRequestBody struct {
+	// Nonempty full schema preserving existing fields and settings. New fields
+	// may be added at the top level or under existing objects at any depth.
 	IndexConfigs map[string]components.IndexConfigsUnion `json:"indexConfigs,omitzero"`
 	Description  *string                                 `json:"description,omitzero"`
 	Tags         map[string]string                       `json:"tags,omitzero"`

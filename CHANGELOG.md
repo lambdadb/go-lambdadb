@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Aligned with [lambdadb/docs@c8495bf47cd8918cfd546b4742823fd4cf3d0814](https://github.com/lambdadb/docs/blob/c8495bf47cd8918cfd546b4742823fd4cf3d0814/reference/api/openapi.json),
+reviewing `b171ff0..c8495bf`. This pins the source contract; deployment and
+live environment behavior require separate validation.
+
+### Breaking changes
+
+- Replaced `RefDetails` with `BranchDetails` and `TagDetails` in both the root
+  package and `models/components`. Branch Create/List now return
+  `*BranchDetails`/`[]BranchDetails`; Tag Create/List return
+  `*TagDetails`/`[]TagDetails`.
+- Read Branch snapshot IDs through `HeadSnapshot.SnapshotID` after checking
+  `HeadSnapshot != nil`. `ParentSnapshot` is the fixed creation source, not the
+  previous head. Both snapshot pointers preserve explicit JSON nulls.
+- Tag `SnapshotID` is now a non-null `string`. Tags and nested Branch snapshots
+  expose `SnapshotCommittedAt` as `types.UnixMilliTime`, with getters returning
+  `time.Time`, independently of ref creation time.
+
+### Changed
+
+- Corrected schema-update guidance: new fields may be added under existing
+  objects at any depth while preserving all existing fields and settings.
+- Documented alias-referenced Branch/Tag deletion conflicts (409), preserving
+  the existing `ResourceAlreadyExistsError` mapping and non-retry behavior.
+  Updated the opt-in smoke lifecycle to release aliases before target deletion.
+- Clarified that only `consistentRead: true` requires a direct Branch (including
+  omitted-ref `main`); false or omitted remains valid for Tag and Alias reads.
+- Clarified that bulk completion `type` is optional. The SDK retains its
+  `application/json` default; upload `Content-Type: application/json` and all
+  signed headers remain required independently of the completion field.
+
 ## [0.4.0-rc.2] - 2026-09-09
 
 Aligned with `lambdadb/docs@b171ff0a408bbeb024535941b83b861d205a829f`

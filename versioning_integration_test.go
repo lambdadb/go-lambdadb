@@ -140,7 +140,7 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create branch with omitted source: %v", err)
 	}
-	if defaultBranch == nil || defaultBranch.Name != defaultBranchName || defaultBranch.SnapshotID == nil {
+	if defaultBranch == nil || defaultBranch.Name != defaultBranchName || defaultBranch.HeadSnapshot == nil || defaultBranch.ParentSnapshot == nil {
 		t.Fatalf("unexpected default-source branch: %#v", defaultBranch)
 	}
 	_, err = collection.Branches().Create(ctx, lambdadb.CreateBranchInput{BranchName: defaultBranchName})
@@ -157,7 +157,7 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create branch with asOf source: %v", err)
 	}
-	if asOfBranch == nil || asOfBranch.Name != asOfBranchName || asOfBranch.SnapshotID == nil {
+	if asOfBranch == nil || asOfBranch.Name != asOfBranchName || asOfBranch.HeadSnapshot == nil || asOfBranch.ParentSnapshot == nil {
 		t.Fatalf("unexpected asOf branch: %#v", asOfBranch)
 	}
 
@@ -165,7 +165,7 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create tag with omitted source: %v", err)
 	}
-	if defaultTag == nil || defaultTag.Name != defaultTagName || defaultTag.SnapshotID == nil {
+	if defaultTag == nil || defaultTag.Name != defaultTagName || defaultTag.SnapshotID == "" || defaultTag.GetSnapshotCommittedAt().IsZero() {
 		t.Fatalf("unexpected default-source tag: %#v", defaultTag)
 	}
 
@@ -282,7 +282,7 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create tag: %v", err)
 	}
-	if tag == nil || tag.Name != tagName || tag.SnapshotID == nil {
+	if tag == nil || tag.Name != tagName || tag.SnapshotID == "" || tag.GetSnapshotCommittedAt().IsZero() {
 		t.Fatalf("unexpected created tag: %#v", tag)
 	}
 
@@ -299,6 +299,9 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if alias == nil || alias.TargetKind != lambdadb.AliasTargetKindTag || alias.TargetName != tagName {
 		t.Fatalf("unexpected created alias: %#v", alias)
 	}
+
+	_, err = collection.Tags().Delete(ctx, tagName)
+	requireIntegrationAlreadyExists(t, err, "delete alias-referenced tag")
 
 	_, err = collection.Docs().Fetch(ctx, lambdadb.FetchDocsInput{
 		Ids:            []string{seedID},
@@ -318,12 +321,12 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	requireIntegrationBadRequest(t, err, "delete main branch")
 
 	branches, err := collection.Branches().List(ctx)
-	if err != nil || !containsIntegrationRef(branches, branchName) {
-		t.Fatalf("list branches: found=%v err=%v", containsIntegrationRef(branches, branchName), err)
+	if err != nil || !containsIntegrationBranch(branches, branchName) {
+		t.Fatalf("list branches: found=%v err=%v", containsIntegrationBranch(branches, branchName), err)
 	}
 	tags, err := collection.Tags().List(ctx)
-	if err != nil || !containsIntegrationRef(tags, tagName) {
-		t.Fatalf("list tags: found=%v err=%v", containsIntegrationRef(tags, tagName), err)
+	if err != nil || !containsIntegrationTag(tags, tagName) {
+		t.Fatalf("list tags: found=%v err=%v", containsIntegrationTag(tags, tagName), err)
 	}
 	aliases, err := collection.Aliases().List(ctx)
 	if err != nil || !containsIntegrationAlias(aliases, aliasName) {
@@ -380,26 +383,13 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 		waitForIntegrationDocAbsent(t, ctx, collection, branchName, bulkDocID)
 	}
 
-	if _, err := collection.Branches().Delete(ctx, branchName); err != nil {
-		t.Fatalf("delete alias target branch: %v", err)
-	}
-	waitForIntegrationCondition(t, ctx, "alias "+aliasName+" to become dangling", func() (bool, error) {
-		aliases, err := collection.Aliases().List(ctx)
-		if err != nil {
-			return false, err
-		}
-		for _, candidate := range aliases {
-			if candidate.AliasName == aliasName {
-				return candidate.Dangling, nil
-			}
-		}
-		return false, nil
-	})
+	_, err = collection.Branches().Delete(ctx, branchName)
+	requireIntegrationAlreadyExists(t, err, "delete alias-referenced branch")
 
-	_, err = collection.Docs().List(ctx, &lambdadb.ListDocsOpts{
-		Ref: lambdadb.AliasRef(aliasName),
-	})
-	requireIntegrationBadRequest(t, err, "list through dangling alias")
+	// Retargeting released the old tag, so deletion can now succeed.
+	if _, err := collection.Tags().Delete(ctx, tagName); err != nil {
+		t.Fatalf("delete tag after retargeting alias: %v", err)
+	}
 
 	_, err = collection.Docs().Fetch(ctx, lambdadb.FetchDocsInput{
 		Ids: []string{seedID},
@@ -410,8 +400,8 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if _, err := collection.Aliases().Delete(ctx, aliasName); err != nil {
 		t.Fatalf("delete alias: %v", err)
 	}
-	if _, err := collection.Tags().Delete(ctx, tagName); err != nil {
-		t.Fatalf("delete tag: %v", err)
+	if _, err := collection.Branches().Delete(ctx, branchName); err != nil {
+		t.Fatalf("delete branch after deleting alias: %v", err)
 	}
 	if _, err := collection.Tags().Delete(ctx, defaultTagName); err != nil {
 		t.Fatalf("delete default-source tag: %v", err)
@@ -555,7 +545,7 @@ func waitForIntegrationBranchSnapshot(t *testing.T, ctx context.Context, collect
 			return false, err
 		}
 		for _, branch := range branches {
-			if branch.Name == branchName && branch.SnapshotID != nil && *branch.SnapshotID != "" {
+			if branch.Name == branchName && branch.HeadSnapshot != nil && branch.HeadSnapshot.SnapshotID != "" {
 				return true, nil
 			}
 		}
@@ -588,7 +578,16 @@ func waitForIntegrationCondition(t *testing.T, ctx context.Context, description 
 	}
 }
 
-func containsIntegrationRef(refs []lambdadb.RefDetails, name string) bool {
+func containsIntegrationBranch(refs []lambdadb.BranchDetails, name string) bool {
+	for _, ref := range refs {
+		if ref.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func containsIntegrationTag(refs []lambdadb.TagDetails, name string) bool {
 	for _, ref := range refs {
 		if ref.Name == name {
 			return true

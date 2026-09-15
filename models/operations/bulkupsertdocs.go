@@ -8,8 +8,9 @@ import (
 type BulkUpsertDocsRequestBody struct {
 	// Object key uploaded based on bulk upsert info.
 	ObjectKey string `json:"objectKey"`
-	// Content type used for the uploaded object. BulkUpsert sends application/json
-	// when nil; the server must receive an explicit type.
+	// Optional completion field. BulkUpsert keeps its application/json default
+	// when nil. The server validates the uploaded object's Content-Type instead;
+	// the upload must still send Content-Type: application/json.
 	Type *Type `json:"type,omitzero"`
 	// Write target branch. Defaults to main when omitted.
 	Branch *string `json:"branch,omitzero"`

@@ -24,10 +24,44 @@ Unix epoch millisecond cutoff and is valid only with a Branch source.
 | `Name` | `string` | Yes | Source ref name. |
 | `AsOf` | `*int64` | No | Latest committed snapshot cutoff for a Branch source. |
 
-## RefDetails
+## SnapshotDetails
 
-`RefDetails` describes a Branch or Tag. `SnapshotID` is nil for an empty Branch
-head. `CreatedAt` uses `types.UnixMilliTime`.
+| Field | Type | Description |
+| --- | --- | --- |
+| `SnapshotID` | `string` | Immutable snapshot identity. |
+| `SnapshotCommittedAt` | `types.UnixMilliTime` | Snapshot commit time, independent of ref creation and Collection `dataUpdatedAt`. |
+
+`GetSnapshotCommittedAt()` returns `time.Time`.
+
+## BranchDetails
+
+Branch Create/List return `*BranchDetails`/`[]BranchDetails`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `Name` | `string` | Branch name. |
+| `HeadSnapshot` | `*SnapshotDetails` | Current committed head; nil for an empty Branch. |
+| `ParentSnapshot` | `*SnapshotDetails` | Fixed snapshot from which the Branch was created, not its previous head. |
+| `CreatedAt` | `types.UnixMilliTime` | Branch creation time. `GetCreatedAt()` returns `time.Time`. |
+
+Both snapshot fields encode nil as explicit JSON null. `ParentSnapshot` stays
+nil for `main` and Branches created from an empty source, even after their head
+advances. For a nonempty source, head and parent initially match; the head can
+advance independently. Parent metadata does not extend snapshot retention.
+Branch responses have no top-level `SnapshotID`.
+
+## TagDetails
+
+Tag Create/List return `*TagDetails`/`[]TagDetails`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `Name` | `string` | Tag name. |
+| `SnapshotID` | `string` | Immutable pinned snapshot; a Tag cannot pin an empty head. |
+| `SnapshotCommittedAt` | `types.UnixMilliTime` | Pinned snapshot commit time. |
+| `CreatedAt` | `types.UnixMilliTime` | Tag creation time, independent of snapshot commit time. |
+
+`GetSnapshotCommittedAt()` and `GetCreatedAt()` return `time.Time`.
 
 ## AliasTarget
 

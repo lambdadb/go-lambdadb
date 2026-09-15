@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | `Size` | **int64* | :heavy_minus_sign: | Number of documents to return, up to 100. |
 | `Query` | map[string]*any* | :heavy_check_mark: | Query object. For managed embeddings use `knn.queryText`; for unmanaged vector fields use `knn.queryVector`. |
-| `ConsistentRead` | **bool* | :heavy_minus_sign: | Requests a strongly consistent read. Valid only when `Ref` directly selects a branch. |
+| `ConsistentRead` | **bool* | :heavy_minus_sign: | True overlays eligible pending writes only for a direct Branch or omitted-ref `main`. Tag and Alias refs reject true, including Aliases targeting Branches. False or omitted reads committed data. |
 | `IncludeVectors` | **bool* | :heavy_minus_sign: | Includes vector values in the response when true. |
 | `Sort` | []map[string]*any* | :heavy_minus_sign: | Field name and sort direction pairs. |
 | `Fields` | [*components.FieldsSelectorUnion](../../models/components/fieldsselectorunion.md) | :heavy_minus_sign: | Fields to include or exclude. |

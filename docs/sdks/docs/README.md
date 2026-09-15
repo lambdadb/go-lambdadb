@@ -237,9 +237,11 @@ Branch for both control requests.
 
 ## BulkUpsert
 
-Completion sends an explicit content type: `BulkUpsert` uses `application/json`
-when `Type` is nil. When handling the upload manually, pass the returned `Type`
-and use the same Branch for both control calls. An object key is bound to that
+The completion request's `Type` is optional. `BulkUpsert` retains its
+`application/json` default when `Type` is nil. The server validates the uploaded
+object's Content-Type instead of this field: the upload must still send
+`Content-Type: application/json` and every signed header in `info.Headers`.
+Use the same Branch for both control calls. An object key is bound to that
 Branch's identity and cannot be reused after deleting and recreating it.
 
 Presigned uploads are create-only (`If-None-Match: *`). `BulkUpsertDocuments`

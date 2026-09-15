@@ -8,7 +8,9 @@ import (
 type FetchDocsRequestBody struct {
 	// A list of document IDs to fetch. Note that the maximum number of document IDs is 100.
 	Ids []string `json:"ids"`
-	// Requests a strongly consistent read. This is valid only when Ref directly selects a branch.
+	// True overlays eligible pending writes only for a directly selected branch
+	// (or main when Ref is omitted). Tag and alias refs reject true, even for
+	// aliases targeting branches. False or nil reads committed data.
 	ConsistentRead *bool `default:"false" json:"consistentRead"`
 	// If your application need to include vector values in the response, set includeVectors to true.
 	IncludeVectors *bool `default:"false" json:"includeVectors"`

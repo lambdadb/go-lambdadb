@@ -47,9 +47,9 @@ type CollectionBranches struct {
 }
 
 // Create creates a writable branch.
-func (b *CollectionBranches) Create(ctx context.Context, input CreateBranchInput, opts ...operations.Option) (*RefDetails, error) {
+func (b *CollectionBranches) Create(ctx context.Context, input CreateBranchInput, opts ...operations.Option) (*BranchDetails, error) {
 	var response struct {
-		Branch RefDetails `json:"branch"`
+		Branch BranchDetails `json:"branch"`
 	}
 	err := b.collection.client.doVersioningRequest(
 		ctx,
@@ -68,9 +68,9 @@ func (b *CollectionBranches) Create(ctx context.Context, input CreateBranchInput
 }
 
 // List lists all branches in the collection.
-func (b *CollectionBranches) List(ctx context.Context, opts ...operations.Option) ([]RefDetails, error) {
+func (b *CollectionBranches) List(ctx context.Context, opts ...operations.Option) ([]BranchDetails, error) {
 	var response struct {
-		Branches []RefDetails `json:"branches"`
+		Branches []BranchDetails `json:"branches"`
 	}
 	err := b.collection.client.doVersioningRequest(
 		ctx,
@@ -88,7 +88,9 @@ func (b *CollectionBranches) List(ctx context.Context, opts ...operations.Option
 	return response.Branches, nil
 }
 
-// Delete deletes a branch. The default main branch cannot be deleted.
+// Delete deletes a branch. Deleting main returns BadRequestError (400).
+// An alias-referenced branch returns ResourceAlreadyExistsError (409); delete
+// or retarget every referencing alias before retrying.
 func (b *CollectionBranches) Delete(ctx context.Context, branchName string, opts ...operations.Option) (*MessageResponse, error) {
 	var response MessageResponse
 	err := b.collection.client.doVersioningRequest(
@@ -113,9 +115,9 @@ type CollectionTags struct {
 }
 
 // Create creates an immutable tag.
-func (t *CollectionTags) Create(ctx context.Context, input CreateTagInput, opts ...operations.Option) (*RefDetails, error) {
+func (t *CollectionTags) Create(ctx context.Context, input CreateTagInput, opts ...operations.Option) (*TagDetails, error) {
 	var response struct {
-		Tag RefDetails `json:"tag"`
+		Tag TagDetails `json:"tag"`
 	}
 	err := t.collection.client.doVersioningRequest(
 		ctx,
@@ -134,9 +136,9 @@ func (t *CollectionTags) Create(ctx context.Context, input CreateTagInput, opts 
 }
 
 // List lists all tags in the collection.
-func (t *CollectionTags) List(ctx context.Context, opts ...operations.Option) ([]RefDetails, error) {
+func (t *CollectionTags) List(ctx context.Context, opts ...operations.Option) ([]TagDetails, error) {
 	var response struct {
-		Tags []RefDetails `json:"tags"`
+		Tags []TagDetails `json:"tags"`
 	}
 	err := t.collection.client.doVersioningRequest(
 		ctx,
@@ -154,7 +156,9 @@ func (t *CollectionTags) List(ctx context.Context, opts ...operations.Option) ([
 	return response.Tags, nil
 }
 
-// Delete deletes a tag.
+// Delete deletes a tag. An alias-referenced tag returns
+// ResourceAlreadyExistsError (409); delete or retarget every referencing alias
+// before retrying.
 func (t *CollectionTags) Delete(ctx context.Context, tagName string, opts ...operations.Option) (*MessageResponse, error) {
 	var response MessageResponse
 	err := t.collection.client.doVersioningRequest(
