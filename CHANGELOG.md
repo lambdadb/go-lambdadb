@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-rc.3] - 2026-09-15
+
 Aligned with [lambdadb/docs@c8495bf47cd8918cfd546b4742823fd4cf3d0814](https://github.com/lambdadb/docs/blob/c8495bf47cd8918cfd546b4742823fd4cf3d0814/reference/api/openapi.json),
 reviewing `b171ff0..c8495bf`. This pins the source contract; deployment and
 live environment behavior require separate validation.
