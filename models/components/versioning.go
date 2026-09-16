@@ -45,7 +45,8 @@ const (
 	RefSourceKindTag    RefSourceKind = "tag"
 )
 
-// RefSource selects the branch or tag from which a branch or tag is created.
+// RefSource selects a source in the same collection. Branch creation accepts
+// only RefSourceKindBranch; tag creation accepts a branch or tag source.
 // AsOf is valid only when Kind is RefSourceKindBranch.
 type RefSource struct {
 	Kind RefSourceKind `json:"kind"`
@@ -95,9 +96,33 @@ func (r *SnapshotDetails) GetSnapshotCommittedAt() time.Time {
 	return r.SnapshotCommittedAt.Time
 }
 
+// ParentBranchDetails records the direct source branch at creation time.
+// This historical identity survives parent deletion or reuse of its name.
+type ParentBranchDetails struct {
+	BranchID string `json:"branchId"`
+	Name     string `json:"name"`
+}
+
+func (r *ParentBranchDetails) GetBranchID() string {
+	if r == nil {
+		return ""
+	}
+	return r.BranchID
+}
+
+func (r *ParentBranchDetails) GetName() string {
+	if r == nil {
+		return ""
+	}
+	return r.Name
+}
+
 // BranchDetails describes a writable branch and its snapshot lineage.
 type BranchDetails struct {
 	Name string `json:"name"`
+	// Direct source branch, even for an empty source or an ancestor snapshot
+	// selected through AsOf. Nil for main or when no parent was recorded.
+	ParentBranch *ParentBranchDetails `json:"parentBranch"`
 	// Current committed head; nil for an empty branch.
 	HeadSnapshot *SnapshotDetails `json:"headSnapshot"`
 	// Fixed creation source, not the previous head. Nil for main and branches
@@ -112,6 +137,13 @@ func (r *BranchDetails) GetName() string {
 		return ""
 	}
 	return r.Name
+}
+
+func (r *BranchDetails) GetParentBranch() *ParentBranchDetails {
+	if r == nil {
+		return nil
+	}
+	return r.ParentBranch
 }
 
 func (r *BranchDetails) GetHeadSnapshot() *SnapshotDetails {

@@ -16,7 +16,7 @@ import (
 	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// Contract: lambdadb/docs@c8495bf47cd8918cfd546b4742823fd4cf3d0814,
+// Contract: lambdadb/docs@c44180406c05b1a9043d8516e7c7f60df91fc9a7,
 // reference/api/openapi.json. These tests exercise the public SDK wire boundary.
 func TestPublicAPI_BulkCompletionExplicitType(t *testing.T) {
 	for _, contentType := range []*operations.Type{nil, operations.TypeApplicationJSON.ToPointer()} {
