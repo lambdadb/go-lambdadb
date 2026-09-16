@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -262,14 +263,20 @@ func assertBranchSnapshots(t *testing.T, branch *lambdadb.BranchDetails, headID,
 func TestPublicAPI_BranchSnapshotStates(t *testing.T) {
 	for _, tc := range []struct {
 		name, head, parent, headID, parentID string
+		parentBranch                         *lambdadb.ParentBranchDetails
 	}{
-		{"empty", `null`, `null`, "", ""},
-		{"committed_from_empty", `{"snapshotId":"head-2","snapshotCommittedAt":1788336060789}`, `null`, "head-2", ""},
-		{"advanced_head", `{"snapshotId":"head-2","snapshotCommittedAt":1788336060789}`, `{"snapshotId":"source-1","snapshotCommittedAt":1788335940456}`, "head-2", "source-1"},
+		{"empty", `null`, `null`, "", "", &lambdadb.ParentBranchDetails{BranchID: "main-id", Name: "main"}},
+		{"committed_from_empty", `{"snapshotId":"head-2","snapshotCommittedAt":1788336060789}`, `null`, "head-2", "", &lambdadb.ParentBranchDetails{BranchID: "main-id", Name: "main"}},
+		{"advanced_head", `{"snapshotId":"head-2","snapshotCommittedAt":1788336060789}`, `{"snapshotId":"source-1","snapshotCommittedAt":1788335940456}`, "head-2", "source-1", &lambdadb.ParentBranchDetails{BranchID: "dev-id", Name: "dev"}},
+		{"no_recorded_parent", `null`, `null`, "", "", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			createdPayload := `{"name":"candidate","createdAt":1788336000123,"headSnapshot":` + tc.parent + `,"parentSnapshot":` + tc.parent + `}`
-			payload := `{"name":"candidate","createdAt":1788336000123,"headSnapshot":` + tc.head + `,"parentSnapshot":` + tc.parent + `}`
+			parentJSON, err := json.Marshal(tc.parentBranch)
+			if err != nil {
+				t.Fatal(err)
+			}
+			createdPayload := `{"parentBranch":` + string(parentJSON) + `,"name":"candidate","createdAt":1788336000123,"headSnapshot":` + tc.parent + `,"parentSnapshot":` + tc.parent + `}`
+			payload := `{"parentBranch":` + string(parentJSON) + `,"name":"candidate","createdAt":1788336000123,"headSnapshot":` + tc.head + `,"parentSnapshot":` + tc.parent + `}`
 			mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
 				func(req *http.Request) *http.Response {
 					return jsonResponse(http.StatusCreated, `{"branch":`+createdPayload+`}`)
@@ -289,6 +296,11 @@ func TestPublicAPI_BranchSnapshotStates(t *testing.T) {
 				t.Fatalf("branches = %#v, %v", branches, err)
 			}
 			assertBranchSnapshots(t, &branches[0], tc.headID, tc.parentID)
+			for _, got := range []*lambdadb.BranchDetails{branch, &branches[0]} {
+				if !reflect.DeepEqual(got.GetParentBranch(), tc.parentBranch) {
+					t.Fatalf("parentBranch = %#v, want %#v", got.ParentBranch, tc.parentBranch)
+				}
+			}
 			encoded, err := json.Marshal(&branches[0])
 			if err != nil {
 				t.Fatal(err)
@@ -300,13 +312,19 @@ func TestPublicAPI_BranchSnapshotStates(t *testing.T) {
 			if _, exists := body["snapshotId"]; exists {
 				t.Fatalf("legacy top-level snapshotId: %s", encoded)
 			}
-			for _, key := range []string{"headSnapshot", "parentSnapshot"} {
+			for _, key := range []string{"headSnapshot", "parentSnapshot", "parentBranch"} {
 				value, exists := body[key]
 				if !exists {
 					t.Fatalf("missing required nullable %s: %s", key, encoded)
 				}
-				if (key == "headSnapshot" && tc.headID == "" || key == "parentSnapshot" && tc.parentID == "") && value != nil {
+				if (key == "headSnapshot" && tc.headID == "" || key == "parentSnapshot" && tc.parentID == "" || key == "parentBranch" && tc.parentBranch == nil) && value != nil {
 					t.Fatalf("%s must encode as null: %s", key, encoded)
+				}
+			}
+			if tc.parentBranch != nil {
+				parent := body["parentBranch"].(map[string]any)
+				if parent["branchId"] != tc.parentBranch.GetBranchID() || parent["name"] != tc.parentBranch.GetName() || len(parent) != 2 {
+					t.Fatalf("parentBranch JSON = %#v", parent)
 				}
 			}
 			mock.assertDone()
@@ -341,4 +359,129 @@ func TestPublicAPI_RefDeletionConflictDoesNotRetry(t *testing.T) {
 			mock.assertDone() // Default retries must not retry an in-use target.
 		})
 	}
+}
+
+// Contract: lambdadb/docs@c44180406c05b1a9043d8516e7c7f60df91fc9a7.
+func TestPublicAPI_BranchSourceValidation(t *testing.T) {
+	for _, kind := range []lambdadb.RefSourceKind{lambdadb.RefSourceKindTag, "alias", "", "unknown"} {
+		t.Run(string(kind), func(t *testing.T) {
+			// No handlers: invalid sources must not reach the HTTP client.
+			mock := &publicAPIMockClient{t: t}
+			collection := lambdadb.New(lambdadb.WithClient(mock)).Collection("articles")
+			branch, err := collection.Branches().Create(context.Background(), lambdadb.CreateBranchInput{
+				BranchName: "candidate",
+				Source:     &lambdadb.RefSource{Kind: kind, Name: "source"},
+			})
+			if branch != nil || err == nil || err.Error() != "branch source must be a branch" {
+				t.Fatalf("Create = %#v, %v", branch, err)
+			}
+			mock.assertDone()
+		})
+	}
+}
+
+func TestPublicAPI_CreateSourceWireContract(t *testing.T) {
+	cutoff := time.UnixMilli(1788335940456)
+	for _, resource := range []string{"branches", "tags"} {
+		for _, tc := range []struct {
+			name   string
+			source *lambdadb.RefSource
+			want   string
+		}{
+			{"default_main", nil, `null`},
+			{"branch", lambdadb.BranchSource("dev"), `{"kind":"branch","name":"dev"}`},
+			{"branch_asof", lambdadb.BranchSourceAt("dev", cutoff), `{"kind":"branch","name":"dev","asOf":1788335940456}`},
+			{"tag", lambdadb.TagSource("release"), `{"kind":"tag","name":"release"}`},
+		} {
+			if resource == "branches" && tc.name == "tag" {
+				continue // Covered by local validation above.
+			}
+			t.Run(resource+"/"+tc.name, func(t *testing.T) {
+				before, err := json.Marshal(tc.source)
+				if err != nil {
+					t.Fatal(err)
+				}
+				mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+					func(req *http.Request) *http.Response {
+						if req.Method != http.MethodPost || !strings.HasSuffix(req.URL.Path, "/"+resource) {
+							t.Fatalf("unexpected request: %s %s", req.Method, req.URL)
+						}
+						body := decodeJSONBody(t, req)
+						var want any
+						if err := json.Unmarshal([]byte(tc.want), &want); err != nil {
+							t.Fatal(err)
+						}
+						if !reflect.DeepEqual(body["source"], want) {
+							t.Fatalf("source = %#v, want %#v", body["source"], want)
+						}
+						if tc.source == nil {
+							if _, exists := body["source"]; exists {
+								t.Fatal("nil source must be omitted")
+							}
+						}
+						if resource == "tags" {
+							return jsonResponse(http.StatusCreated, `{"tag":{"name":"candidate","snapshotId":"snapshot-main","snapshotCommittedAt":1788335940456,"createdAt":1788336000123}}`)
+						}
+						parent := `{"branchId":"dev-id","name":"dev"}`
+						if tc.source == nil {
+							parent = `{"branchId":"main-id","name":"main"}`
+						}
+						return jsonResponse(http.StatusCreated, `{"branch":{"name":"candidate","parentBranch":`+parent+`,"headSnapshot":{"snapshotId":"snapshot-main","snapshotCommittedAt":1788335940456},"parentSnapshot":{"snapshotId":"snapshot-main","snapshotCommittedAt":1788335940456},"createdAt":1788336000123}}`)
+					},
+				}}
+				collection := lambdadb.New(lambdadb.WithClient(mock)).Collection("articles")
+				if resource == "tags" {
+					tag, err := collection.Tags().Create(context.Background(), lambdadb.CreateTagInput{TagName: "candidate", Source: tc.source})
+					if err != nil || tag == nil || tag.SnapshotID != "snapshot-main" {
+						t.Fatalf("tag = %#v, %v", tag, err)
+					}
+				} else {
+					branch, err := collection.Branches().Create(context.Background(), lambdadb.CreateBranchInput{BranchName: "candidate", Source: tc.source})
+					if err != nil {
+						t.Fatal(err)
+					}
+					wantName := "dev"
+					if tc.source == nil {
+						wantName = "main"
+					}
+					// The source is dev even when asOf selects a snapshot originating on main.
+					if branch.GetParentBranch().GetName() != wantName || branch.ParentBranch.GetBranchID() != wantName+"-id" {
+						t.Fatalf("parentBranch = %#v", branch.ParentBranch)
+					}
+				}
+				after, err := json.Marshal(tc.source)
+				if err != nil || string(before) != string(after) {
+					t.Fatalf("source mutated: %s => %s, %v", before, after, err)
+				}
+				mock.assertDone()
+			})
+		}
+	}
+}
+
+func TestPublicAPI_BranchListParentCompatibility(t *testing.T) {
+	mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+		func(req *http.Request) *http.Response {
+			return jsonResponse(http.StatusOK, `{"branches":[
+				{"name":"main","parentBranch":null,"headSnapshot":null,"parentSnapshot":null,"createdAt":1788336000123},
+				{"name":"legacy","parentBranch":null,"headSnapshot":null,"parentSnapshot":null,"createdAt":1788336000123},
+				{"name":"older-server","headSnapshot":null,"parentSnapshot":null,"createdAt":1788336000123}
+			]}`)
+		},
+	}}
+	branches, err := lambdadb.New(lambdadb.WithClient(mock)).Collection("articles").Branches().List(context.Background())
+	if err != nil || len(branches) != 3 {
+		t.Fatalf("branches = %#v, %v", branches, err)
+	}
+	for _, branch := range branches {
+		if branch.GetParentBranch() != nil {
+			t.Fatalf("unexpected parent: %#v", branch)
+		}
+	}
+	var branch *lambdadb.BranchDetails
+	var parent *lambdadb.ParentBranchDetails
+	if branch.GetParentBranch() != nil || parent.GetBranchID() != "" || parent.GetName() != "" {
+		t.Fatal("parent getters must be nil-safe")
+	}
+	mock.assertDone()
 }

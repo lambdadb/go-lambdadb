@@ -17,14 +17,16 @@ import (
 )
 
 // CreateBranchInput configures a new writable branch. Source may be omitted to
-// create the branch from main.
+// create the branch from main. An explicit Source must be a branch in the same
+// collection, optionally with AsOf; tag and alias sources are rejected locally.
 type CreateBranchInput struct {
 	BranchName string     `json:"branchName"`
 	Source     *RefSource `json:"source,omitempty"`
 }
 
 // CreateTagInput configures a new immutable tag. Source may be omitted to
-// create the tag from main.
+// create the tag from main. An explicit Source may be a branch or tag in the
+// same collection; AsOf is valid only for a branch source.
 type CreateTagInput struct {
 	TagName string     `json:"tagName"`
 	Source  *RefSource `json:"source,omitempty"`
@@ -48,6 +50,10 @@ type CollectionBranches struct {
 
 // Create creates a writable branch.
 func (b *CollectionBranches) Create(ctx context.Context, input CreateBranchInput, opts ...operations.Option) (*BranchDetails, error) {
+	if input.Source != nil && input.Source.Kind != RefSourceKindBranch {
+		return nil, fmt.Errorf("branch source must be a branch")
+	}
+
 	var response struct {
 		Branch BranchDetails `json:"branch"`
 	}
