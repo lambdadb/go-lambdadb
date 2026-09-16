@@ -73,7 +73,8 @@ type RefContext = components.RefContext
 // RefKind identifies the kind of ref selected for a read.
 type RefKind = components.RefKind
 
-// RefSource selects a branch or tag as the source of a new branch or tag.
+// RefSource selects a source in the same collection. Branch creation accepts
+// only branches; tag creation accepts branches or tags.
 type RefSource = components.RefSource
 
 // RefSourceKind identifies a branch or tag source.
@@ -84,6 +85,9 @@ type AliasTarget = components.AliasTarget
 
 // SnapshotDetails identifies an immutable committed snapshot.
 type SnapshotDetails = components.SnapshotDetails
+
+// ParentBranchDetails records the direct source branch at creation time.
+type ParentBranchDetails = components.ParentBranchDetails
 
 // BranchDetails describes a branch and its current head and fixed creation source.
 type BranchDetails = components.BranchDetails
@@ -141,7 +145,8 @@ func BranchSourceAt(name string, asOf time.Time) *RefSource {
 	}
 }
 
-// TagSource selects an immutable tag as the source of a new branch or tag.
+// TagSource selects an immutable tag as the source of a new tag.
+// It cannot be used to create a branch.
 func TagSource(name string) *RefSource {
 	return &RefSource{Kind: RefSourceKindTag, Name: name}
 }

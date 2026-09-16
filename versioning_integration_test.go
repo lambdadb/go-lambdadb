@@ -126,6 +126,35 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	}
 	t.Log("metadata clearing and omitted retention verified")
 
+	// Parent identity exists independently of snapshot materialization.
+	emptyBranch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{BranchName: "empty-" + suffix})
+	if err != nil {
+		t.Fatalf("create branch from empty main: %v", err)
+	}
+	requireIntegrationParentBranch(t, emptyBranch, "main")
+	if emptyBranch.HeadSnapshot != nil || emptyBranch.ParentSnapshot != nil {
+		t.Fatalf("expected empty branch snapshots: %#v", emptyBranch)
+	}
+	emptyBranches, err := collection.Branches().List(ctx)
+	if err != nil || len(emptyBranches) != 2 {
+		t.Fatalf("list empty branches: %#v, %v", emptyBranches, err)
+	}
+	for _, listed := range emptyBranches {
+		if listed.Name == "main" {
+			if listed.ParentBranch != nil {
+				t.Fatalf("main has parent: %#v", listed.ParentBranch)
+			}
+		} else {
+			requireIntegrationParentBranch(t, &listed, "main")
+			if *listed.ParentBranch != *emptyBranch.ParentBranch {
+				t.Fatalf("parent changed between Create and List: %#v", listed.ParentBranch)
+			}
+		}
+	}
+	if _, err := collection.Branches().Delete(ctx, emptyBranch.Name); err != nil {
+		t.Fatalf("delete empty branch: %v", err)
+	}
+
 	if _, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
 		Docs: []map[string]any{{"id": seedID, "title": "seed"}},
 	}); err != nil {
@@ -143,6 +172,7 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if defaultBranch == nil || defaultBranch.Name != defaultBranchName || defaultBranch.HeadSnapshot == nil || defaultBranch.ParentSnapshot == nil {
 		t.Fatalf("unexpected default-source branch: %#v", defaultBranch)
 	}
+	requireIntegrationParentBranch(t, defaultBranch, "main")
 	_, err = collection.Branches().Create(ctx, lambdadb.CreateBranchInput{BranchName: defaultBranchName})
 	requireIntegrationAlreadyExists(t, err, "create duplicate branch")
 
@@ -160,6 +190,8 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if asOfBranch == nil || asOfBranch.Name != asOfBranchName || asOfBranch.HeadSnapshot == nil || asOfBranch.ParentSnapshot == nil {
 		t.Fatalf("unexpected asOf branch: %#v", asOfBranch)
 	}
+
+	requireIntegrationParentBranch(t, asOfBranch, "main")
 
 	defaultTag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{TagName: defaultTagName})
 	if err != nil {
@@ -284,6 +316,17 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	}
 	if tag == nil || tag.Name != tagName || tag.SnapshotID == "" || tag.GetSnapshotCommittedAt().IsZero() {
 		t.Fatalf("unexpected created tag: %#v", tag)
+	}
+
+	copiedTag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
+		TagName: "copy-" + suffix,
+		Source:  lambdadb.TagSource(tagName),
+	})
+	if err != nil || copiedTag == nil || copiedTag.SnapshotID != tag.SnapshotID {
+		t.Fatalf("create tag from tag: %#v, %v", copiedTag, err)
+	}
+	if _, err := collection.Tags().Delete(ctx, copiedTag.Name); err != nil {
+		t.Fatalf("delete copied tag: %v", err)
 	}
 
 	alias, err := collection.Aliases().Create(ctx, lambdadb.CreateAliasInput{
@@ -630,4 +673,12 @@ func containsIntegrationQueryDoc(docs []operations.QueryCollectionDoc, id string
 		}
 	}
 	return false
+}
+
+func requireIntegrationParentBranch(t *testing.T, branch *lambdadb.BranchDetails, name string) {
+	t.Helper()
+	parent := branch.GetParentBranch()
+	if parent == nil || parent.BranchID == "" || parent.Name != name {
+		t.Fatalf("parentBranch = %#v, want source %q with nonempty identity", parent, name)
+	}
 }

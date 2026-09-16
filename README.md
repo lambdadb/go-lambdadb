@@ -175,6 +175,13 @@ _, err = collection.Aliases().Create(ctx, lambdadb.CreateAliasInput{
 })
 ```
 
+Branch creation accepts only Branch sources; omit `Source` for `main`, or use
+`BranchSourceAt` for a point-in-time cutoff. Tag creation still accepts Branch
+or Tag sources. Branch Create/List return nullable `ParentBranch` metadata
+(`BranchID`, `Name`), including for empty Branches; `main` and Branches without
+recorded parents return nil. See the [versioning guide](docs/sdks/versioning/README.md)
+for examples and snapshot semantics.
+
 Select a branch, tag, or alias for reads with `Ref`. Simple document lists
 automatically use the extended list endpoint when a ref is supplied.
 

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Aligned with [lambdadb/docs@c44180406c05b1a9043d8516e7c7f60df91fc9a7](https://github.com/lambdadb/docs/blob/c44180406c05b1a9043d8516e7c7f60df91fc9a7/reference/api/openapi.json),
+reviewing `c8495bf..c441804`, and server [PR #405](https://github.com/lambdadb/lambdadb/pull/405)
+(merge commit `d1a76659884a9ed09283a0b2e2989897dc799247`). These pin the source
+contract; deployment and live environment behavior require separate validation.
+
+### Breaking changes
+
+- Branch creation now rejects non-Branch sources locally before sending an HTTP
+  request. Replace `TagSource` with `BranchSource` or `BranchSourceAt` when
+  creating a Branch. Omitting `Source` still selects `main`; Branch `AsOf` and
+  Tag creation from either a Branch or Tag remain supported. The shared
+  `RefSource` model and existing source helpers retain their Go signatures.
+
+### Added
+
+- Branch Create/List expose nullable `ParentBranch` with `BranchID` and `Name`,
+  through `ParentBranchDetails` in the root and components packages. It records
+  the direct source even for an empty Branch or an ancestor snapshot selected
+  through `AsOf`; it is nil for `main` or when no parent was recorded. Nil
+  serializes as explicit JSON null. Parent deletion or name reuse does not
+  change this historical identity; snapshot metadata keeps its existing meaning.
+
 ## [0.4.0-rc.3] - 2026-09-15
 
 Aligned with [lambdadb/docs@c8495bf47cd8918cfd546b4742823fd4cf3d0814](https://github.com/lambdadb/docs/blob/c8495bf47cd8918cfd546b4742823fd4cf3d0814/reference/api/openapi.json),

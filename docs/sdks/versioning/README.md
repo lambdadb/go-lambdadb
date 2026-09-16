@@ -11,7 +11,8 @@ and read targets.
 | `collection.Tags()` | `Create`, `List`, `Delete` |
 | `collection.Aliases()` | `Create`, `List`, `Retarget`, `Delete` |
 
-All methods accept `context.Context` and optional `operations.Option` values.
+All methods are synchronous and accept `context.Context` and optional
+`operations.Option` values. There is no separate async client or method set.
 Branch Create/List return `*BranchDetails`/`[]BranchDetails`; Tag Create/List
 return `*TagDetails`/`[]TagDetails`. Alias Create returns `*AliasDetails`.
 Delete methods return a `MessageResponse`.
@@ -39,6 +40,10 @@ alias, err := collection.Aliases().Create(ctx, lambdadb.CreateAliasInput{
 })
 ```
 
+A Branch can be created only from another Branch in the same Collection.
+`Branches().Create` rejects Tag, Alias, and unknown source kinds locally with a
+validation error before sending an HTTP request.
+
 Omit `Source` to create a Branch or Tag from `main`. Use `BranchSourceAt` to
 select the latest committed snapshot at or before a `time.Time` cutoff without
 manually converting it to Unix milliseconds:
@@ -50,15 +55,39 @@ historical, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 })
 ```
 
+Branch responses also expose nullable `ParentBranch` with `BranchID` and `Name`.
+It records the direct source at creation, including an empty source or an
+ancestor snapshot selected through `AsOf`. It is nil for `main` or when no
+parent was recorded. This historical identity survives parent deletion or
+name reuse and does not prevent deletion.
+
+```go
+if parent := branch.GetParentBranch(); parent != nil {
+	fmt.Println(parent.BranchID, parent.Name)
+}
+```
+
 Branch responses expose nullable `HeadSnapshot` and `ParentSnapshot`, each
 containing `SnapshotID` and `SnapshotCommittedAt`. The parent is the fixed
 creation source, not the previous head. Tag responses expose `SnapshotID` and
 `SnapshotCommittedAt` at the top level. Snapshot commit times and `CreatedAt`
 are independent epoch-millisecond timestamps.
 
-Use `TagSource(name)` when creating from a Tag. Tags are immutable. Branch
+Use `TagSource(name)` only when creating another Tag. It pins the same snapshot
+without creating a chain of Tags; `AsOf` is allowed only for Branch sources.
+Alias sources are not allowed.
+
+```go
+copiedTag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
+	TagName: "validated-copy",
+	Source:  lambdadb.TagSource(tag.Name),
+})
+```
+
+Tags are immutable. Branch
 creation copies committed data only, excluding pending writes. An empty source
-can produce an empty Branch; a Tag requires a nonempty committed head.
+can produce an empty Branch with a non-nil `ParentBranch` and nil snapshots; a
+Tag requires a nonempty committed head.
 Unavailable `asOf` history returns 400 for either Branch or Tag creation.
 Schema and retention updates are Collection scoped; Tag reads retain their
 pinned schema.
