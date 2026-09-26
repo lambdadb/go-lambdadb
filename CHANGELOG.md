@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `Analyzer` constants and `IsExact()` recognition for `chinese`, `cjk`,
+  `arabic`, `french`, `german`, `hindi`, `indonesian`, `italian`, `portuguese`,
+  `russian`, `spanish`, and `turkish`, alongside the original four names.
+  String extensibility, omission, explicit empty arrays, case, order, and
+  duplicates retain their existing JSON behavior.
+- Pinned the analyzer contract to
+  [lambdadb/docs@3bda642f2e7f4f26432f1dfdcb076f656d50f873](https://github.com/lambdadb/docs/blob/3bda642f2e7f4f26432f1dfdcb076f656d50f873/reference/api/openapi.json)
+  ([PR #63](https://github.com/lambdadb/docs/pull/63)) and backend
+  [lambdadb/lambdadb@410154abcdf5275add1df47dcf23c170ed0e0efd](https://github.com/lambdadb/lambdadb/commit/410154abcdf5275add1df47dcf23c170ed0e0efd)
+  ([PR #417](https://github.com/lambdadb/lambdadb/pull/417), merged as
+  `a163d66a54ae68cd0e12a19752beea300a3bc8e1`). These are source revisions,
+  not evidence of deployment or general availability. No SDK release is
+  included in this change.
+
 ## [0.4.0] - 2026-09-16
 
 The first stable Data Versioning release, including the RC1–RC3 changes and the

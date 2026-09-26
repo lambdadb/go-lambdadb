@@ -1,6 +1,10 @@
 # Contributing to This Repository
 
-Thank you for your interest in contributing to this repository. Please note that this repository contains generated code. As such, we do not accept direct changes or pull requests. Instead, we encourage you to follow the guidelines below to report issues and suggest improvements.
+The SDK has been maintained manually since v0.2.0. Speakeasy generation was
+removed; there is no checked-in OpenAPI snapshot or active code-generation
+workflow. The Go models in `models/components` and `models/operations`, their
+JSON helpers, and the Markdown reference under `docs/` are maintained directly.
+Changes and pull requests are welcome.
 
 ## How to Report Issues
 
@@ -13,9 +17,28 @@ If you encounter any bugs or have suggestions for improvements, please open an i
 - Information about your environment (e.g., operating system, software versions)
     - For example can be collected using the `npx envinfo` command from your terminal if you have Node.js installed
 
-## Issue Triage and Upstream Fixes
+## API Contract Changes
 
-We will review and triage issues as quickly as possible. Our goal is to address bugs and incorporate improvements in the upstream source code. Fixes will be included in the next generation of the generated code.
+Use `reference/api/openapi.json` in [lambdadb/docs](https://github.com/lambdadb/docs)
+as the upstream contract. Pin the exact reviewed source commit in the change's
+Unreleased changelog entry and tests; a branch name or OpenAPI version alone is
+not a reproducible reference. Record the relevant backend revision as well.
+Source changes do not establish deployment or general availability.
+
+Update the affected Go models, request/response behavior, and model or SDK
+documentation together. For extensible string enums such as `Analyzer`, update
+both the constants and `IsExact()` known-value list without adding closed-enum
+validation. Preserve omission, explicit empty values, and unknown strings where
+already supported. Avoid unrelated regeneration or formatting changes.
+
+Add tests at the public SDK wire boundary for the changed behavior, then run:
+
+```bash
+go test ./...
+go vet ./...
+go build ./...
+git diff --check
+```
 
 ## Releasing
 
