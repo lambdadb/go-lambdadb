@@ -400,10 +400,22 @@ func (e *TypeText) UnmarshalJSON(data []byte) error {
 type Analyzer string
 
 const (
-	AnalyzerStandard Analyzer = "standard"
-	AnalyzerKorean   Analyzer = "korean"
-	AnalyzerJapanese Analyzer = "japanese"
-	AnalyzerEnglish  Analyzer = "english"
+	AnalyzerStandard   Analyzer = "standard"
+	AnalyzerKorean     Analyzer = "korean"
+	AnalyzerJapanese   Analyzer = "japanese"
+	AnalyzerEnglish    Analyzer = "english"
+	AnalyzerChinese    Analyzer = "chinese"
+	AnalyzerCjk        Analyzer = "cjk"
+	AnalyzerArabic     Analyzer = "arabic"
+	AnalyzerFrench     Analyzer = "french"
+	AnalyzerGerman     Analyzer = "german"
+	AnalyzerHindi      Analyzer = "hindi"
+	AnalyzerIndonesian Analyzer = "indonesian"
+	AnalyzerItalian    Analyzer = "italian"
+	AnalyzerPortuguese Analyzer = "portuguese"
+	AnalyzerRussian    Analyzer = "russian"
+	AnalyzerSpanish    Analyzer = "spanish"
+	AnalyzerTurkish    Analyzer = "turkish"
 )
 
 func (e Analyzer) ToPointer() *Analyzer {
@@ -414,7 +426,9 @@ func (e Analyzer) ToPointer() *Analyzer {
 func (e *Analyzer) IsExact() bool {
 	if e != nil {
 		switch *e {
-		case "standard", "korean", "japanese", "english":
+		case "standard", "korean", "japanese", "english",
+			"chinese", "cjk", "arabic", "french", "german", "hindi",
+			"indonesian", "italian", "portuguese", "russian", "spanish", "turkish":
 			return true
 		}
 	}
@@ -423,7 +437,9 @@ func (e *Analyzer) IsExact() bool {
 
 type IndexConfigsText struct {
 	Type TypeText `json:"type"`
-	// Analyzers.
+	// Text analyzers to apply independently to this field. Nil omits analyzers,
+	// allowing the server default ["standard"]; an empty slice sends [].
+	// Names, order, and duplicates are preserved without local validation.
 	Analyzers []Analyzer `json:"analyzers,omitzero"`
 }
 
