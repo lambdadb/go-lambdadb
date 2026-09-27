@@ -6,6 +6,7 @@ import (
 )
 
 type QueryCollectionRequestBody struct {
+	Facets map[string]components.FacetRequest `json:"facets,omitzero"`
 	// Number of documents to return. Note that the maximum number of documents is 100.
 	Size *int64 `json:"size,omitzero"`
 	// Query object. For managed embedding vector fields, use knn.queryText. For unmanaged vector fields, use knn.queryVector.
@@ -144,6 +145,7 @@ func (q *QueryCollectionDoc) GetDoc() map[string]any {
 
 // QueryCollectionResponseBody - Documents selected by query.
 type QueryCollectionResponseBody struct {
+	Facets map[string]components.FacetResult `json:"facets,omitzero"`
 	// Elapsed time in milliseconds.
 	Took int64 `json:"took"`
 	// Maximum score.
@@ -229,4 +231,17 @@ func (q *QueryCollectionResponse) GetObject() *QueryCollectionResponseBody {
 		return nil
 	}
 	return q.Object
+}
+
+func (q *QueryCollectionRequestBody) GetFacets() map[string]components.FacetRequest {
+	if q == nil {
+		return nil
+	}
+	return q.Facets
+}
+func (q *QueryCollectionResponseBody) GetFacets() map[string]components.FacetResult {
+	if q == nil {
+		return nil
+	}
+	return q.Facets
 }
