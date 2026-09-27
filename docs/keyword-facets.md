@@ -2,7 +2,7 @@
 
 This branch supports the keyword facet contract in:
 
-- `lambdadb/lambdadb` commit `fbafdd4dff8ce7746745966f19a1da40b122f714`,
+- `lambdadb/lambdadb` commit `8da50bcd0b5a3c781ffccd7f01fb07ed0510dd30`,
   `api/src/main/java/ai/lambdadb/dto/QueryRequest.java`,
   `api/src/main/java/ai/lambdadb/model/query/FacetRequest.java`, and
   `api/src/main/java/ai/lambdadb/model/query/FacetResult.java`.
