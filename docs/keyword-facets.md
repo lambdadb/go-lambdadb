@@ -1,6 +1,6 @@
 # Keyword facets
 
-This branch supports the keyword facet contract in:
+The SDK supports the keyword facet contract in:
 
 - `lambdadb/lambdadb` commit `8da50bcd0b5a3c781ffccd7f01fb07ed0510dd30`,
   `api/src/main/java/ai/lambdadb/dto/QueryRequest.java`,
@@ -12,7 +12,13 @@ This branch supports the keyword facet contract in:
 These source commits do not establish deployment or package publication. Use a
 server build containing the feature and rebuild existing data into a new collection.
 Old keyword indexes and old Tags are unsupported; partial updates or segment merging
-do not migrate their format. No version, package, or release is published by this change.
+do not migrate their format.
+
+Query-less document reads also require the server score-serialization fix in
+[PR #426](https://github.com/lambdadb/lambdadb/pull/426), merged as
+`335cb16fcef5d7b8d60f88c84f2ce2cf87f96939`. Older servers can return string
+`"NaN"` scores that the Go SDK cannot decode as numbers. This applies to both
+inline and downloaded document responses, including queries without facets.
 
 ## Semantics
 
@@ -69,4 +75,8 @@ response and high-level QueryResult preserve the facet map.
   [high-level result](../results.go), [hydration](../collection.go), and [wire tests](../facet_contract_test.go).
 - `go test ./...` and `go vet ./...` passed. Tests cover size zero, request payloads,
   facet-only and downloaded document responses, Unicode values, and int64 counts.
-- No live API call or package publication was performed.
+- Development live validation on 2026-09-29 passed all 22 facet cases at SDK
+  merged commit `02d0099fbff33feaf649655de31d955ad0f7008b`, including query-less
+  document reads, partition filters, Branch/Tag/Alias scope, and real `docsUrl`
+  downloads after the server score fix. This validates the tested development
+  environment, not production availability or package publication.

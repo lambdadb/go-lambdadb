@@ -7,8 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rc.1] - 2026-09-29
+
+Release candidate for keyword facets and expanded text analyzer support.
+
+### Compatibility
+
+- No intentional Go API breaking changes relative to `0.4.0`.
+- Analyzer values retain their existing SDK serialization behavior. Server
+  validation may reject duplicate names, including case variants; use unique
+  lowercase names for new configurations. This server behavior is covered by
+  [PR #422](https://github.com/lambdadb/lambdadb/pull/422), merged as
+  `e208b3327a49ade2e429bdcfcd006582a144eee3`.
+- Keyword facets require a server build containing the feature and newly built
+  keyword indexes. Reinsert existing data into a new Collection; partial
+  updates and segment merging do not migrate old indexes or immutable Tags.
+- Query-less document reads require the server score-serialization fix in
+  [PR #426](https://github.com/lambdadb/lambdadb/pull/426), merged as
+  `335cb16fcef5d7b8d60f88c84f2ce2cf87f96939`. Older servers can return string
+  `"NaN"` scores that the SDK cannot decode as numbers.
+
 ### Added
 
+- Keyword facet requests through `QueryInput.Facets` and results through
+  `QueryResult.Facets`, with typed `FacetRequest`, `FacetResult`, and
+  `FacetBucket` models. Bucket counts use `int64` and remain available after
+  automatic `docsUrl` document downloads.
+- Facet-only queries with `Size: Int64(0)`; omit a facet's `Size` to use the
+  server default of 10 buckets. Query and partition filters and the selected
+  Branch, Tag, or Alias apply to facet counts.
+- Pinned the facet contract to
+  [lambdadb/docs@899092420ff801cfcb3b693b1ba273be7ac1f1ef](https://github.com/lambdadb/docs/blob/899092420ff801cfcb3b693b1ba273be7ac1f1ef/reference/api/openapi.json)
+  and backend
+  [lambdadb/lambdadb@8da50bcd0b5a3c781ffccd7f01fb07ed0510dd30](https://github.com/lambdadb/lambdadb/commit/8da50bcd0b5a3c781ffccd7f01fb07ed0510dd30).
 - Added `Analyzer` constants and `IsExact()` recognition for `chinese`, `cjk`,
   `arabic`, `french`, `german`, `hindi`, `indonesian`, `italian`, `portuguese`,
   `russian`, `spanish`, and `turkish`, alongside the original four names.
@@ -20,8 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [lambdadb/lambdadb@410154abcdf5275add1df47dcf23c170ed0e0efd](https://github.com/lambdadb/lambdadb/commit/410154abcdf5275add1df47dcf23c170ed0e0efd)
   ([PR #417](https://github.com/lambdadb/lambdadb/pull/417), merged as
   `a163d66a54ae68cd0e12a19752beea300a3bc8e1`). These are source revisions,
-  not evidence of deployment or general availability. No SDK release is
-  included in this change.
+  not evidence of deployment or general availability.
 
 ## [0.4.0] - 2026-09-16
 
