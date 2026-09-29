@@ -177,6 +177,7 @@ func (c *Collection) Query(ctx context.Context, input QueryInput, opts ...operat
 		Took:     obj.Took,
 		Total:    obj.Total,
 		MaxScore: obj.MaxScore,
+		Facets:   obj.Facets,
 	}, nil
 }
 
