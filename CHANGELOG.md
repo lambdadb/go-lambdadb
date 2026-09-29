@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0-rc.1] - 2026-09-29
+## [0.5.0] - 2026-09-29
 
-Release candidate for keyword facets and expanded text analyzer support.
+Keyword facets and expanded text analyzer support.
 
 ### Compatibility
 
