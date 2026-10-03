@@ -37,3 +37,18 @@ create a new field or collection and reindex the source text.
 
 The added constants require a server environment that supports them. Their
 presence in the SDK does not establish service availability.
+
+All [49 analyzer names](analyzer.md) select fixed presets with their default
+settings; this SDK does not configure custom pipelines or analyzer options.
+For example, select the keyword analyzer on a **text** field:
+
+```go
+components.CreateIndexConfigsUnionText(components.IndexConfigsText{
+    Type: components.TypeTextText,
+    Analyzers: []components.Analyzer{components.AnalyzerKeyword},
+})
+```
+
+This remains a text field and does not enable keyword-field sorting or facets.
+`AnalyzerNepali`, `AnalyzerTamil`, and `AnalyzerTelugu` are Lucene extensions;
+they are not documented as shared Elasticsearch/OpenSearch presets.
