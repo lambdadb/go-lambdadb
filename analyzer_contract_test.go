@@ -5,16 +5,18 @@ import (
 	"encoding/json"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
 	lambdadb "github.com/lambdadb/go-lambdadb"
 	"github.com/lambdadb/go-lambdadb/models/components"
 )
 
-// Analyzer contract: lambdadb/docs@3bda642f2e7f4f26432f1dfdcb076f656d50f873,
-// reference/api/openapi.json, and lambdadb/lambdadb PR #417 head
-// 410154abcdf5275add1df47dcf23c170ed0e0efd. These tests verify SDK wire behavior,
-// not deployment or server-side acceptance of arbitrary analyzer strings.
+// Analyzer wire shape/default: lambdadb/docs@961561c379acb079aec20191e13b89809ef096e9,
+// reference/api/openapi.json (still lists the original 16 names).
+// The 49 fixed presets are pinned to lambdadb/lambdadb PR #437 merge
+// 55d888299fee44466326a9db8016af9811ade13b, core/IndexingConstants.java.
+// These tests verify SDK wire behavior, not deployment or server-side acceptance.
 var knownAnalyzers = []struct {
 	value components.Analyzer
 	wire  string
@@ -35,13 +37,64 @@ var knownAnalyzers = []struct {
 	{components.AnalyzerRussian, "russian"},
 	{components.AnalyzerSpanish, "spanish"},
 	{components.AnalyzerTurkish, "turkish"},
+	{components.AnalyzerArmenian, "armenian"},
+	{components.AnalyzerBasque, "basque"},
+	{components.AnalyzerBengali, "bengali"},
+	{components.AnalyzerBrazilian, "brazilian"},
+	{components.AnalyzerBulgarian, "bulgarian"},
+	{components.AnalyzerCatalan, "catalan"},
+	{components.AnalyzerCzech, "czech"},
+	{components.AnalyzerDanish, "danish"},
+	{components.AnalyzerDutch, "dutch"},
+	{components.AnalyzerEstonian, "estonian"},
+	{components.AnalyzerFinnish, "finnish"},
+	{components.AnalyzerGalician, "galician"},
+	{components.AnalyzerGreek, "greek"},
+	{components.AnalyzerHungarian, "hungarian"},
+	{components.AnalyzerIrish, "irish"},
+	{components.AnalyzerLatvian, "latvian"},
+	{components.AnalyzerLithuanian, "lithuanian"},
+	{components.AnalyzerNorwegian, "norwegian"},
+	{components.AnalyzerPersian, "persian"},
+	{components.AnalyzerRomanian, "romanian"},
+	{components.AnalyzerSerbian, "serbian"},
+	{components.AnalyzerSorani, "sorani"},
+	{components.AnalyzerSwedish, "swedish"},
+	{components.AnalyzerThai, "thai"},
+	{components.AnalyzerSimple, "simple"},
+	{components.AnalyzerWhitespace, "whitespace"},
+	{components.AnalyzerStop, "stop"},
+	{components.AnalyzerKeyword, "keyword"},
+	{components.AnalyzerPattern, "pattern"},
+	{components.AnalyzerFingerprint, "fingerprint"},
+	{components.AnalyzerNepali, "nepali"},
+	{components.AnalyzerTamil, "tamil"},
+	{components.AnalyzerTelugu, "telugu"},
 }
 
 func TestAnalyzerIsExact(t *testing.T) {
+	if len(knownAnalyzers) != 49 {
+		t.Fatalf("contract has %d analyzers, want 49", len(knownAnalyzers))
+	}
+	seen := make(map[string]bool)
+	for _, tc := range knownAnalyzers {
+		if seen[tc.wire] {
+			t.Fatalf("duplicate contract analyzer %q", tc.wire)
+		}
+		seen[tc.wire] = true
+	}
 	for _, tc := range knownAnalyzers {
 		t.Run(tc.wire, func(t *testing.T) {
 			if string(tc.value) != tc.wire {
 				t.Fatalf("constant = %q, want %q", tc.value, tc.wire)
+			}
+			for _, variant := range []components.Analyzer{
+				components.Analyzer(strings.ToUpper(tc.wire)),
+				components.Analyzer(" " + tc.wire + " "),
+			} {
+				if variant.IsExact() {
+					t.Errorf("IsExact(%q) = true, want false", variant)
+				}
 			}
 			if !tc.value.IsExact() {
 				t.Fatalf("IsExact(%q) = false, want true", tc.value)
@@ -71,6 +124,7 @@ func TestPublicAPI_AnalyzerJSONCompatibility(t *testing.T) {
 		{"chinese_and_cjk", []components.Analyzer{components.AnalyzerChinese, components.AnalyzerCjk}, `{"type":"text","analyzers":["chinese","cjk"]}`},
 		{"unknown", []components.Analyzer{"future_analyzer"}, `{"type":"text","analyzers":["future_analyzer"]}`},
 		{"case_preserved", []components.Analyzer{"English", "CHINESE", "CJK"}, `{"type":"text","analyzers":["English","CHINESE","CJK"]}`},
+		{"new_presets_order_duplicates_and_case", []components.Analyzer{components.AnalyzerTelugu, components.AnalyzerKeyword, "Nepali", components.AnalyzerTelugu, components.AnalyzerPattern}, `{"type":"text","analyzers":["telugu","keyword","Nepali","telugu","pattern"]}`},
 		{"empty_name", []components.Analyzer{""}, `{"type":"text","analyzers":[""]}`},
 	}
 	for _, tc := range knownAnalyzers {

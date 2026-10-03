@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Expanded `Analyzer` constants and `IsExact()` recognition from 16 to 49 fixed
+  text presets with 33 new names; see the [full list](docs/models/components/analyzer.md).
+  Pinned the added names to [backend PR #437](https://github.com/lambdadb/lambdadb/pull/437),
+  merge [55d888299fee44466326a9db8016af9811ade13b](https://github.com/lambdadb/lambdadb/blob/55d888299fee44466326a9db8016af9811ade13b/core/src/main/java/ai/lambdadb/core/IndexingConstants.java).
+  The wire shape and default follow
+  [OpenAPI at 961561c379acb079aec20191e13b89809ef096e9](https://github.com/lambdadb/docs/blob/961561c379acb079aec20191e13b89809ef096e9/reference/api/openapi.json),
+  which still lists 16 names and needs an upstream enum update. Source revisions
+  do not establish development/production deployment or general availability.
+
+### Compatibility
+
+- Existing names, `standard` server default, case-sensitive `IsExact()`, string
+  extensibility, and JSON omission, empty arrays, case, order, and duplicates
+  are unchanged. No closed-enum validation or analyzer options/custom pipelines
+  were added. `keyword` is a text preset, separate from the keyword field type.
+  Nepali/Tamil/Telugu are Lucene extensions, not shared ES/OpenSearch support.
+- This manually maintained SDK has no checked-in OpenAPI/schema, CLI, or
+  Migration/import mapper. No dependency update is needed; the local known-value
+  list is updated directly. Existing English/Chinese examples remain valid.
+
 ## [0.5.0] - 2026-09-29
 
 Keyword facets and expanded text analyzer support.
