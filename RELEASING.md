@@ -201,9 +201,14 @@ retries for provider-backed requests. It does not inject fallback failures or
 verify usage accounting, quality, load or production availability.
 
 Before the `main` merge, run these tests from a separate consumer module pinned
-to the exact SDK `develop` commit, with no local `replace` directive. Copy the
-opt-in tests and their shared helpers from `versioning_integration_test.go` into
-that module. Record the resolved pseudo-version, source commit, target environment,
+to the exact SDK `develop` commit, with no local `replace` directive. Copy both
+`rerank_integration_test.go` (the analyzer and reranking smoke-test definitions)
+and `versioning_integration_test.go` (their shared helpers) into that module.
+Use the same test package name in both copied files, matching the consumer module.
+Before running, use `go test -list '^TestIntegration(AnalyzerPresets|ManagedReranking)Smoke$' .`
+and confirm that both test names appear. Record a passing, non-skipped execution
+of each required smoke test; "no tests to run" or a skipped test is not validation.
+Record the resolved pseudo-version, source commit, target environment,
 results and cleanup evidence. A deployed server rejecting new analyzer names
 is a release-validation gap; do not treat local enum/wire tests as a substitute.
 
