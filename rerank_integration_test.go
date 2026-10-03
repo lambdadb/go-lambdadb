@@ -221,11 +221,20 @@ func TestIntegrationAnalyzerPresetsSmoke(t *testing.T) {
 	if _, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: []map[string]any{doc}}); err != nil {
 		t.Fatal(err)
 	}
-	result, err := collection.Query(ctx, lambdadb.QueryInput{
+	input := lambdadb.QueryInput{
 		Query:          map[string]any{"queryString": map[string]any{"query": "*:*"}},
 		ConsistentRead: lambdadb.Bool(true),
-	})
-	if err != nil || result == nil || len(result.Docs) != 1 {
-		t.Fatalf("analyzer indexing probe: %v", err)
 	}
+	waitForIntegrationCondition(t, ctx, "analyzer indexing readiness", func() (bool, error) {
+		result, err := collection.Query(ctx, input)
+		var apiError *apierrors.APIError
+		if errors.As(err, &apiError) && apiError.StatusCode == 503 {
+			return false, nil // Newly created collections may not be query-ready yet.
+		}
+		if err != nil {
+			return false, err
+		}
+		return result != nil && len(result.Docs) == 1, nil
+	})
+	t.Log("analyzer indexing probe passed")
 }
