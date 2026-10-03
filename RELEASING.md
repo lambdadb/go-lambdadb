@@ -168,6 +168,37 @@ Collection. Run it only in an environment where creating and deleting that
 temporary data is authorized. The API key must remain local and must not be
 printed in logs or review artifacts.
 
+## Analyzer and managed reranking smoke tests
+
+Load the target environment's `LAMBDADB_BASE_URL`, `LAMBDADB_PROJECT_NAME`, and
+`LAMBDADB_PROJECT_API_KEY` without printing the key. Run only in an authorized
+development or staging project. Each test uses a unique temporary Collection
+and deletes it afterward:
+
+```bash
+LAMBDADB_RUN_ANALYZER_SMOKE=1 \
+  go test -run '^TestIntegrationAnalyzerPresetsSmoke$' -count=1 -v .
+
+LAMBDADB_RUN_RERANK_SMOKE=1 \
+  go test -run '^TestIntegrationManagedRerankingSmoke$' -count=1 -v .
+```
+
+The analyzer test checks all 49 preset names through schema read/write and a
+small indexing probe. It does not establish language-quality equivalence.
+The reranking test makes five provider-backed query requests (default, null
+criteria, and custom 2/3/10 levels), plus legacy/null, empty-result and invalid-input
+checks. It verifies final scores/order, retrieval scores, metadata and projection.
+It waits for baseline query readiness before any paid stage and disables client
+retries for provider-backed requests. It does not inject fallback failures or
+verify usage accounting, quality, load or production availability.
+
+Before the `main` merge, run these tests from a separate consumer module pinned
+to the exact SDK `develop` commit, with no local `replace` directive. Copy the
+opt-in tests and their shared helpers from `versioning_integration_test.go` into
+that module. Record the resolved pseudo-version, source commit, target environment,
+results and cleanup evidence. A deployed server rejecting new analyzer names
+is a release-validation gap; do not treat local enum/wire tests as a substitute.
+
 ## Tag safety
 
 Treat every pushed tag as immutable. Go module proxies may cache a version after

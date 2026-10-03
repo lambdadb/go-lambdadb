@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0-rc.1] - 2026-10-03
+
+Release candidate for managed reranking and 49 fixed text analyzer presets.
+
 ### Added
 
+- Opt-in live SDK smoke tests for all 49 analyzer presets and managed reranking
+  default/null/custom criteria, with temporary Collection cleanup.
 - Query-level managed reranking through optional/nullable `QueryInput.Rerank`
   and `components.RerankConfig`, with default or 2–10 custom criteria.
   Added `RerankResponse` on low-level responses and high-level `QueryResult`,
@@ -40,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Compatibility
 
+- No intentional Go API breaking changes relative to `0.5.0`. Existing queries
+  without reranking retain their request and response behavior. Reranking
+  requires server support and an enabled server-managed model.
 - Existing names, `standard` server default, case-sensitive `IsExact()`, string
   extensibility, and JSON omission, empty arrays, case, order, and duplicates
   are unchanged. No closed-enum validation or analyzer options/custom pipelines
