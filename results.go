@@ -7,6 +7,7 @@ import (
 
 // QueryResult is the flattened result of a collection query.
 type QueryResult struct {
+	Rerank   *components.RerankResponse
 	Facets   map[string]components.FacetResult
 	Docs     []operations.QueryCollectionDoc
 	Took     int64
