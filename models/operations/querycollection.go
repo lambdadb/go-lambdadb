@@ -3,10 +3,14 @@ package operations
 import (
 	"github.com/lambdadb/go-lambdadb/internal/utils"
 	"github.com/lambdadb/go-lambdadb/models/components"
+	"github.com/lambdadb/go-lambdadb/optionalnullable"
 )
 
 type QueryCollectionRequestBody struct {
-	Facets map[string]components.FacetRequest `json:"facets,omitzero"`
+	// Optional query-level reranking. Unset omits rerank; explicit null preserves
+	// legacy search. Values select a server-managed provider, with no client key.
+	Rerank optionalnullable.OptionalNullable[components.RerankConfig] `json:"rerank,omitempty"`
+	Facets map[string]components.FacetRequest                         `json:"facets,omitzero"`
 	// Number of documents to return. Note that the maximum number of documents is 100.
 	Size *int64 `json:"size,omitzero"`
 	// Query object. For managed embedding vector fields, use knn.queryText. For unmanaged vector fields, use knn.queryVector.
@@ -117,9 +121,12 @@ func (q *QueryCollectionRequest) GetBody() QueryCollectionRequestBody {
 type QueryCollectionDoc struct {
 	// Collection name.
 	Collection string `json:"collection"`
-	// Document similarity score.
-	Score *float64       `json:"score,omitzero"`
-	Doc   map[string]any `json:"doc"`
+	// Final sorting score. Applied reranking uses a 0-1 evaluation score,
+	// not a relevance probability; otherwise the original retrieval/fusion score.
+	Score *float64 `json:"score,omitzero"`
+	// Original retrieval/fusion score, outside Doc; only present when applied.
+	RetrievalScore *float64       `json:"retrievalScore,omitempty"`
+	Doc            map[string]any `json:"doc"`
 }
 
 func (q *QueryCollectionDoc) GetCollection() string {
@@ -145,10 +152,11 @@ func (q *QueryCollectionDoc) GetDoc() map[string]any {
 
 // QueryCollectionResponseBody - Documents selected by query.
 type QueryCollectionResponseBody struct {
+	Rerank *components.RerankResponse        `json:"rerank,omitempty"`
 	Facets map[string]components.FacetResult `json:"facets,omitzero"`
 	// Elapsed time in milliseconds.
 	Took int64 `json:"took"`
-	// Maximum score.
+	// Maximum final returned score, including numeric zero; omitted for empty results.
 	MaxScore *float64 `json:"maxScore,omitzero"`
 	// Total number of documents returned.
 	Total int64 `json:"total"`
@@ -244,4 +252,25 @@ func (q *QueryCollectionResponseBody) GetFacets() map[string]components.FacetRes
 		return nil
 	}
 	return q.Facets
+}
+
+func (q *QueryCollectionRequestBody) GetRerank() optionalnullable.OptionalNullable[components.RerankConfig] {
+	if q == nil {
+		return nil
+	}
+	return q.Rerank
+}
+
+func (q *QueryCollectionResponseBody) GetRerank() *components.RerankResponse {
+	if q == nil {
+		return nil
+	}
+	return q.Rerank
+}
+
+func (q *QueryCollectionDoc) GetRetrievalScore() *float64 {
+	if q == nil {
+		return nil
+	}
+	return q.RetrievalScore
 }

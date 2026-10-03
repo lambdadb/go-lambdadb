@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-03
+
+Managed reranking and 49 fixed text analyzer presets.
+
+### Added
+
+- Opt-in live SDK smoke tests for all 49 analyzer presets and managed reranking
+  default/null/custom criteria, with temporary Collection cleanup.
+- Query-level managed reranking through optional/nullable `QueryInput.Rerank`
+  and `components.RerankConfig`, with default or 2–10 custom criteria.
+  Added `RerankResponse` on low-level responses and high-level `QueryResult`,
+  plus optional document-envelope `RetrievalScore`. Inline and downloaded
+  documents preserve server ordering, zero scores, and double precision.
+- Pinned the managed reranking contract to backend develop revision
+  [55d888299fee44466326a9db8016af9811ade13b](https://github.com/lambdadb/lambdadb/blob/55d888299fee44466326a9db8016af9811ade13b/docs/design/managed-reranking.md)
+  (the relevant DTOs, service, contract tests, and design document match the supplied
+  local checkout `a5e06d49be06d95dc5f4046aeecaf51f8a7733c0`)
+  ([PR #435](https://github.com/lambdadb/lambdadb/pull/435) and
+  [PR #442](https://github.com/lambdadb/lambdadb/pull/442)). The upstream
+  [OpenAPI at 961561c379acb079aec20191e13b89809ef096e9](https://github.com/lambdadb/docs/blob/961561c379acb079aec20191e13b89809ef096e9/reference/api/openapi.json)
+  does not yet define reranking; an upstream update remains necessary.
+  See the [managed reranking guide](docs/managed-reranking.md).
+- Reranking is server managed: no caller Jev key, client re-sorting, `knn.k`
+  rewrite, collection setting, or wider facet support. Existing requests omit
+  the new property and retain their wire behavior. Unsupported rerank JSON
+  options fail decoding rather than being silently dropped. Source changes do
+  not establish deployment, public availability, or complete billing validation.
+
+- Expanded `Analyzer` constants and `IsExact()` recognition from 16 to 49 fixed
+  text presets with 33 new names; see the [full list](docs/models/components/analyzer.md).
+  Pinned the added names to [backend PR #437](https://github.com/lambdadb/lambdadb/pull/437),
+  merge [55d888299fee44466326a9db8016af9811ade13b](https://github.com/lambdadb/lambdadb/blob/55d888299fee44466326a9db8016af9811ade13b/core/src/main/java/ai/lambdadb/core/IndexingConstants.java).
+  The wire shape and default follow
+  [OpenAPI at 961561c379acb079aec20191e13b89809ef096e9](https://github.com/lambdadb/docs/blob/961561c379acb079aec20191e13b89809ef096e9/reference/api/openapi.json),
+  which still lists 16 names and needs an upstream enum update. Source revisions
+  do not establish development/production deployment or general availability.
+
+### Compatibility
+
+- No intentional Go API breaking changes relative to `0.5.0`. Existing queries
+  without reranking retain their request and response behavior. Reranking
+  requires server support and an enabled server-managed model.
+- Existing names, `standard` server default, case-sensitive `IsExact()`, string
+  extensibility, and JSON omission, empty arrays, case, order, and duplicates
+  are unchanged. No closed-enum validation or analyzer options/custom pipelines
+  were added. `keyword` is a text preset, separate from the keyword field type.
+  Nepali/Tamil/Telugu are Lucene extensions, not shared ES/OpenSearch support.
+- This manually maintained SDK has no checked-in OpenAPI/schema, CLI, or
+  Migration/import mapper. No dependency update is needed; the local known-value
+  list is updated directly. Existing English/Chinese examples remain valid.
+
 ## [0.5.0] - 2026-09-29
 
 Keyword facets and expanded text analyzer support.

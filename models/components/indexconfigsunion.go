@@ -397,25 +397,60 @@ func (e *TypeText) UnmarshalJSON(data []byte) error {
 	}
 }
 
+// Analyzer selects a fixed preset for a text field, using server defaults for
+// that preset. AnalyzerKeyword does not select the keyword field type.
 type Analyzer string
 
 const (
-	AnalyzerStandard   Analyzer = "standard"
-	AnalyzerKorean     Analyzer = "korean"
-	AnalyzerJapanese   Analyzer = "japanese"
-	AnalyzerEnglish    Analyzer = "english"
-	AnalyzerChinese    Analyzer = "chinese"
-	AnalyzerCjk        Analyzer = "cjk"
-	AnalyzerArabic     Analyzer = "arabic"
-	AnalyzerFrench     Analyzer = "french"
-	AnalyzerGerman     Analyzer = "german"
-	AnalyzerHindi      Analyzer = "hindi"
-	AnalyzerIndonesian Analyzer = "indonesian"
-	AnalyzerItalian    Analyzer = "italian"
-	AnalyzerPortuguese Analyzer = "portuguese"
-	AnalyzerRussian    Analyzer = "russian"
-	AnalyzerSpanish    Analyzer = "spanish"
-	AnalyzerTurkish    Analyzer = "turkish"
+	AnalyzerStandard    Analyzer = "standard"
+	AnalyzerKorean      Analyzer = "korean"
+	AnalyzerJapanese    Analyzer = "japanese"
+	AnalyzerEnglish     Analyzer = "english"
+	AnalyzerChinese     Analyzer = "chinese"
+	AnalyzerCjk         Analyzer = "cjk"
+	AnalyzerArabic      Analyzer = "arabic"
+	AnalyzerFrench      Analyzer = "french"
+	AnalyzerGerman      Analyzer = "german"
+	AnalyzerHindi       Analyzer = "hindi"
+	AnalyzerIndonesian  Analyzer = "indonesian"
+	AnalyzerItalian     Analyzer = "italian"
+	AnalyzerPortuguese  Analyzer = "portuguese"
+	AnalyzerRussian     Analyzer = "russian"
+	AnalyzerSpanish     Analyzer = "spanish"
+	AnalyzerTurkish     Analyzer = "turkish"
+	AnalyzerArmenian    Analyzer = "armenian"
+	AnalyzerBasque      Analyzer = "basque"
+	AnalyzerBengali     Analyzer = "bengali"
+	AnalyzerBrazilian   Analyzer = "brazilian"
+	AnalyzerBulgarian   Analyzer = "bulgarian"
+	AnalyzerCatalan     Analyzer = "catalan"
+	AnalyzerCzech       Analyzer = "czech"
+	AnalyzerDanish      Analyzer = "danish"
+	AnalyzerDutch       Analyzer = "dutch"
+	AnalyzerEstonian    Analyzer = "estonian"
+	AnalyzerFinnish     Analyzer = "finnish"
+	AnalyzerGalician    Analyzer = "galician"
+	AnalyzerGreek       Analyzer = "greek"
+	AnalyzerHungarian   Analyzer = "hungarian"
+	AnalyzerIrish       Analyzer = "irish"
+	AnalyzerLatvian     Analyzer = "latvian"
+	AnalyzerLithuanian  Analyzer = "lithuanian"
+	AnalyzerNorwegian   Analyzer = "norwegian"
+	AnalyzerPersian     Analyzer = "persian"
+	AnalyzerRomanian    Analyzer = "romanian"
+	AnalyzerSerbian     Analyzer = "serbian"
+	AnalyzerSorani      Analyzer = "sorani"
+	AnalyzerSwedish     Analyzer = "swedish"
+	AnalyzerThai        Analyzer = "thai"
+	AnalyzerSimple      Analyzer = "simple"
+	AnalyzerWhitespace  Analyzer = "whitespace"
+	AnalyzerStop        Analyzer = "stop"
+	AnalyzerKeyword     Analyzer = "keyword"
+	AnalyzerPattern     Analyzer = "pattern"
+	AnalyzerFingerprint Analyzer = "fingerprint"
+	AnalyzerNepali      Analyzer = "nepali"
+	AnalyzerTamil       Analyzer = "tamil"
+	AnalyzerTelugu      Analyzer = "telugu"
 )
 
 func (e Analyzer) ToPointer() *Analyzer {
@@ -428,7 +463,14 @@ func (e *Analyzer) IsExact() bool {
 		switch *e {
 		case "standard", "korean", "japanese", "english",
 			"chinese", "cjk", "arabic", "french", "german", "hindi",
-			"indonesian", "italian", "portuguese", "russian", "spanish", "turkish":
+			"indonesian", "italian", "portuguese", "russian", "spanish", "turkish",
+			"armenian", "basque", "bengali", "brazilian", "bulgarian",
+			"catalan", "czech", "danish", "dutch", "estonian",
+			"finnish", "galician", "greek", "hungarian", "irish",
+			"latvian", "lithuanian", "norwegian", "persian", "romanian",
+			"serbian", "sorani", "swedish", "thai", "simple",
+			"whitespace", "stop", "keyword", "pattern", "fingerprint",
+			"nepali", "tamil", "telugu":
 			return true
 		}
 	}

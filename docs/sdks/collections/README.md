@@ -486,7 +486,12 @@ func main() {
 
 ### Response
 
-**[*operations.QueryCollectionResponse](../../models/operations/querycollectionresponse.md), error**
+**[*lambdadb.QueryResult](../../../results.go), error**
+
+Optional `QueryInput.Rerank` selects [managed reranking](../../managed-reranking.md)
+for a single scoring query. `QueryResult.Rerank` preserves stage metadata, and
+applied document envelopes expose final `Score` plus original `RetrievalScore`,
+including after automatic downloads. The SDK preserves server ordering.
 
 When `Ref` selects a ref that does not exist, Query returns
 `apierrors.ResourceNotFoundError`. A dangling Alias returns

@@ -63,6 +63,14 @@ vX.Y.Z
 Do not publish the stable tag until release-candidate feedback is resolved and
 the final validation checklist passes.
 
+For `0.6.0`, the maintainer explicitly selected a direct stable release on
+2026-10-03 after exact-commit consumer validation and shared-development analyzer
+and managed reranking smoke tests passed. This release skips RC publication and
+RC feedback steps only. All other validation, review, branch synchronization,
+immutable-tag and explicit publication-approval requirements still apply.
+This decision does not establish production availability or authorize publication
+as part of release preparation.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
@@ -167,6 +175,42 @@ Branch-scoped writes, and the signed bulk-upload flow, and then deletes the
 Collection. Run it only in an environment where creating and deleting that
 temporary data is authorized. The API key must remain local and must not be
 printed in logs or review artifacts.
+
+## Analyzer and managed reranking smoke tests
+
+Load the target environment's `LAMBDADB_BASE_URL`, `LAMBDADB_PROJECT_NAME`, and
+`LAMBDADB_PROJECT_API_KEY` without printing the key. Run only in an authorized
+development or staging project. Each test uses a unique temporary Collection
+and deletes it afterward:
+
+```bash
+LAMBDADB_RUN_ANALYZER_SMOKE=1 \
+  go test -run '^TestIntegrationAnalyzerPresetsSmoke$' -count=1 -v .
+
+LAMBDADB_RUN_RERANK_SMOKE=1 \
+  go test -run '^TestIntegrationManagedRerankingSmoke$' -count=1 -v .
+```
+
+The analyzer test checks all 49 preset names through schema read/write and a
+small indexing probe. It does not establish language-quality equivalence.
+The reranking test makes five provider-backed query requests (default, null
+criteria, and custom 2/3/10 levels), plus legacy/null, empty-result and invalid-input
+checks. It verifies final scores/order, retrieval scores, metadata and projection.
+It waits for baseline query readiness before any paid stage and disables client
+retries for provider-backed requests. It does not inject fallback failures or
+verify usage accounting, quality, load or production availability.
+
+Before the `main` merge, run these tests from a separate consumer module pinned
+to the exact SDK `develop` commit, with no local `replace` directive. Copy both
+`rerank_integration_test.go` (the analyzer and reranking smoke-test definitions)
+and `versioning_integration_test.go` (their shared helpers) into that module.
+Use the same test package name in both copied files, matching the consumer module.
+Before running, use `go test -list '^TestIntegration(AnalyzerPresets|ManagedReranking)Smoke$' .`
+and confirm that both test names appear. Record a passing, non-skipped execution
+of each required smoke test; "no tests to run" or a skipped test is not validation.
+Record the resolved pseudo-version, source commit, target environment,
+results and cleanup evidence. A deployed server rejecting new analyzer names
+is a release-validation gap; do not treat local enum/wire tests as a substitute.
 
 ## Tag safety
 

@@ -12,3 +12,8 @@
 | `Fields` | [*components.FieldsSelectorUnion](../../models/components/fieldsselectorunion.md) | :heavy_minus_sign: | Fields to include or exclude. |
 | `PartitionFilter` | [*components.PartitionFilter](../../models/components/partitionfilter.md) | :heavy_minus_sign: | Restricts the request to matching partition values. |
 | `Ref` | [*components.RefContext](../../models/components/versioning.md#refcontext) | :heavy_minus_sign: | Branch, tag, or alias to read. A missing ref returns 404; a dangling alias returns 400. |
+| `Rerank` | `optionalnullable.OptionalNullable[components.RerankConfig]` | :heavy_minus_sign: | Query-level managed reranking. Unset/null preserves legacy search; see [RerankConfig](../components/rerankconfig.md). |
+
+See [managed reranking](../../managed-reranking.md) for default/custom examples,
+candidate limits, score meanings, and failure policies. Reranking requires a
+scoring query and positive size, rejects sort, and retains existing facet limits.
