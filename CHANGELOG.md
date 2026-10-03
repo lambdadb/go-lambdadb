@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Query-level managed reranking through optional/nullable `QueryInput.Rerank`
+  and `components.RerankConfig`, with default or 2–10 custom criteria.
+  Added `RerankResponse` on low-level responses and high-level `QueryResult`,
+  plus optional document-envelope `RetrievalScore`. Inline and downloaded
+  documents preserve server ordering, zero scores, and double precision.
+- Pinned the managed reranking contract to backend develop revision
+  [55d888299fee44466326a9db8016af9811ade13b](https://github.com/lambdadb/lambdadb/blob/55d888299fee44466326a9db8016af9811ade13b/docs/design/managed-reranking.md)
+  (the relevant DTOs, service, contract tests, and design document match the supplied
+  local checkout `a5e06d49be06d95dc5f4046aeecaf51f8a7733c0`)
+  ([PR #435](https://github.com/lambdadb/lambdadb/pull/435) and
+  [PR #442](https://github.com/lambdadb/lambdadb/pull/442)). The upstream
+  [OpenAPI at 961561c379acb079aec20191e13b89809ef096e9](https://github.com/lambdadb/docs/blob/961561c379acb079aec20191e13b89809ef096e9/reference/api/openapi.json)
+  does not yet define reranking; an upstream update remains necessary.
+  See the [managed reranking guide](docs/managed-reranking.md).
+- Reranking is server managed: no caller Jev key, client re-sorting, `knn.k`
+  rewrite, collection setting, or wider facet support. Existing requests omit
+  the new property and retain their wire behavior. Unsupported rerank JSON
+  options fail decoding rather than being silently dropped. Source changes do
+  not establish deployment, public availability, or complete billing validation.
+
 - Expanded `Analyzer` constants and `IsExact()` recognition from 16 to 49 fixed
   text presets with 33 new names; see the [full list](docs/models/components/analyzer.md).
   Pinned the added names to [backend PR #437](https://github.com/lambdadb/lambdadb/pull/437),

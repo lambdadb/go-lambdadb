@@ -196,6 +196,10 @@ A ref that does not exist returns `apierrors.ResourceNotFoundError`. An Alias
 whose target has been deleted returns `apierrors.BadRequestError` until it is
 retargeted to an existing Branch or Tag.
 
+For optional query-level reranking, see [managed reranking](docs/managed-reranking.md)
+for default/custom criteria, separate candidate limits, and score/fallback semantics.
+LambdaDB manages provider credentials; no separate Jev API key is required.
+
 Select a writable branch for document mutations with `Branch`:
 
 ```go
