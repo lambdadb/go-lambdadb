@@ -63,6 +63,14 @@ vX.Y.Z
 Do not publish the stable tag until release-candidate feedback is resolved and
 the final validation checklist passes.
 
+For `0.6.0`, the maintainer explicitly selected a direct stable release on
+2026-10-03 after exact-commit consumer validation and shared-development analyzer
+and managed reranking smoke tests passed. This release skips RC publication and
+RC feedback steps only. All other validation, review, branch synchronization,
+immutable-tag and explicit publication-approval requirements still apply.
+This decision does not establish production availability or authorize publication
+as part of release preparation.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
