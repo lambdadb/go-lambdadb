@@ -1,6 +1,10 @@
 # IndexConfigsManagedEmbeddingVector
 
 
+This legacy type/helper always serializes `managedEmbedding: true`. For preferred
+embedding-only input, use `IndexConfigsNativeEmbeddingVector`; see
+[native embeddings](../../bayesian-native-embeddings.md#native-embedding-configuration).
+
 ## Fields
 
 | Field                                                               | Type                                                                | Required                                                            | Description                                                         |

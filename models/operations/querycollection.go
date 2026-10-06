@@ -13,6 +13,10 @@ type QueryCollectionRequestBody struct {
 	Facets map[string]components.FacetRequest                         `json:"facets,omitzero"`
 	// Number of documents to return. Note that the maximum number of documents is 100.
 	Size *int64 `json:"size,omitzero"`
+	// Bayesian retrieval without rerank requires 1 <= size <= candidateSize <= 100.
+	// With rerank, omit this field and use rerank.candidateSize. Unsupported for
+	// other queries. The server validates budgets; the SDK inserts no default.
+	CandidateSize *int64 `json:"candidateSize,omitzero"`
 	// Query object. For managed embedding vector fields, use knn.queryText. For unmanaged vector fields, use knn.queryVector.
 	Query map[string]any `json:"query"`
 	// True overlays eligible pending writes only for a directly selected branch
@@ -47,6 +51,13 @@ func (q *QueryCollectionRequestBody) GetSize() *int64 {
 		return nil
 	}
 	return q.Size
+}
+
+func (q *QueryCollectionRequestBody) GetCandidateSize() *int64 {
+	if q == nil {
+		return nil
+	}
+	return q.CandidateSize
 }
 
 func (q *QueryCollectionRequestBody) GetQuery() map[string]any {

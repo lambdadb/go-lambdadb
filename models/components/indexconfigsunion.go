@@ -189,7 +189,7 @@ type EmbeddingConfig struct {
 	// Resolved embedding dimensions. Optional in requests and resolved in stored collection metadata.
 	Dimensions *int64 `json:"dimensions,omitzero"`
 	// Resolved vector similarity metric. Optional in requests and resolved in stored collection metadata.
-	Similarity *Similarity `default:"cosine" json:"similarity,omitzero"`
+	Similarity *Similarity `json:"similarity,omitzero"`
 }
 
 func (e EmbeddingConfig) MarshalJSON() ([]byte, error) {
@@ -374,6 +374,63 @@ func (i *IndexConfigsManagedEmbeddingVector) GetEmbedding() EmbeddingConfig {
 	return i.Embedding
 }
 
+// IndexConfigsNativeEmbeddingVector enables native embeddings without inserting
+// managedEmbedding. Use the legacy managed helper when an explicit true is needed.
+type IndexConfigsNativeEmbeddingVector struct {
+	Type      TypeVector      `json:"type"`
+	Embedding EmbeddingConfig `json:"embedding"`
+	// Omit or set true. Explicit false with embedding is invalid.
+	ManagedEmbedding *bool `json:"managedEmbedding,omitzero"`
+}
+
+func (i IndexConfigsNativeEmbeddingVector) MarshalJSON() ([]byte, error) {
+	if i.ManagedEmbedding != nil && !*i.ManagedEmbedding {
+		return nil, errors.New("embedding is not allowed when managedEmbedding=false")
+	}
+	return utils.MarshalJSON(i, "", false)
+}
+
+func (i *IndexConfigsNativeEmbeddingVector) UnmarshalJSON(data []byte) error {
+	state, err := vectorEmbeddingState(data)
+	if err != nil {
+		return err
+	}
+	if state.hasDimensions {
+		return errors.New("Top-level dimensions are not allowed for managed embedding field")
+	}
+	if state.hasSimilarity {
+		return errors.New("Top-level similarity is not allowed for managed embedding field")
+	}
+	if state.hasManagedEmbedding && !state.managedEmbedding {
+		return errors.New("embedding is not allowed when managedEmbedding=false")
+	}
+	if !state.hasEmbedding {
+		return errors.New("embedding is required for native embedding vector")
+	}
+	return utils.UnmarshalJSON(data, &i, "", false, nil)
+}
+
+func (i *IndexConfigsNativeEmbeddingVector) GetType() TypeVector {
+	if i == nil {
+		return TypeVector("")
+	}
+	return i.Type
+}
+
+func (i *IndexConfigsNativeEmbeddingVector) GetEmbedding() EmbeddingConfig {
+	if i == nil {
+		return EmbeddingConfig{}
+	}
+	return i.Embedding
+}
+
+func (i *IndexConfigsNativeEmbeddingVector) GetManagedEmbedding() *bool {
+	if i == nil {
+		return nil
+	}
+	return i.ManagedEmbedding
+}
+
 type TypeText string
 
 const (
@@ -525,6 +582,7 @@ const (
 )
 
 type IndexConfigsUnion struct {
+	IndexConfigsNativeEmbeddingVector  *IndexConfigsNativeEmbeddingVector  `queryParam:"inline" union:"member"`
 	IndexConfigsText                   *IndexConfigsText                   `queryParam:"inline" union:"member"`
 	IndexConfigsVector                 *IndexConfigsVector                 `queryParam:"inline" union:"member"`
 	IndexConfigsManagedEmbeddingVector *IndexConfigsManagedEmbeddingVector `queryParam:"inline" union:"member"`
@@ -556,6 +614,11 @@ func CreateIndexConfigsUnionVector(vector IndexConfigsVector) IndexConfigsUnion 
 		IndexConfigsVector: &vector,
 		Type:               typ,
 	}
+}
+
+func CreateIndexConfigsUnionNativeEmbeddingVector(vector IndexConfigsNativeEmbeddingVector) IndexConfigsUnion {
+	vector.Type = TypeVectorVector
+	return IndexConfigsUnion{IndexConfigsNativeEmbeddingVector: &vector, Type: IndexConfigsUnionTypeVector}
 }
 
 func CreateIndexConfigsUnionManagedEmbeddingVector(managedEmbeddingVector IndexConfigsManagedEmbeddingVector) IndexConfigsUnion {
@@ -682,7 +745,15 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("could not inspect vector embedding state within IndexConfigsUnion: %w", err)
 		}
 		if state.hasEmbedding && !state.hasManagedEmbedding {
-			return errors.New("managedEmbedding=true is required when embedding config is provided")
+			vector := new(IndexConfigsNativeEmbeddingVector)
+			if err := utils.UnmarshalJSON(data, &vector, "", true, nil); err != nil {
+				return fmt.Errorf("could not unmarshal native embedding vector within IndexConfigsUnion: %w", err)
+			}
+			*u = IndexConfigsUnion{
+				IndexConfigsNativeEmbeddingVector: vector,
+				Type:                              IndexConfigsUnionTypeVector,
+			}
+			return nil
 		}
 		if state.hasEmbedding && !state.managedEmbedding {
 			return errors.New("embedding is not allowed when managedEmbedding=false")
@@ -785,6 +856,10 @@ func (u IndexConfigsUnion) MarshalJSON() ([]byte, error) {
 
 	if u.IndexConfigsManagedEmbeddingVector != nil {
 		return utils.MarshalJSON(u.IndexConfigsManagedEmbeddingVector, "", true)
+	}
+
+	if u.IndexConfigsNativeEmbeddingVector != nil {
+		return utils.MarshalJSON(u.IndexConfigsNativeEmbeddingVector, "", true)
 	}
 
 	if u.IndexConfigs != nil {
