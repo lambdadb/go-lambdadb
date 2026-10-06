@@ -71,6 +71,13 @@ immutable-tag and explicit publication-approval requirements still apply.
 This decision does not establish production availability or authorize publication
 as part of release preparation.
 
+For `0.7.0`, the maintainer explicitly authorized direct stable publication on
+2026-10-06, without dev or RC publication. Skip RC publication and RC feedback
+steps for this release only. Exact-commit consumer validation, applicable live
+smoke tests, review, metadata checks, immutable tags, and branch synchronization
+remain required. This authorization does not authorize server deployment or
+establish production availability.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
