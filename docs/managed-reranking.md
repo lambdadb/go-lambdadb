@@ -76,6 +76,10 @@ For a vector-only query, increase `k` explicitly when a deeper pool is wanted.
 The cap does not guarantee that many candidates; metadata reports actual counts.
 Sparse vector and lexical queries have no separate dense `knn.k` control.
 
+[Bayesian search](bayesian-native-embeddings.md) supports managed reranking. Omit
+top-level `candidateSize` and use `rerank.candidateSize`; its default remains
+`max(50, size)`. Applied reranking preserves Bayesian scores in `RetrievalScore`.
+
 Reranking requires a scoring retrieval query. It cannot be combined with `sort`
 or used for query-less/filter-only requests. Existing facet restrictions remain:
 reranking does not add facet support to vector/hybrid queries. Supported lexical

@@ -2,28 +2,17 @@ package components
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 )
 
-func TestIndexConfigsUnionRejectsEmbeddingWithoutManagedEmbeddingTrue(t *testing.T) {
+func TestIndexConfigsUnionRejectsEmbeddingWithManagedEmbeddingFalse(t *testing.T) {
 	tests := []struct {
 		name    string
 		payload string
 		wantErr string
 	}{
-		{
-			name: "embedding without managedEmbedding",
-			payload: `{
-				"type": "vector",
-				"embedding": {
-					"provider": "openai",
-					"model": "text-embedding-3-small",
-					"sourceField": "body"
-				}
-			}`,
-			wantErr: "managedEmbedding=true is required when embedding config is provided",
-		},
 		{
 			name: "embedding with managedEmbedding false",
 			payload: `{
@@ -224,5 +213,69 @@ func TestIndexConfigsVectorMarshalRejectsInvalidUnmanagedSettings(t *testing.T) 
 				t.Fatalf("json.Marshal() error = %q, want containing %q", err.Error(), tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestNativeEmbeddingRoundTrip(t *testing.T) {
+	for _, extra := range []string{"", `,"dimensions":512,"similarity":"dot_product"`} {
+		raw := `{"type":"vector","embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body"` + extra + `}}`
+		var union IndexConfigsUnion
+		if err := json.Unmarshal([]byte(raw), &union); err != nil {
+			t.Fatal(err)
+		}
+		if union.IndexConfigsNativeEmbeddingVector == nil {
+			t.Fatal("native input not selected")
+		}
+		encoded, err := json.Marshal(union)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got, want map[string]any
+		if err := json.Unmarshal(encoded, &got); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal([]byte(raw), &want); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("roundtrip = %s, want %s", encoded, raw)
+		}
+	}
+	for _, flag := range []*bool{nil, func() *bool { v := true; return &v }()} {
+		vector := CreateIndexConfigsUnionNativeEmbeddingVector(IndexConfigsNativeEmbeddingVector{ManagedEmbedding: flag, Embedding: EmbeddingConfig{Provider: EmbeddingConfigProviderOpenai, Model: "text-embedding-3-small", SourceField: "body"}})
+		raw, err := json.Marshal(vector)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := got["managedEmbedding"]; ok != (flag != nil) {
+			t.Fatalf("flag presence: %s", raw)
+		}
+	}
+}
+
+func TestNativeEmbeddingRejectsConflicts(t *testing.T) {
+	for _, extra := range []string{`,"dimensions":1536`, `,"similarity":"cosine"`, `,"managedEmbedding":false`} {
+		raw := `{"type":"vector","embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body"}` + extra + `}`
+		var union IndexConfigsUnion
+		if err := json.Unmarshal([]byte(raw), &union); err == nil {
+			t.Fatalf("accepted conflict: %s", raw)
+		}
+		var vector IndexConfigsNativeEmbeddingVector
+		if err := json.Unmarshal([]byte(raw), &vector); err == nil {
+			t.Fatalf("accepted direct conflict: %s", raw)
+		}
+	}
+	no := false
+	_, err := json.Marshal(CreateIndexConfigsUnionNativeEmbeddingVector(IndexConfigsNativeEmbeddingVector{ManagedEmbedding: &no}))
+	if err == nil {
+		t.Fatal("accepted explicit false")
+	}
+	var vector IndexConfigsNativeEmbeddingVector
+	if err := json.Unmarshal([]byte(`{"type":"vector"}`), &vector); err == nil {
+		t.Fatal("accepted missing embedding")
 	}
 }
