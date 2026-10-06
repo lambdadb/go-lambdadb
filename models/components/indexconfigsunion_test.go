@@ -328,3 +328,53 @@ func TestNativeEmbeddingReplacesReusedUnion(t *testing.T) {
 		})
 	}
 }
+
+func TestIndexConfigsUnionReplacesNativeWithOtherVariants(t *testing.T) {
+	const native = `{"type":"vector","embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body"}}`
+	for name, next := range map[string]string{
+		"text":         `{"type":"text"}`,
+		"vector":       `{"type":"vector","dimensions":2,"similarity":"cosine"}`,
+		"managed":      `{"type":"vector","managedEmbedding":true,"embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"other"}}`,
+		"keyword":      `{"type":"keyword"}`,
+		"long":         `{"type":"long"}`,
+		"double":       `{"type":"double"}`,
+		"datetime":     `{"type":"datetime"}`,
+		"boolean":      `{"type":"boolean"}`,
+		"sparseVector": `{"type":"sparseVector"}`,
+		"object":       `{"type":"object","objectIndexConfigs":{}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			var union IndexConfigsUnion
+			if err := json.Unmarshal([]byte(native), &union); err != nil {
+				t.Fatal(err)
+			}
+			before := union
+			if err := json.Unmarshal([]byte(`{"type":"vector","dimensions":0}`), &union); err == nil {
+				t.Fatal("accepted invalid vector dimensions")
+			}
+			if !reflect.DeepEqual(union, before) {
+				t.Fatal("failed decode changed the existing native value")
+			}
+			if err := json.Unmarshal([]byte(next), &union); err != nil {
+				t.Fatal(err)
+			}
+			if union.IndexConfigsNativeEmbeddingVector != nil {
+				t.Error("stale native member retained")
+			}
+			raw, err := json.Marshal(union)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var gotJSON, wantJSON map[string]any
+			if err := json.Unmarshal(raw, &gotJSON); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal([]byte(next), &wantJSON); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(gotJSON, wantJSON) {
+				t.Fatalf("reused union = %s, want %s", raw, next)
+			}
+		})
+	}
+}
