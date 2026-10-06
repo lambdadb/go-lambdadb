@@ -71,6 +71,13 @@ immutable-tag and explicit publication-approval requirements still apply.
 This decision does not establish production availability or authorize publication
 as part of release preparation.
 
+For `0.7.0`, the maintainer explicitly authorized direct stable publication on
+2026-10-06, without dev or RC publication. Skip RC publication and RC feedback
+steps for this release only. Exact-commit consumer validation, applicable live
+smoke tests, review, metadata checks, immutable tags, and branch synchronization
+remain required. This authorization does not authorize server deployment or
+establish production availability.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
@@ -175,6 +182,34 @@ Branch-scoped writes, and the signed bulk-upload flow, and then deletes the
 Collection. Run it only in an environment where creating and deleting that
 temporary data is authorized. The API key must remain local and must not be
 printed in logs or review artifacts.
+
+## Bayesian and native embedding smoke test
+
+Before an RC or stable release containing Bayesian or native embedding changes,
+run `TestIntegrationBayesianNativeEmbeddingSmoke` against the intended authorized
+LambdaDB environment after verifying the actual deployed backend revision.
+Load `LAMBDADB_BASE_URL`, `LAMBDADB_PROJECT_NAME`, and `LAMBDADB_PROJECT_API_KEY`
+without printing or saving credentials.
+
+Before the `main` merge, use a separate consumer module pinned to the exact SDK
+`develop` commit, with no local `replace` directive. Copy
+`bayesian_integration_test.go` and `versioning_integration_test.go` (shared
+helpers) into that module, using the same test package name in both files.
+Confirm discovery and then execute:
+
+```bash
+go test -list '^TestIntegrationBayesianNativeEmbeddingSmoke$' .
+LAMBDADB_RUN_BAYESIAN_SMOKE=1 \
+  go test -run '^TestIntegrationBayesianNativeEmbeddingSmoke$' -count=1 -v .
+```
+
+The test must appear in the listing and pass without skipping; compilation,
+"no tests to run", or a skipped test is not live validation. Record the SDK
+source SHA and resolved pseudo-version, deployed backend revision evidence,
+target environment, results, and cleanup evidence. The test exercises real
+OpenAI document/query embeddings and JEV reranking, creates temporary
+Collections, and verifies their deletion. Revoke temporary project keys and
+remove temporary projects separately; never delete persistent CI resources.
 
 ## Analyzer and managed reranking smoke tests
 
