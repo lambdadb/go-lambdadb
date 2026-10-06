@@ -749,8 +749,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			if err := utils.UnmarshalJSON(data, &vector, "", true, nil); err != nil {
 				return fmt.Errorf("could not unmarshal native embedding vector within IndexConfigsUnion: %w", err)
 			}
-			u.IndexConfigsNativeEmbeddingVector = vector
-			u.Type = IndexConfigsUnionTypeVector
+			*u = IndexConfigsUnion{
+				IndexConfigsNativeEmbeddingVector: vector,
+				Type:                              IndexConfigsUnionTypeVector,
+			}
 			return nil
 		}
 		if state.hasEmbedding && !state.managedEmbedding {

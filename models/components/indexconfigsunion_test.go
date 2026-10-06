@@ -279,3 +279,52 @@ func TestNativeEmbeddingRejectsConflicts(t *testing.T) {
 		t.Fatal("accepted missing embedding")
 	}
 }
+
+func TestNativeEmbeddingReplacesReusedUnion(t *testing.T) {
+	const native = `{"type":"vector","embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body"}}`
+	for name, previous := range map[string]string{
+		"text":    `{"type":"text"}`,
+		"vector":  `{"type":"vector","dimensions":2}`,
+		"managed": `{"type":"vector","managedEmbedding":true,"embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"oldBody"}}`,
+		"keyword": `{"type":"keyword"}`,
+		"object":  `{"type":"object","objectIndexConfigs":{}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			var union IndexConfigsUnion
+			if err := json.Unmarshal([]byte(previous), &union); err != nil {
+				t.Fatal(err)
+			}
+			before := union
+			invalid := `{"type":"vector","dimensions":2,"embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body"}}`
+			if err := json.Unmarshal([]byte(invalid), &union); err == nil {
+				t.Fatal("accepted conflicting native dimensions")
+			}
+			if !reflect.DeepEqual(union, before) {
+				t.Fatal("failed decode changed the existing union")
+			}
+			if err := json.Unmarshal([]byte(native), &union); err != nil {
+				t.Fatal(err)
+			}
+			want := CreateIndexConfigsUnionNativeEmbeddingVector(IndexConfigsNativeEmbeddingVector{
+				Embedding: EmbeddingConfig{Provider: EmbeddingConfigProviderOpenai, Model: "text-embedding-3-small", SourceField: "body"},
+			})
+			if !reflect.DeepEqual(union, want) {
+				t.Fatal("native decode retained a stale union member")
+			}
+			raw, err := json.Marshal(union)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var gotJSON, wantJSON map[string]any
+			if err := json.Unmarshal(raw, &gotJSON); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal([]byte(native), &wantJSON); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(gotJSON, wantJSON) {
+				t.Fatalf("reused union serialized as %s", raw)
+			}
+		})
+	}
+}
