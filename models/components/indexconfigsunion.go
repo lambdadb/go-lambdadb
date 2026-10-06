@@ -736,8 +736,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("could not unmarshal `%s` into expected (Type == text) type IndexConfigsText within IndexConfigsUnion: %w", string(data), err)
 		}
 
-		u.IndexConfigsText = indexConfigsText
-		u.Type = IndexConfigsUnionTypeText
+		*u = IndexConfigsUnion{
+			IndexConfigsText: indexConfigsText,
+			Type:             IndexConfigsUnionTypeText,
+		}
 		return nil
 	case "vector":
 		state, err := vectorEmbeddingState(data)
@@ -764,8 +766,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 				return fmt.Errorf("could not unmarshal `%s` into expected (Type == vector, ManagedEmbedding == true) type IndexConfigsManagedEmbeddingVector within IndexConfigsUnion: %w", string(data), err)
 			}
 
-			u.IndexConfigsManagedEmbeddingVector = indexConfigsManagedEmbeddingVector
-			u.Type = IndexConfigsUnionTypeVector
+			*u = IndexConfigsUnion{
+				IndexConfigsManagedEmbeddingVector: indexConfigsManagedEmbeddingVector,
+				Type:                               IndexConfigsUnionTypeVector,
+			}
 			return nil
 		}
 
@@ -774,8 +778,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("could not unmarshal `%s` into expected (Type == vector) type IndexConfigsVector within IndexConfigsUnion: %w", string(data), err)
 		}
 
-		u.IndexConfigsVector = indexConfigsVector
-		u.Type = IndexConfigsUnionTypeVector
+		*u = IndexConfigsUnion{
+			IndexConfigsVector: indexConfigsVector,
+			Type:               IndexConfigsUnionTypeVector,
+		}
 		return nil
 	case "keyword":
 		indexConfigs := new(IndexConfigs)
@@ -783,8 +789,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("could not unmarshal `%s` into expected (Type == keyword) type IndexConfigs within IndexConfigsUnion: %w", string(data), err)
 		}
 
-		u.IndexConfigs = indexConfigs
-		u.Type = IndexConfigsUnionTypeKeyword
+		*u = IndexConfigsUnion{
+			IndexConfigs: indexConfigs,
+			Type:         IndexConfigsUnionTypeKeyword,
+		}
 		return nil
 	case "long":
 		indexConfigs := new(IndexConfigs)
@@ -792,8 +800,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("could not unmarshal `%s` into expected (Type == long) type IndexConfigs within IndexConfigsUnion: %w", string(data), err)
 		}
 
-		u.IndexConfigs = indexConfigs
-		u.Type = IndexConfigsUnionTypeLong
+		*u = IndexConfigsUnion{
+			IndexConfigs: indexConfigs,
+			Type:         IndexConfigsUnionTypeLong,
+		}
 		return nil
 	case "double":
 		indexConfigs := new(IndexConfigs)
@@ -801,8 +811,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("could not unmarshal `%s` into expected (Type == double) type IndexConfigs within IndexConfigsUnion: %w", string(data), err)
 		}
 
-		u.IndexConfigs = indexConfigs
-		u.Type = IndexConfigsUnionTypeDouble
+		*u = IndexConfigsUnion{
+			IndexConfigs: indexConfigs,
+			Type:         IndexConfigsUnionTypeDouble,
+		}
 		return nil
 	case "datetime":
 		indexConfigs := new(IndexConfigs)
@@ -810,8 +822,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("could not unmarshal `%s` into expected (Type == datetime) type IndexConfigs within IndexConfigsUnion: %w", string(data), err)
 		}
 
-		u.IndexConfigs = indexConfigs
-		u.Type = IndexConfigsUnionTypeDatetime
+		*u = IndexConfigsUnion{
+			IndexConfigs: indexConfigs,
+			Type:         IndexConfigsUnionTypeDatetime,
+		}
 		return nil
 	case "boolean":
 		indexConfigs := new(IndexConfigs)
@@ -819,8 +833,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("could not unmarshal `%s` into expected (Type == boolean) type IndexConfigs within IndexConfigsUnion: %w", string(data), err)
 		}
 
-		u.IndexConfigs = indexConfigs
-		u.Type = IndexConfigsUnionTypeBoolean
+		*u = IndexConfigsUnion{
+			IndexConfigs: indexConfigs,
+			Type:         IndexConfigsUnionTypeBoolean,
+		}
 		return nil
 	case "sparseVector":
 		indexConfigs := new(IndexConfigs)
@@ -828,8 +844,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("could not unmarshal `%s` into expected (Type == sparseVector) type IndexConfigs within IndexConfigsUnion: %w", string(data), err)
 		}
 
-		u.IndexConfigs = indexConfigs
-		u.Type = IndexConfigsUnionTypeSparseVector
+		*u = IndexConfigsUnion{
+			IndexConfigs: indexConfigs,
+			Type:         IndexConfigsUnionTypeSparseVector,
+		}
 		return nil
 	case "object":
 		indexConfigsObject := new(IndexConfigsObject)
@@ -837,8 +855,10 @@ func (u *IndexConfigsUnion) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("could not unmarshal `%s` into expected (Type == object) type IndexConfigsObject within IndexConfigsUnion: %w", string(data), err)
 		}
 
-		u.IndexConfigsObject = indexConfigsObject
-		u.Type = IndexConfigsUnionTypeObject
+		*u = IndexConfigsUnion{
+			IndexConfigsObject: indexConfigsObject,
+			Type:               IndexConfigsUnionTypeObject,
+		}
 		return nil
 	}
 

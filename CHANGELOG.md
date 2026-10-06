@@ -28,7 +28,7 @@ contract [9072a1bc8925954369a887f558f1eaf387b7ea0e](https://github.com/lambdadb/
 
 - Preserve omitted `embedding.similarity` during JSON decoding so the server
   selects model defaults instead of the SDK inserting `cosine`.
-- Clear stale union members after successful native-vector decoding; failed
+- Clear stale union members after every successful variant decode; failed
   decoding preserves the existing value.
 
 ### Compatibility
