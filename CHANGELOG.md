@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-06
+
+Bayesian hybrid search and native embedding-only configuration, pinned to backend
+contract [9072a1bc8925954369a887f558f1eaf387b7ea0e](https://github.com/lambdadb/lambdadb/commit/9072a1bc8925954369a887f558f1eaf387b7ea0e).
+
+### Added
+
+- Optional `QueryInput.CandidateSize` for Bayesian retrieval without reranking.
+  Queries remain free-form maps; the server validates exactly two signals,
+  prohibited boosts and nested fusion, and candidate/output budgets.
+- `IndexConfigsNativeEmbeddingVector` and
+  `CreateIndexConfigsUnionNativeEmbeddingVector` for collection create/update
+  with `embedding` and no `managedEmbedding` flag.
+- Serialization and union-reuse regression tests, compiled usage examples, and
+  an opt-in live smoke covering actual document/query embeddings, Bayesian
+  retrieval, managed reranking, ordinary KNN, and server error classification.
+
+### Fixed
+
+- Preserve omitted `embedding.similarity` during JSON decoding so the server
+  selects model defaults instead of the SDK inserting `cosine`.
+- Clear stale union members after every successful variant decode; failed
+  decoding preserves the existing value.
+
+### Compatibility
+
+- Existing legacy managed-embedding types/helpers continue to emit
+  `managedEmbedding: true`; normalized server responses remain supported.
+  Explicit false with embedding is invalid. Caller-provided vector behavior,
+  existing query defaults, and rerank response handling are unchanged.
+- Bayesian without rerank requires explicit top-level `candidateSize`, with
+  `1 <= size <= candidateSize <= 100`. Earlier Bayesian requests that omit it
+  return HTTP 400 on the pinned backend contract. With rerank, omit the top-level
+  field and use `rerank.candidateSize` or its existing server default.
+  Text/KNN/RRF/Min-Max/L2 queries must omit top-level `candidateSize`.
+- Embedding-only requests require a compatible server. This release does not
+  establish production deployment or promote Bayesian as a default.
+- The maintainer authorized direct stable publication for this release, without
+  dev or RC publication. All remaining release validation and branch
+  synchronization requirements apply.
+
 ## [0.6.0] - 2026-10-03
 
 Managed reranking and 49 fixed text analyzer presets.
