@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-07
+
+### Changed
+
+- Standardize documentation, comments, examples, and smoke-test names on
+  "native embedding" and "native reranking". Rename the reranking guide to
+  `docs/native-reranking.md` and update local links and test commands.
+- Preserve legacy public types/helpers, `managedEmbedding` JSON fields, error
+  strings, and pinned upstream references. SDK behavior and API contracts are
+  unchanged from `0.7.0`.
+
 ## [0.7.0] - 2026-10-06
 
 Bayesian hybrid search and native embedding-only configuration, pinned to backend

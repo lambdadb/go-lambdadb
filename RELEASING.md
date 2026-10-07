@@ -78,6 +78,15 @@ smoke tests, review, metadata checks, immutable tags, and branch synchronization
 remain required. This authorization does not authorize server deployment or
 establish production availability.
 
+For `0.7.1`, the maintainer selected direct stable release preparation on
+2026-10-07, without RC publication or RC feedback. This patch only updates
+terminology and release metadata; API contract revisions remain those pinned
+for `0.7.0`. No runtime feature changed, so feature-specific live smoke tests
+are not applicable to this patch. Exact-commit consumer validation, SDK checks,
+review, metadata checks, immutable tags, and branch synchronization remain
+required. Release preparation does not authorize merging, tag publication, or
+GitHub Release publication; obtain explicit approval before those actions.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
