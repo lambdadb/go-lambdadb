@@ -65,7 +65,7 @@ the final validation checklist passes.
 
 For `0.6.0`, the maintainer explicitly selected a direct stable release on
 2026-10-03 after exact-commit consumer validation and shared-development analyzer
-and managed reranking smoke tests passed. This release skips RC publication and
+and native reranking smoke tests passed. This release skips RC publication and
 RC feedback steps only. All other validation, review, branch synchronization,
 immutable-tag and explicit publication-approval requirements still apply.
 This decision does not establish production availability or authorize publication
@@ -211,7 +211,7 @@ OpenAI document/query embeddings and JEV reranking, creates temporary
 Collections, and verifies their deletion. Revoke temporary project keys and
 remove temporary projects separately; never delete persistent CI resources.
 
-## Analyzer and managed reranking smoke tests
+## Analyzer and native reranking smoke tests
 
 Load the target environment's `LAMBDADB_BASE_URL`, `LAMBDADB_PROJECT_NAME`, and
 `LAMBDADB_PROJECT_API_KEY` without printing the key. Run only in an authorized
@@ -223,7 +223,7 @@ LAMBDADB_RUN_ANALYZER_SMOKE=1 \
   go test -run '^TestIntegrationAnalyzerPresetsSmoke$' -count=1 -v .
 
 LAMBDADB_RUN_RERANK_SMOKE=1 \
-  go test -run '^TestIntegrationManagedRerankingSmoke$' -count=1 -v .
+  go test -run '^TestIntegrationNativeRerankingSmoke$' -count=1 -v .
 ```
 
 The analyzer test checks all 49 preset names through schema read/write and a
@@ -240,7 +240,7 @@ to the exact SDK `develop` commit, with no local `replace` directive. Copy both
 `rerank_integration_test.go` (the analyzer and reranking smoke-test definitions)
 and `versioning_integration_test.go` (their shared helpers) into that module.
 Use the same test package name in both copied files, matching the consumer module.
-Before running, use `go test -list '^TestIntegration(AnalyzerPresets|ManagedReranking)Smoke$' .`
+Before running, use `go test -list '^TestIntegration(AnalyzerPresets|NativeReranking)Smoke$' .`
 and confirm that both test names appear. Record a passing, non-skipped execution
 of each required smoke test; "no tests to run" or a skipped test is not validation.
 Record the resolved pseudo-version, source commit, target environment,

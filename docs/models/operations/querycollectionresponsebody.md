@@ -16,4 +16,4 @@ Documents selected by query.
 | `Rerank` | [*components.RerankResponse](../components/rerankresponse.md) | :heavy_minus_sign: | Whole-stage applied/skipped/fallback metadata; absent when unused. |
 
 The high-level `QueryResult` preserves `Rerank`, `MaxScore`, and existing facets
-when it downloads documents from `DocsURL`. See [managed reranking](../../managed-reranking.md).
+when it downloads documents from `DocsURL`. See [native reranking](../../native-reranking.md).

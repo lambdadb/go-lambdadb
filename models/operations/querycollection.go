@@ -8,7 +8,7 @@ import (
 
 type QueryCollectionRequestBody struct {
 	// Optional query-level reranking. Unset omits rerank; explicit null preserves
-	// legacy search. Values select a server-managed provider, with no client key.
+	// legacy search. The server calls the provider; no provider API key is supplied by the caller.
 	Rerank optionalnullable.OptionalNullable[components.RerankConfig] `json:"rerank,omitempty"`
 	Facets map[string]components.FacetRequest                         `json:"facets,omitzero"`
 	// Number of documents to return. Note that the maximum number of documents is 100.
@@ -17,7 +17,7 @@ type QueryCollectionRequestBody struct {
 	// With rerank, omit this field and use rerank.candidateSize. Unsupported for
 	// other queries. The server validates budgets; the SDK inserts no default.
 	CandidateSize *int64 `json:"candidateSize,omitzero"`
-	// Query object. For managed embedding vector fields, use knn.queryText. For unmanaged vector fields, use knn.queryVector.
+	// Query object. For native embedding vector fields, use knn.queryText. For unmanaged vector fields, use knn.queryVector.
 	Query map[string]any `json:"query"`
 	// True overlays eligible pending writes only for a directly selected branch
 	// (or main when Ref is omitted). Tag and alias refs reject true, even for
