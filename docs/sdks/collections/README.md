@@ -488,7 +488,7 @@ func main() {
 
 **[*lambdadb.QueryResult](../../../results.go), error**
 
-Optional `QueryInput.Rerank` selects [managed reranking](../../managed-reranking.md)
+Optional `QueryInput.Rerank` selects [native reranking](../../native-reranking.md)
 for a single scoring query. `QueryResult.Rerank` preserves stage metadata, and
 applied document envelopes expose final `Score` plus original `RetrievalScore`,
 including after automatic downloads. The SDK preserves server ordering.

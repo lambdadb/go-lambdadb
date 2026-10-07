@@ -1,6 +1,6 @@
 # RerankConfig
 
-Query-level server-managed reranking; see [managed reranking](../../managed-reranking.md)
+Query-level native reranking; see [native reranking](../../native-reranking.md)
 for default/custom examples, nullable wrappers, validation, and fallback behavior.
 
 | Field | Go type | Required | Contract |

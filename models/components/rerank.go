@@ -9,7 +9,7 @@ import (
 	"github.com/lambdadb/go-lambdadb/optionalnullable"
 )
 
-// RerankConfig selects server-managed reranking for one scoring search request.
+// RerankConfig selects native reranking for one scoring search request.
 // The server validates the input and applies defaults; the SDK does not rewrite
 // size, knn.k, fields, or criteria. No provider API key is supplied by the caller.
 type RerankConfig struct {

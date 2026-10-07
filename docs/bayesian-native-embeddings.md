@@ -55,10 +55,10 @@ reranked, err := collection.Query(ctx, lambdadb.QueryInput{
 })
 ```
 
-Bayesian fusion runs before managed reranking. Applied reranking preserves the
+Bayesian fusion runs before native reranking. Applied reranking preserves the
 original Bayesian score in `RetrievalScore`; `Score` is the final evaluation
 score. Existing metadata, fallback, projection and downloaded response handling
-remain unchanged. See [managed reranking](managed-reranking.md).
+remain unchanged. See [native reranking](native-reranking.md).
 
 ## Native embedding configuration
 

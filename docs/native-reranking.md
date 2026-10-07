@@ -1,4 +1,4 @@
-# Managed reranking
+# Native reranking
 
 Select reranking separately for each scoring search request through `QueryInput.Rerank`.
 It is not a collection setting. LambdaDB manages provider credentials; use only your
@@ -7,7 +7,7 @@ An unset or explicitly null `rerank` retains existing search behavior.
 
 ## Default criteria
 
-This example assumes a managed `bodyEmbedding` vector field and stored scalar
+This example assumes a native embedding vector field named `bodyEmbedding` and stored scalar
 text fields `title` and `body`:
 
 ```go
@@ -76,7 +76,7 @@ For a vector-only query, increase `k` explicitly when a deeper pool is wanted.
 The cap does not guarantee that many candidates; metadata reports actual counts.
 Sparse vector and lexical queries have no separate dense `knn.k` control.
 
-[Bayesian search](bayesian-native-embeddings.md) supports managed reranking. Omit
+[Bayesian search](bayesian-native-embeddings.md) supports native reranking. Omit
 top-level `candidateSize` and use `rerank.candidateSize`; its default remains
 `max(50, size)`. Applied reranking preserves Bayesian scores in `RetrievalScore`.
 

@@ -17,9 +17,9 @@ import (
 )
 
 // This opt-in test creates and deletes one temporary collection and invokes the
-// server-managed provider five times. It checks SDK contracts, not ranking quality,
+// reranking provider through the server five times. It checks SDK contracts, not ranking quality,
 // load, injected provider failures, usage accounting, or production availability.
-func TestIntegrationManagedRerankingSmoke(t *testing.T) {
+func TestIntegrationNativeRerankingSmoke(t *testing.T) {
 	if os.Getenv("LAMBDADB_RUN_RERANK_SMOKE") != "1" {
 		t.Skip("set LAMBDADB_RUN_RERANK_SMOKE=1 to run the live smoke test")
 	}

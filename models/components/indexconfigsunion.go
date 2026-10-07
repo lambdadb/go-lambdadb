@@ -178,7 +178,7 @@ func (e *Similarity) IsExact() bool {
 	return false
 }
 
-// EmbeddingConfig - Managed embedding configuration for vector fields.
+// EmbeddingConfig - Native embedding configuration for vector fields.
 type EmbeddingConfig struct {
 	// Embedding provider.
 	Provider EmbeddingConfigProvider `json:"provider"`
@@ -317,7 +317,7 @@ func (i *IndexConfigsVector) GetSimilarity() *Similarity {
 
 type IndexConfigsManagedEmbeddingVector struct {
 	Type TypeVector `json:"type"`
-	// Managed embedding vector field.
+	// Legacy flag for native embedding vector fields.
 	ManagedEmbedding bool            `json:"managedEmbedding"`
 	Embedding        EmbeddingConfig `json:"embedding"`
 }

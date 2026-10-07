@@ -1,6 +1,6 @@
 # EmbeddingConfig
 
-Managed embedding configuration for vector fields.
+Native embedding configuration for vector fields.
 
 
 ## Fields
