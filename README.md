@@ -199,7 +199,7 @@ retargeted to an existing Branch or Tag.
 For [Bayesian hybrid search and native embeddings](docs/bayesian-native-embeddings.md),
 use an explicit Bayesian candidate budget and the embedding-only vector helper.
 
-For optional query-level reranking, see [managed reranking](docs/managed-reranking.md)
+For optional query-level reranking, see [native reranking](docs/native-reranking.md)
 for default/custom criteria, separate candidate limits, and score/fallback semantics.
 LambdaDB manages provider credentials; no separate Jev API key is required.
 

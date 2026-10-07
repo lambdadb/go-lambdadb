@@ -8,8 +8,8 @@ import (
 	"github.com/lambdadb/go-lambdadb/optionalnullable"
 )
 
-// This example requires a collection with managed bodyEmbedding and stored title/body fields.
-func ExampleCollection_Query_managedReranking() {
+// This example requires a collection with a native embedding vector field named bodyEmbedding and stored title/body fields.
+func ExampleCollection_Query_nativeReranking() {
 	collection := lambdadb.New().Collection("articles")
 	config := components.RerankConfig{
 		Provider: "typesafe", Model: "jev-1.13.0",

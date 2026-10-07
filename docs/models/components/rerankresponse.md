@@ -1,7 +1,7 @@
 # RerankResponse
 
 Whole-stage metadata on `QueryResult.Rerank` and the low-level query response.
-Absent for requests without reranking. See [managed reranking](../../managed-reranking.md).
+Absent for requests without reranking. See [native reranking](../../native-reranking.md).
 
 | Field | Go type | Required | Meaning |
 | --- | --- | --- | --- |
