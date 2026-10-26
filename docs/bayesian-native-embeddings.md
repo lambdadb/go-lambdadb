@@ -39,8 +39,10 @@ retrieved, err := collection.Query(ctx, lambdadb.QueryInput{
 ```
 
 Use exactly one non-null `queryText` or `queryVector` per KNN leg, with `k`
-from 1 to 1000. Query vectors are also accepted on native embedding fields;
-query text requires a native embedding field. Use the configured dimensions.
+from 1 to 1000. Use query text for native embedding fields and query vectors
+for caller-provided vector fields, with the configured dimensions. The pinned
+server rejects direct query vectors on native embedding fields with HTTP 400;
+see the [known OpenAPI discrepancy](api-contract.md#known-openapi-discrepancy).
 Bayesian candidate calibration and final output size are separate budgets. Scores are fusion scores, not relevance probabilities.
 
 ```go

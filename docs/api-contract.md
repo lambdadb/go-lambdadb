@@ -21,12 +21,22 @@ contract. SDK source alignment is not a live environment test or release approva
 | Collection List and facet bucket size | 100 | Existing defaults unchanged |
 
 Each KNN query uses exactly one non-null `queryText` or `queryVector`. Query text
-requires native embeddings; query vectors also work on native embedding fields.
+requires native embeddings; query vectors are for caller-provided vector fields.
 KNN `k`, final size, and candidate budgets remain independent. The SDK does not
 clamp values or add local validation: invalid requests retain server validation
 order and HTTP error classification. Empty schemas, document lists/objects and
 explicit empty deletion IDs are rejected by the server. Nullable extended-List
 size, pageToken and filter can be omitted by using nil SDK fields.
+
+## Known OpenAPI discrepancy
+
+The pinned OpenAPI query description says direct `knn.queryVector` is accepted
+on native embedding fields. The deployed server instead rejects it with HTTP
+400; [NativeEmbeddingService at the pinned server SHA](https://github.com/lambdadb/lambdadb/blob/0a54b6ecb483ce7df9677ba2071a491f9f9879c9/runtime-aws/src/main/java/ai/lambdadb/service/embedding/NativeEmbeddingService.java#L245)
+explicitly enforces that restriction. Use `knn.queryText` on native embedding
+fields and `knn.queryVector` on caller-provided vector fields. The SDK preserves
+server validation rather than adding a local rejection. The upstream OpenAPI
+statement needs correction; SDK guidance follows the observed server behavior.
 
 ## Stored source paths
 
@@ -68,7 +78,8 @@ The opt-in `TestIntegrationReadLimitsSmoke` checks real query/fetch/GET and POST
 List boundaries with 1000 small documents and no model inference calls.
 `TestIntegrationBayesianNativeEmbeddingSmoke` checks unindexed nested source
 writes, sibling/empty-object vector reuse, changed-source regeneration, invalid
-source rejection, direct query vectors, Bayesian budgets and unindexed reranking.
+source rejection, native-field query-vector rejection, Bayesian budgets and
+unindexed reranking.
 Both create temporary collections and verify deletion through GET 404. Run only
 in an authorized development or staging project after verifying deployment;
 see [RELEASING.md](../RELEASING.md). Large-result capacity, quota accounting,

@@ -240,7 +240,7 @@ load or production capacity. For exact-commit consumer validation, copy
 helpers) into the same consumer test package, without a local replace directive.
 Confirm the test is discovered and runs without skipping. The Bayesian smoke
 also covers nested unindexed source paths, update reuse/regeneration and direct
-query vectors on native fields. These live checks remain required before release;
+query-vector rejection on native fields. These live checks remain required before release;
 local wire tests are not substitutes.
 
 ## Analyzer and native reranking smoke tests

@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -159,13 +160,15 @@ func TestIntegrationBayesianNativeEmbeddingSmoke(t *testing.T) {
 					_, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: []map[string]any{{"id": "invalid", "article": map[string]any{"body": source}}}})
 					requireIntegrationBadRequest(t, err, "invalid unindexed embedding source")
 				}
-				// Query vectors are accepted on native embedding fields without query inference.
+				// The pinned OpenAPI overstates this capability; the deployed server rejects it.
 				raw := input
 				raw.Query = map[string]any{"knn": map[string]any{"field": "vector", "queryVector": updated, "k": 3}}
-				if got, err := collection.Query(ctx, raw); err != nil || got == nil || len(got.Docs) != 3 || got.Docs[0].Doc["id"] != "restore" {
-					t.Fatalf("native field queryVector (%T)", err)
+				_, err = collection.Query(ctx, raw)
+				var bad *apierrors.BadRequestError
+				if !errors.As(err, &bad) || bad.Message == nil || !strings.Contains(*bad.Message, "queryVector is not allowed for native embedding field") {
+					t.Fatalf("native field queryVector rejection (%T): %v", err, err)
 				}
-				t.Log("unindexed nested source, sibling reuse, changed source regeneration, invalid sources and native queryVector passed")
+				t.Log("unindexed nested source, sibling reuse, changed source regeneration, invalid sources and native queryVector rejection passed")
 			}
 
 			input.Query = map[string]any{"knn": map[string]any{"field": "manual", "queryVector": manualVectors[0], "k": 3}}

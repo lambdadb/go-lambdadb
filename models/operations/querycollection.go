@@ -18,8 +18,8 @@ type QueryCollectionRequestBody struct {
 	// other queries. The server validates budgets; the SDK inserts no default.
 	CandidateSize *int64 `json:"candidateSize,omitzero"`
 	// Query object. Each knn uses exactly one non-null queryText or queryVector,
-	// with k from 1 to 1000. queryText requires a native embedding field;
-	// queryVector is also accepted on native embedding fields.
+	// with k from 1 to 1000. Use queryText for native embedding fields and
+	// queryVector for caller-provided vector fields.
 	Query map[string]any `json:"query"`
 	// True overlays eligible pending writes only for a directly selected branch
 	// (or main when Ref is omitted). Tag and alias refs reject true, even for
