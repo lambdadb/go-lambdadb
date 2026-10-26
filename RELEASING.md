@@ -87,6 +87,13 @@ review, metadata checks, immutable tags, and branch synchronization remain
 required. Release preparation does not authorize merging, tag publication, or
 GitHub Release publication; obtain explicit approval before those actions.
 
+For `0.7.2`, the maintainer selected direct stable release preparation on
+2026-10-26, skipping RC publication and RC feedback for this release only.
+Exact-commit consumer validation, applicable live smoke tests, SDK checks,
+review, metadata verification, and branch synchronization remain required.
+Release preparation does not authorize merging, tag publication, or GitHub
+Release publication; obtain explicit approval before those actions.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
