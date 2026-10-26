@@ -16,6 +16,7 @@ LambdaDB API: LambdaDB Open API Spec
   * [SDK Example Usage](#sdk-example-usage)
   * [Authentication](#authentication)
   * [Configuration](#configuration)
+  * [API contract](#api-contract)
   * [Available Resources and Operations](#available-resources-and-operations)
   * [Data Versioning](#data-versioning)
   * [Pagination](#pagination)
@@ -134,7 +135,7 @@ func main() {
 
 ### Project-level: `client.Collections`
 
-* [List](docs/sdks/collections/README.md#list) - List all collections in the project.
+* [List](docs/sdks/collections/README.md#list) - List one page of collections in the project.
 * [Create](docs/sdks/collections/README.md#create) - Create a collection.
 
 ### Collection-scoped: `client.Collection(name)`
@@ -142,13 +143,18 @@ func main() {
 Use `client.Collection("name")` for operations on a single collection (no need to pass the collection name on every call):
 
 * **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `result.Docs` is always populated.
-* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, GetBulkUpsertInfoForBranch, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, `Fields`, or `Ref` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete); it applies the same Branch to both bulk control calls. Bulk upsert payload is limited to **200MB** (`lambdadb.MaxBulkUpsertPayloadBytes`); see [docs API](docs/sdks/docs/README.md) for details.
+* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, GetBulkUpsertInfoForBranch, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, `Fields`, or `Ref` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete); it applies the same Branch to both bulk control calls. Bulk upload size is governed by `SizeLimitBytes` from the server; `lambdadb.MaxBulkUpsertPayloadBytes` is a 200 MiB reference value. See the [document API guide](docs/sdks/docs/README.md) for details.
 * **Collection.Branches()**: Create, List, and Delete writable branches.
 * **Collection.Tags()**: Create, List, and Delete immutable tags.
 * **Collection.Aliases()**: Create, List, Retarget, and Delete aliases. See the [Data Versioning API guide](docs/sdks/versioning/README.md).
 
 </details>
 <!-- End Available Resources and Operations [operations] -->
+
+## API contract
+
+See the [pinned API contract](docs/api-contract.md) for current read limits,
+unindexed native embedding/reranking source paths, result budgets and validation.
 
 ## Data Versioning
 
@@ -164,6 +170,7 @@ branch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 	Source:     lambdadb.BranchSource("main"),
 })
 
+// Tag creation requires a nonempty committed head; verify committed reads first.
 tag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
 	TagName: "validated-2026-09",
 	Source:  lambdadb.BranchSource(branch.Name),
@@ -212,9 +219,10 @@ _, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
 })
 ```
 
-`ConsistentRead` is supported only when `Ref` directly selects a branch. Tags
-are immutable, while aliases can be retargeted and therefore resolve at request
-time.
+`ConsistentRead: true` requires a directly selected Branch, including `main`
+when `Ref` is omitted. False or omitted is valid for Branch, Tag, and Alias
+reads. Document List has no consistent-read option. Tags are immutable; Aliases
+resolve at request time and can be retargeted.
 
 <!-- Start Pagination [pagination] -->
 ## Pagination
@@ -235,14 +243,14 @@ List endpoints return one page at a time. Use **iterators** to walk all pages wi
 			break
 		}
 		for _, d := range page.Docs {
-			// d is ListDocsDoc: d.Collection, d.Doc
+			_ = d // ListDocsDoc: use d.Collection and d.Doc.
 		}
 	}
 
 	// Collections
-	iter := client.Collections.ListIterator(ctx, &lambdadb.ListCollectionsOpts{Size: lambdadb.Int64(20)})
+	collectionIter := client.Collections.ListIterator(ctx, &lambdadb.ListCollectionsOpts{Size: lambdadb.Int64(20)})
 	for {
-		page, err := iter.Next(ctx)
+		page, err := collectionIter.Next(ctx)
 		if err != nil {
 			return err
 		}
@@ -250,7 +258,7 @@ List endpoints return one page at a time. Use **iterators** to walk all pages wi
 			break
 		}
 		for _, c := range page.Collections {
-			// process collection
+			_ = c // Use collection metadata such as c.CollectionName.
 		}
 	}
 ```
@@ -272,7 +280,13 @@ For filtered scans or field selection, pass the extended list options through `L
 <!-- Start Retries [retries] -->
 ## Retries
 
-Some of the endpoints in this SDK support retries. If you use the SDK without any configuration, it will fall back to the default retry strategy provided by the API. However, the default retry strategy can be overridden on a per-operation basis, or across the entire SDK.
+API operations use the SDK's default retry policy for HTTP 429 and 5xx,
+with eligible connection errors also retried. Its backoff configuration uses a
+500 ms initial interval, a 60-second maximum interval, jitter, and
+`MaxElapsedTime: 3600000` milliseconds. Override it per operation or per client,
+or use `retry.Config{Strategy: "none"}` to disable retries. Presigned uploads
+and document downloads use a separate transfer client and are not retried by
+this SDK policy. Use a context deadline to bound the entire operation.
 
 To change the default retry strategy for a single API call, simply provide a `retry.Config` object to the call by using the `WithRetries` option:
 ```go
@@ -360,7 +374,7 @@ func main() {
 
 Gateway errors preserve the server message and HTTP response metadata. New
 contract statuses 413, 502, 503, and 504 remain available through the existing
-error types: generated Collection/document operations use `APIError` for
+error types: Collection/document operations use `APIError` for
 these statuses; Ref operations use `InternalServerError` for 5xx and `APIError`
 for 413. Inspect `APIError.StatusCode` / `RawResponse`, or a typed error's
 `HTTPMeta.Response`. A 409 can mean a conditional catalog conflict as well as
@@ -377,7 +391,10 @@ bulk upsert for 413; refresh state before retrying a 409.
 
 Handling errors in this SDK should largely match your expectations. All operations return a response object or an error, they will never return both.
 
-By Default, an API error will return `apierrors.APIError`. When custom error responses are specified for an operation, the SDK may also return their associated error. You can refer to respective *Errors* tables in SDK docs for more details on possible error types for each operation.
+Documented JSON error statuses use the typed errors listed for each operation.
+Other error statuses use `apierrors.APIError`, which preserves the status, body,
+and raw response. Transport and transfer errors can be ordinary wrapped Go
+errors; they are not always LambdaDB API errors.
 
 For example, the `List` function may return the following errors:
 
@@ -445,7 +462,8 @@ func main() {
 <!-- Start Configuration [config] -->
 ## Configuration
 
-Configuration follows the REST API path structure. Defaults match the OpenAPI spec.
+Configuration follows the REST API path structure. The table lists SDK defaults;
+set the base URL and project explicitly for your target environment.
 
 | Option | Default | Description |
 | ------ | ------- | ----------- |
@@ -454,8 +472,16 @@ Configuration follows the REST API path structure. Defaults match the OpenAPI sp
 | `WithAPIKey(apiKey string)` | (none) | Project API key. Can also use `LAMBDADB_PROJECT_API_KEY` env. |
 | `WithClient(client HTTPClient)` | 60-second `http.Client` | LambdaDB API request client. |
 | `WithTransferClient(client HTTPClient)` | 10-minute `http.Client` | Presigned upload and out-of-line result download client. |
+| `WithRetryConfig(config retry.Config)` | SDK backoff policy | Default retry policy; see [Retries](#retries). |
+| `WithSecuritySource(source)` | API key option or environment | Resolve security dynamically with a `func(context.Context) (components.Security, error)`. |
+| `WithTimeout(timeout time.Duration)` | No additional SDK deadline | Deadline for an API operation, including retries; transfers use their own client and caller context. |
 
-The effective request base is `BaseURL + "/projects/" + ProjectName`. Example:
+The effective request base is `BaseURL + "/projects/" + ProjectName`. The SDK
+reads `LAMBDADB_PROJECT_API_KEY` from the process environment when no security
+option is supplied. It does not load `.env` files automatically or read
+`LAMBDADB_BASE_URL` / `LAMBDADB_PROJECT_NAME` as client defaults; those variables
+are used by the opt-in smoke tests. Pass `WithBaseURL` and `WithProjectName`
+explicitly in application code. Example:
 
 ```go
 	client := lambdadb.New(
@@ -509,8 +535,6 @@ sdkClient := lambdadb.New(
 )
 ```
 <!-- End Custom HTTP Client [http-client] -->
-
-<!-- Placeholder for Future Speakeasy SDK Sections -->
 
 # Development
 

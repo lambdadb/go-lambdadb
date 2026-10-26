@@ -13,6 +13,7 @@ Documents selected by query.
 | `Docs`                                                                           | [][operations.QueryCollectionDoc](../../models/operations/querycollectiondoc.md) | :heavy_check_mark:                                                               | List of documents.                                                               |
 | `IsDocsInline`                                                                   | *bool*                                                                           | :heavy_check_mark:                                                               | Whether the list of documents is included.                                       |
 | `DocsURL`                                                                        | **string*                                                                        | :heavy_minus_sign:                                                               | Optional download URL for the list of documents.                                 |
+| `Facets` | `map[string]components.FacetResult` | :heavy_minus_sign: | Requested [keyword facet results](../components/facets.md#facetresult), preserved after document downloads. |
 | `Rerank` | [*components.RerankResponse](../components/rerankresponse.md) | :heavy_minus_sign: | Whole-stage applied/skipped/fallback metadata; absent when unused. |
 
 The high-level `QueryResult` preserves `Rerank`, `MaxScore`, and existing facets

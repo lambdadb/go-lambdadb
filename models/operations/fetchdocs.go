@@ -6,7 +6,8 @@ import (
 )
 
 type FetchDocsRequestBody struct {
-	// A list of document IDs to fetch. Note that the maximum number of document IDs is 100.
+	// 1-1000 nonblank document IDs. Projected bodies must also fit the server
+	// 64 MiB per-node JSON budget; a size error returns no partial result.
 	Ids []string `json:"ids"`
 	// True overlays eligible pending writes only for a directly selected branch
 	// (or main when Ref is omitted). Tag and alias refs reject true, even for

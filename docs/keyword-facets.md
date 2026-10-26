@@ -1,6 +1,7 @@
 # Keyword facets
 
-The SDK supports the keyword facet contract in:
+The current contract is pinned in the [API contract guide](api-contract.md).
+The feature was originally implemented against these revisions:
 
 - `lambdadb/lambdadb` commit `8da50bcd0b5a3c781ffccd7f01fb07ed0510dd30`,
   `api/src/main/java/ai/lambdadb/dto/QueryRequest.java`,

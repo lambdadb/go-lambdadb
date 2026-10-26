@@ -5,7 +5,7 @@
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `CollectionName` | *string* | :heavy_check_mark: | Collection name must be unique within a project and may contain at most 52 characters. |
-| `IndexConfigs` | map[string][components.IndexConfigsUnion](../../models/components/indexconfigsunion.md) | :heavy_check_mark: | Index configurations keyed by field name. |
+| `IndexConfigs` | map[string][components.IndexConfigsUnion](../../models/components/indexconfigsunion.md) | :heavy_check_mark: | Nonempty index configurations keyed by field name. Native embedding source paths need no index declaration. |
 | `Description` | **string* | :heavy_minus_sign: | Optional collection description. |
 | `Tags` | map[string]string | :heavy_minus_sign: | Collection metadata tags. The API accepts up to five entries. |
 | `PartitionConfig` | [*components.PartitionConfig](../../models/components/partitionconfig.md) | :heavy_minus_sign: | Optional partition configuration. |

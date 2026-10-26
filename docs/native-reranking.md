@@ -64,10 +64,10 @@ does not reproduce the default scoring configuration.
 | --- | --- |
 | `provider`, `model` | Required: `typesafe`, `jev-1.13.0`. |
 | `queryText` | Required nonblank text, at most 8 KiB UTF-8, independent of retrieval query text or vectors. |
-| `fields` | 1–8 unique stored scalar text paths; schema types `text` or `keyword`. Nested object paths are allowed; arrays and non-string values are not. |
-| `size` | Final number of returned documents, positive and at most 100 when reranking. |
+| `fields` | 1–8 unique stored scalar string paths, including unindexed paths. Declared leaves must be `text` or `keyword`, and declared ancestors must be objects. Arrays and non-string values are invalid. |
+| `size` | Final number of returned documents, positive and at most 1000 when reranking. |
 | `knn.k` | Number of candidates from that dense vector retrieval leg. |
-| `candidateSize` | Cap after global candidate merge and deduplication; defaults to `max(50, size)`, with `size <= candidateSize <= 100`. |
+| `candidateSize` | Cap after global candidate merge and deduplication; defaults to `max(50, size)`, with `size <= candidateSize <= 1000`. |
 | `onFailure` | `error` (default) or `returnOriginal`. |
 
 The SDK does not automatically change `knn.k`. A vector leg with `k=20` and a
@@ -174,11 +174,10 @@ server errors and does not implement its own fallback or retry-specific ranking.
 
 ## Contract source and availability
 
-The implementation follows backend develop revision
-[lambdadb/lambdadb@55d888299fee44466326a9db8016af9811ade13b](https://github.com/lambdadb/lambdadb/blob/55d888299fee44466326a9db8016af9811ade13b/docs/design/managed-reranking.md).
-Its relevant request/response DTOs, service, contract tests, and design document
-match the supplied local checkout at `a5e06d49be06d95dc5f4046aeecaf51f8a7733c0`. The upstream
-[OpenAPI at 961561c379acb079aec20191e13b89809ef096e9](https://github.com/lambdadb/docs/blob/961561c379acb079aec20191e13b89809ef096e9/reference/api/openapi.json)
-has no rerank schema yet; that is a separate upstream follow-up.
-This manually maintained SDK has no active generator. Source commits and SDK
-types do not establish availability in a target environment.
+The current contract is pinned to
+[OpenAPI docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851](https://github.com/lambdadb/docs/blob/94a7b71613a3bf217a370d5117b3ff6ddfbae851/reference/api/openapi.json)
+and backend
+[lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9](https://github.com/lambdadb/lambdadb/commit/0a54b6ecb483ce7df9677ba2071a491f9f9879c9).
+The OpenAPI includes reranking and all 49 analyzer presets. This manually
+maintained SDK has no active generator. Source commits and SDK types do not
+verify availability in a target environment.

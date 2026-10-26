@@ -8,7 +8,7 @@ import (
 type ListDocsRequest struct {
 	// Collection name.
 	CollectionName string `pathParam:"style=simple,explode=false,name=collectionName"`
-	// Max number of documents to return at once.
+	// Number of documents per page, from 1 to 1000. The server default is 100.
 	Size *int64 `queryParam:"style=form,explode=true,name=size"`
 	// Next page token.
 	PageToken *string `queryParam:"style=form,explode=true,name=pageToken"`
@@ -45,7 +45,7 @@ func (l *ListDocsRequest) GetIncludeVectors() *bool {
 }
 
 type ListDocsExtendedRequestBody struct {
-	// Max number of documents to return at once.
+	// Number of documents per page, from 1 to 1000. The server default is 100.
 	Size *int64 `json:"size,omitzero"`
 	// Next page token.
 	PageToken *string `json:"pageToken,omitzero"`
