@@ -168,7 +168,7 @@ func (c *Collection) Query(ctx context.Context, input QueryInput, opts ...operat
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := c.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := fetchJSONFromURL(ctx, c.client, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch query docs from URL: %w", err)
 		}
 	}
@@ -251,7 +251,7 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := d.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := fetchJSONFromURL(ctx, d.client, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch list docs from URL: %w", err)
 		}
 	}
@@ -332,7 +332,7 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := it.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := fetchJSONFromURL(ctx, it.client, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch list docs from URL: %w", err)
 		}
 	}
@@ -495,7 +495,7 @@ func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ..
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := d.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := fetchJSONFromURL(ctx, d.client, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch docs from URL: %w", err)
 		}
 	}
@@ -506,8 +506,9 @@ func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ..
 	}, nil
 }
 
-// fetchJSONFromURL GETs the URL and unmarshals the response body as JSON into v.
-func (c *Client) fetchJSONFromURL(ctx context.Context, url string, v interface{}) error {
+// fetchJSONFromURL decodes one document at a time, without retaining a second
+// encoded copy of the entire array. The returned slice still holds all documents.
+func fetchJSONFromURL[T any](ctx context.Context, c *Client, url string, v *[]T) error {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
@@ -521,9 +522,36 @@ func (c *Client) fetchJSONFromURL(ctx context.Context, url string, v interface{}
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("download failed: status %d, body: %s", resp.StatusCode, string(body))
 	}
-	data, err := io.ReadAll(resp.Body)
+	decoder := json.NewDecoder(resp.Body)
+	token, err := decoder.Token()
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(data, v)
+	var docs []T
+	if token != nil { // Preserve JSON null as a nil slice.
+		if token != json.Delim('[') {
+			return fmt.Errorf("expected document array")
+		}
+		docs = make([]T, 0)
+		for decoder.More() {
+			var doc T
+			if err := decoder.Decode(&doc); err != nil {
+				return err
+			}
+			docs = append(docs, doc)
+		}
+		if _, err := decoder.Token(); err != nil { // Closing bracket, including truncation errors.
+			return err
+		}
+	}
+	// Require EOF so trailing JSON, transfer failures, and gzip checksum failures
+	// cannot turn a truncated or corrupted download into a partial success.
+	if _, err := decoder.Token(); err != io.EOF {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("unexpected data after document array")
+	}
+	*v = docs
+	return nil
 }

@@ -523,3 +523,8 @@ looking for the latest version.
 ## Contributions
 
 We look forward to hearing your feedback. Feel free to open a PR or an issue with a proof of concept and we'll do our best to include it in a future release.
+
+## API contract
+
+See the [pinned API contract](docs/api-contract.md) for current read limits,
+unindexed native embedding/reranking source paths, result budgets and validation.

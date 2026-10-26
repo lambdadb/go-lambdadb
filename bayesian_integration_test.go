@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -16,7 +17,8 @@ import (
 	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// Contract: lambdadb/lambdadb@9072a1bc8925954369a887f558f1eaf387b7ea0e.
+// Contract: lambdadb/docs@ce2d8f7bd8ee2ab4f240be022085aab37cca0b91,
+// server lambdadb/lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9.
 // Opt in only after verifying deployment and authorizing temporary collections
 // and provider calls. Keys stay in the process environment, never test output.
 func TestIntegrationBayesianNativeEmbeddingSmoke(t *testing.T) {
@@ -30,12 +32,16 @@ func TestIntegrationBayesianNativeEmbeddingSmoke(t *testing.T) {
 			defer cancel()
 			name := fmt.Sprintf("go-sdk-native-%d", time.Now().UnixNano())
 			collection := client.Collection(name)
-			embedding := components.EmbeddingConfig{Provider: components.EmbeddingConfigProviderOpenai, Model: "text-embedding-3-small", SourceField: "body"}
+			sourceField := "body"
+			if !legacy {
+				sourceField = "article.body"
+			}
+			embedding := components.EmbeddingConfig{Provider: components.EmbeddingConfigProviderOpenai, Model: "text-embedding-3-small", SourceField: sourceField}
 			vector := components.CreateIndexConfigsUnionNativeEmbeddingVector(components.IndexConfigsNativeEmbeddingVector{Embedding: embedding})
 			if legacy {
 				vector = components.CreateIndexConfigsUnionManagedEmbeddingVector(components.IndexConfigsManagedEmbeddingVector{Embedding: embedding})
 			}
-			schema := map[string]components.IndexConfigsUnion{"body": components.CreateIndexConfigsUnionText(components.IndexConfigsText{}), "vector": vector, "manual": components.CreateIndexConfigsUnionVector(components.IndexConfigsVector{Dimensions: 2})}
+			schema := map[string]components.IndexConfigsUnion{"body": components.CreateIndexConfigsUnionText(components.IndexConfigsText{}), "vector": vector, "manual": components.CreateIndexConfigsUnionVector(components.IndexConfigsVector{Dimensions: 64})}
 			// Register cleanup before create, including ambiguous network failures.
 			t.Cleanup(func() {
 				cleanup, cancel := context.WithTimeout(context.Background(), 45*time.Second)
@@ -65,11 +71,19 @@ func TestIntegrationBayesianNativeEmbeddingSmoke(t *testing.T) {
 			if native == nil || !native.ManagedEmbedding || native.Embedding.Dimensions == nil || *native.Embedding.Dimensions != 1536 || native.Embedding.Similarity == nil || *native.Embedding.Similarity != components.SimilarityCosine {
 				t.Fatal("normalized native metadata missing")
 			}
-			if _, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: []map[string]any{
-				{"id": "restore", "body": "Restore a previous collection version using a branch created from a tag.", "manual": []float64{1, 0}},
-				{"id": "search", "body": "Search a collection using text and vector queries.", "manual": []float64{0.8, 0.2}},
-				{"id": "weather", "body": "Weather forecasts describe rain and temperature.", "manual": []float64{0, 1}},
-			}}); err != nil {
+			manualVectors := [3][]float64{make([]float64, 64), make([]float64, 64), make([]float64, 64)}
+			manualVectors[0][0] = 1
+			manualVectors[1][0], manualVectors[1][1] = 0.8, 0.2
+			manualVectors[2][1] = 1
+			documents := []map[string]any{
+				{"id": "restore", "body": "Restore a previous collection version using a branch created from a tag.", "manual": manualVectors[0]},
+				{"id": "search", "body": "Search a collection using text and vector queries.", "manual": manualVectors[1]},
+				{"id": "weather", "body": "Weather forecasts describe rain and temperature.", "manual": manualVectors[2]},
+			}
+			for _, document := range documents {
+				document["article"] = map[string]any{"body": document["body"], "title": "Stored sibling"}
+			}
+			if _, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: documents}); err != nil {
 				t.Fatalf("document embedding upsert (%T)", err)
 			}
 			lexical := map[string]any{"queryString": map[string]any{"query": "*:*"}}
@@ -112,7 +126,49 @@ func TestIntegrationBayesianNativeEmbeddingSmoke(t *testing.T) {
 					t.Fatal("zero embedding")
 				}
 			}
-			input.Query = map[string]any{"knn": map[string]any{"field": "manual", "queryVector": []float64{1, 0}, "k": 3}}
+			if !legacy {
+				before := map[string]any{}
+				for _, doc := range result.Docs {
+					before[doc.Doc["id"].(string)] = doc.Doc["vector"]
+				}
+				fetchVector := func() any {
+					t.Helper()
+					fetched, err := collection.Docs().Fetch(ctx, lambdadb.FetchDocsInput{Ids: []string{"restore"}, ConsistentRead: lambdadb.Bool(true), IncludeVectors: lambdadb.Bool(true)})
+					if err != nil || fetched == nil || len(fetched.Docs) != 1 {
+						t.Fatalf("fetch updated native vector (%T)", err)
+					}
+					return fetched.Docs[0].Doc["vector"]
+				}
+				// Sibling and empty ancestor patches must preserve the stored source and vector.
+				for _, article := range []map[string]any{{"title": "Updated sibling"}, {}} {
+					if _, err := collection.Docs().Update(ctx, lambdadb.UpdateDocsInput{Docs: []map[string]any{{"id": "restore", "article": article}}}); err != nil {
+						t.Fatalf("sibling update (%T)", err)
+					}
+					if !reflect.DeepEqual(fetchVector(), before["restore"]) {
+						t.Fatal("unchanged source did not reuse its vector")
+					}
+				}
+				if _, err := collection.Docs().Update(ctx, lambdadb.UpdateDocsInput{Docs: []map[string]any{{"id": "restore", "article": map[string]any{"body": "Restore historical collection data from an immutable tag."}}}}); err != nil {
+					t.Fatalf("changed source update (%T)", err)
+				}
+				updated := fetchVector()
+				if values, ok := updated.([]any); !ok || len(values) != 1536 || reflect.DeepEqual(updated, before["restore"]) {
+					t.Fatal("changed source did not regenerate its vector")
+				}
+				for _, source := range []any{nil, 42, []string{"not scalar"}} {
+					_, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: []map[string]any{{"id": "invalid", "article": map[string]any{"body": source}}}})
+					requireIntegrationBadRequest(t, err, "invalid unindexed embedding source")
+				}
+				// Query vectors are accepted on native embedding fields without query inference.
+				raw := input
+				raw.Query = map[string]any{"knn": map[string]any{"field": "vector", "queryVector": updated, "k": 3}}
+				if got, err := collection.Query(ctx, raw); err != nil || got == nil || len(got.Docs) != 3 || got.Docs[0].Doc["id"] != "restore" {
+					t.Fatalf("native field queryVector (%T)", err)
+				}
+				t.Log("unindexed nested source, sibling reuse, changed source regeneration, invalid sources and native queryVector passed")
+			}
+
+			input.Query = map[string]any{"knn": map[string]any{"field": "manual", "queryVector": manualVectors[0], "k": 3}}
 			manual, err := collection.Query(ctx, input)
 			if err != nil || len(manual.Docs) != 3 || manual.Docs[0].Doc["id"] != "restore" {
 				t.Fatalf("caller vector KNN (%T)", err)
@@ -135,15 +191,23 @@ func TestIntegrationBayesianNativeEmbeddingSmoke(t *testing.T) {
 				return
 			}
 			// Invalid requests use caller vectors so server validation cannot call an embedding provider.
-			manualKNN := map[string]any{"knn": map[string]any{"field": "manual", "queryVector": []float64{1, 0}, "k": 3}}
+			manualKNN := map[string]any{"knn": map[string]any{"field": "manual", "queryVector": manualVectors[0], "k": 3}}
 			signals = []any{lexical, manualKNN}
 			input.Query = map[string]any{"bayesian": signals}
 			input.Rerank = nil
+			for _, budget := range []int64{101, 1000} {
+				valid := input
+				valid.CandidateSize = lambdadb.Int64(budget)
+				if got, err := collection.Query(ctx, valid); err != nil || got == nil || len(got.Docs) != 2 {
+					t.Fatalf("Bayesian candidate budget %d (%T)", budget, err)
+				}
+			}
+
 			invalid := map[string]lambdadb.QueryInput{}
 			missing := input
 			missing.CandidateSize = nil
 			invalid["missing_budget"] = missing
-			for _, budget := range []int64{0, 1, 101} {
+			for _, budget := range []int64{0, 1, 1001} {
 				bad := input
 				bad.CandidateSize = lambdadb.Int64(budget)
 				invalid[fmt.Sprintf("budget_%d", budget)] = bad
@@ -175,7 +239,7 @@ func TestIntegrationBayesianNativeEmbeddingSmoke(t *testing.T) {
 					t.Fatalf("ordinary query without budget (%T)", err)
 				}
 			}
-			config := components.RerankConfig{Provider: "typesafe", Model: "jev-1.13.0", QueryText: "How do I restore a previous collection version?", Fields: []string{"body"}}
+			config := components.RerankConfig{Provider: "typesafe", Model: "jev-1.13.0", QueryText: "How do I restore a previous collection version?", Fields: []string{"article.body"}}
 			bad = input
 			bad.Rerank = optionalnullable.From(&config)
 			invalid["rerank_budget_conflict"] = bad

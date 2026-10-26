@@ -12,7 +12,7 @@ import (
 // Note: isDocsInline and docsUrl are response-only fields from the API; they are not request options.
 // When the API returns isDocsInline=false and docsUrl, the SDK automatically fetches the document list from that URL.
 type ListDocsOpts struct {
-	// Max number of documents to return at once.
+	// Number of documents per page, from 1 to 1000. The server default is 100.
 	Size *int64
 	// Next page token for pagination.
 	PageToken *string

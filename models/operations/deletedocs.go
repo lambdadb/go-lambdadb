@@ -6,7 +6,7 @@ import (
 )
 
 type DeleteDocsRequestBody struct {
-	// A list of document IDs.
+	// A nonempty list of document IDs, when supplied.
 	Ids []string `json:"ids,omitzero"`
 	// Query filter.
 	Filter          map[string]any              `json:"filter,omitzero"`

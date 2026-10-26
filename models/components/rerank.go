@@ -19,9 +19,10 @@ type RerankConfig struct {
 	Model string `json:"model"`
 	// Nonblank evaluation query, at most 8 KiB UTF-8.
 	QueryText string `json:"queryText"`
-	// 1-8 unique stored scalar text paths (text or keyword schema fields).
+	// 1-8 unique stored scalar string paths, including unindexed paths.
+	// Declared leaves must be text or keyword; traversal requires objects.
 	Fields []string `json:"fields"`
-	// Defaults to max(50, size); size must be positive and <= CandidateSize <= 100.
+	// Defaults to max(50, size); size must be positive and <= CandidateSize <= 1000.
 	CandidateSize *int64 `json:"candidateSize,omitempty"`
 	// error (default) or returnOriginal; only eligible provider errors can fall back.
 	OnFailure *string `json:"onFailure,omitempty"`

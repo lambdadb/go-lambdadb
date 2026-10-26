@@ -184,7 +184,9 @@ type EmbeddingConfig struct {
 	Provider EmbeddingConfigProvider `json:"provider"`
 	// Embedding model name.
 	Model string `json:"model"`
-	// Source text field name used to generate embeddings.
+	// Stored scalar string path through objects; no source index is required.
+	// Declared leaves must be text or keyword. Missing sources skip generation;
+	// newly supported paths reject null and non-string values at write time.
 	SourceField string `json:"sourceField"`
 	// Resolved embedding dimensions. Optional in requests and resolved in stored collection metadata.
 	Dimensions *int64 `json:"dimensions,omitzero"`

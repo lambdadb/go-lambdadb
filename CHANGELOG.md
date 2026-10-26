@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Align current contract documentation and SDK wire coverage with
+  [docs@ce2d8f7bd8ee2ab4f240be022085aab37cca0b91](https://github.com/lambdadb/docs/blob/ce2d8f7bd8ee2ab4f240be022085aab37cca0b91/reference/api/openapi.json)
+  and server `0a54b6ecb483ce7df9677ba2071a491f9f9879c9`: query/candidate,
+  fetch and document-list limits of 1000; unindexed stored string paths for
+  native embeddings and reranking; and request/result resource constraints.
+  Existing SDK request types already express these features. No new local
+  validation, client defaults, dependencies or public API changes are introduced.
+- Decode downloaded document arrays one document at a time instead of retaining
+  a separate encoded copy of the entire array. Preserve gzip transport behavior,
+  document order, metadata and complete-transfer validation. The returned slice
+  still contains all decoded documents and is not a streaming public API.
+- Update Bayesian live smoke boundaries to accept 101/1000 and reject 1001;
+  cover nested unindexed embedding/reranking paths and add an opt-in provider-free
+  query/fetch/GET/POST List limit smoke. See the [current contract](docs/api-contract.md).
+
 ## [0.7.1] - 2026-10-07
 
 ### Changed

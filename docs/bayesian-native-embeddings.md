@@ -1,12 +1,10 @@
 # Bayesian search and native embeddings
 
-This contract is pinned to backend
-[`9072a1bc8925954369a887f558f1eaf387b7ea0e`](https://github.com/lambdadb/lambdadb/commit/9072a1bc8925954369a887f558f1eaf387b7ea0e).
-The relevant contracts are
-[QueryRequest](https://github.com/lambdadb/lambdadb/blob/9072a1bc8925954369a887f558f1eaf387b7ea0e/api/src/main/java/ai/lambdadb/dto/QueryRequest.java),
-[BayesianQuery](https://github.com/lambdadb/lambdadb/blob/9072a1bc8925954369a887f558f1eaf387b7ea0e/api/src/main/java/ai/lambdadb/model/query/BayesianQuery.java),
-and [FieldConfig](https://github.com/lambdadb/lambdadb/blob/9072a1bc8925954369a887f558f1eaf387b7ea0e/api/src/main/java/ai/lambdadb/model/collection/FieldConfig.java).
-Source compatibility does not establish deployment or production availability.
+The current contract is pinned to
+[OpenAPI docs@ce2d8f7bd8ee2ab4f240be022085aab37cca0b91](https://github.com/lambdadb/docs/blob/ce2d8f7bd8ee2ab4f240be022085aab37cca0b91/reference/api/openapi.json)
+and backend
+[lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9](https://github.com/lambdadb/lambdadb/commit/0a54b6ecb483ce7df9677ba2071a491f9f9879c9).
+Source compatibility does not verify a target environment's deployment.
 
 ## Bayesian hybrid search
 
@@ -18,7 +16,7 @@ new typed query helpers or client-side fusion validation. The server requires:
 - No explicit `boost`, including `1`, on either signal or its Boolean descendants.
 - No nested `bayesian`, `rrf`, `mm`, or `l2`. Rank fusion is top-level only.
 - Without rerank (including `rerank: null`), explicit top-level `candidateSize`
-  with `1 <= size <= candidateSize <= 100`. Omitting it returns HTTP 400.
+  with `1 <= size <= candidateSize <= 1000`. Omitting it returns HTTP 400.
 - With rerank, omit top-level `candidateSize`. Use `rerank.candidateSize`, or
   leave it unset for the existing server default `max(50, size)`.
 
@@ -40,9 +38,10 @@ retrieved, err := collection.Query(ctx, lambdadb.QueryInput{
 })
 ```
 
-For caller-provided vector fields, use `queryVector` with the configured dimensions
-instead of `queryText`. Bayesian candidate calibration and final output size are
-separate budgets. Scores are fusion scores, not relevance probabilities.
+Use exactly one non-null `queryText` or `queryVector` per KNN leg, with `k`
+from 1 to 1000. Query vectors are also accepted on native embedding fields;
+query text requires a native embedding field. Use the configured dimensions.
+Bayesian candidate calibration and final output size are separate budgets. Scores are fusion scores, not relevance probabilities.
 
 ```go
 config := components.RerankConfig{
@@ -103,6 +102,25 @@ Native `Dimensions` and `Similarity` belong inside `Embedding`. Their omission
 survives JSON decode/encode and leaves model defaults to the server. The SDK no
 longer inserts `embedding.similarity` while decoding an omitted value.
 
+### Unindexed stored source paths
+
+`Embedding.SourceField` selects a scalar string in the original document, for
+example `article.body`. Neither the source nor its object ancestors needs an
+index declaration. A collection can declare only the generated vector; write
+`{"id":"1","article":{"body":"Text to embed","title":"Stored sibling"}}`
+through the ordinary `Docs` envelope. No wrapper or write-time source mapping is
+needed. The same stored path can be selected by `RerankConfig.Fields`.
+
+Declared source leaves must be `text` or `keyword`, and declared ancestors must
+be objects. Empty path segments and array traversal are invalid. Newly supported
+source paths reject null, arrays, objects, and non-string values before inference;
+a missing source on a full upsert skips the vector. Existing indexed text source
+behavior is preserved. Partial updates merge with stored JSON: unchanged source
+text reuses an existing vector, changed text regenerates it, and an empty ancestor
+object does not remove existing source text. Full upserts still replace documents
+and do not preserve a previous vector when the source is omitted. Adding an
+appropriate source index later uses the existing additive schema API.
+
 `IndexConfigsManagedEmbeddingVector` and
 `CreateIndexConfigsUnionManagedEmbeddingVector` retain their existing behavior,
 including serializing `managedEmbedding: true`. The native type also accepts
@@ -129,9 +147,10 @@ LAMBDADB_RUN_BAYESIAN_SMOKE=1 \
 
 The test creates unique temporary collections and verifies deletion by GET 404.
 It covers native and legacy create/update, normalized metadata, actual OpenAI
-embedding generation, ordinary native/caller-vector KNN, Bayesian retrieval,
-null rerank, existing fusion methods, eighteen invalid requests, and two JEV
-rerank calls with default/explicit candidate budgets. Client retries are disabled;
+embedding generation, nested unindexed sources, source update reuse/regeneration,
+ordinary native/caller-vector KNN, Bayesian retrieval at candidate budgets
+101/1000, null rerank, existing fusion methods, invalid requests, and two JEV
+rerank calls on unindexed stored text with default/explicit candidate budgets. Client retries are disabled;
 readiness polling precedes query embedding and rerank calls. It does not verify
 relevance quality, throughput, usage accounting, or injected provider failures.
 Revoke temporary keys, remove temporary projects, and verify absence separately;
