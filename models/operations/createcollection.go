@@ -7,8 +7,9 @@ import (
 
 type CreateCollectionRequest struct {
 	// Collection name must be unique within a project and the supported maximum length is 52.
-	CollectionName string                                  `json:"collectionName"`
-	IndexConfigs   map[string]components.IndexConfigsUnion `json:"indexConfigs"`
+	CollectionName string `json:"collectionName"`
+	// Nonempty index schema. Source text for native embedding need not be indexed.
+	IndexConfigs map[string]components.IndexConfigsUnion `json:"indexConfigs"`
 	// Optional collection description.
 	Description *string `json:"description,omitzero"`
 	// Collection metadata tags. The API accepts up to five entries.

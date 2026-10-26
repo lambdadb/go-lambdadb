@@ -87,6 +87,13 @@ review, metadata checks, immutable tags, and branch synchronization remain
 required. Release preparation does not authorize merging, tag publication, or
 GitHub Release publication; obtain explicit approval before those actions.
 
+For `0.7.2`, the maintainer selected direct stable release preparation on
+2026-10-26, skipping RC publication and RC feedback for this release only.
+Exact-commit consumer validation, applicable live smoke tests, SDK checks,
+review, metadata verification, and branch synchronization remain required.
+Release preparation does not authorize merging, tag publication, or GitHub
+Release publication; obtain explicit approval before those actions.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
@@ -219,6 +226,29 @@ target environment, results, and cleanup evidence. The test exercises real
 OpenAI document/query embeddings and JEV reranking, creates temporary
 Collections, and verifies their deletion. Revoke temporary project keys and
 remove temporary projects separately; never delete persistent CI resources.
+
+## Read limit smoke test
+
+For query/fetch/document-list contract changes, run the provider-free smoke in
+an authorized development or staging project with the usual `LAMBDADB_BASE_URL`,
+`LAMBDADB_PROJECT_NAME`, and `LAMBDADB_PROJECT_API_KEY` variables:
+
+```bash
+LAMBDADB_RUN_READ_LIMITS_SMOKE=1 \
+  go test -run '^TestIntegrationReadLimitsSmoke$' -count=1 -v .
+```
+
+The test writes 1000 small documents in a uniquely named temporary Collection,
+checks query/fetch and GET/POST document List at 101/1000, the List default of
+100, and server rejection at 1001. It deletes the Collection and verifies GET
+404. It makes no model inference calls and does not validate large-body limits,
+load or production capacity. For exact-commit consumer validation, copy
+`read_limits_integration_test.go` and `versioning_integration_test.go` (shared
+helpers) into the same consumer test package, without a local replace directive.
+Confirm the test is discovered and runs without skipping. The Bayesian smoke
+also covers nested unindexed source paths, update reuse/regeneration and direct
+query-vector rejection on native fields. These live checks remain required before release;
+local wire tests are not substitutes.
 
 ## Analyzer and native reranking smoke tests
 

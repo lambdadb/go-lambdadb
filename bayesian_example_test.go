@@ -30,3 +30,23 @@ func ExampleProjectCollections_Create_nativeEmbedding() {
 	_, _ = client.Collections.Create(context.Background(), lambdadb.CreateCollectionOptions{CollectionName: "articles", IndexConfigs: schema})
 	_, _ = client.Collection("articles").Update(context.Background(), lambdadb.UpdateCollectionOptions{IndexConfigs: schema})
 }
+
+// Only the generated vector is indexed; article.body remains ordinary stored JSON.
+func ExampleProjectCollections_Create_unindexedEmbeddingSource() {
+	client := lambdadb.New(lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"))
+	schema := map[string]components.IndexConfigsUnion{
+		"vector": components.CreateIndexConfigsUnionNativeEmbeddingVector(components.IndexConfigsNativeEmbeddingVector{
+			Embedding: components.EmbeddingConfig{Provider: components.EmbeddingConfigProviderOpenai, Model: "text-embedding-3-small", SourceField: "article.body"},
+		}),
+	}
+	_, _ = client.Collections.Create(context.Background(), lambdadb.CreateCollectionOptions{CollectionName: "articles", IndexConfigs: schema})
+	collection := client.Collection("articles")
+	_, _ = collection.Docs().Upsert(context.Background(), lambdadb.UpsertDocsInput{Docs: []map[string]any{
+		{"id": "1", "article": map[string]any{"body": "Restore a previous collection version", "title": "Stored sibling"}},
+	}})
+	config := components.RerankConfig{Provider: "typesafe", Model: "jev-1.13.0", QueryText: "restore", Fields: []string{"article.body"}}
+	_, _ = collection.Query(context.Background(), lambdadb.QueryInput{
+		Query:  map[string]any{"knn": map[string]any{"field": "vector", "queryText": "restore", "k": 50}},
+		Rerank: optionalnullable.From(&config),
+	})
+}

@@ -168,7 +168,7 @@ func (c *Collection) Query(ctx context.Context, input QueryInput, opts ...operat
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := c.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := fetchJSONFromURL(ctx, c.client, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch query docs from URL: %w", err)
 		}
 	}
@@ -251,7 +251,7 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := d.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := fetchJSONFromURL(ctx, d.client, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch list docs from URL: %w", err)
 		}
 	}
@@ -332,7 +332,7 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := it.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := fetchJSONFromURL(ctx, it.client, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch list docs from URL: %w", err)
 		}
 	}
@@ -378,7 +378,7 @@ func (d *CollectionDocs) Upsert(ctx context.Context, body UpsertDocsInput, opts 
 }
 
 // GetBulkUpsertInfo returns info required for bulk upload (presigned URL, object key, and optionally sizeLimitBytes).
-// When sizeLimitBytes is present, the upload payload must not exceed it (e.g. LambdaDB uses 200MB).
+// When sizeLimitBytes is present, the upload payload must not exceed it (e.g. LambdaDB uses 200 MiB).
 func (d *CollectionDocs) GetBulkUpsertInfo(ctx context.Context, opts ...operations.Option) (*GetBulkUpsertInfoResult, error) {
 	return d.getBulkUpsertInfo(ctx, nil, opts...)
 }
@@ -408,11 +408,11 @@ func (d *CollectionDocs) getBulkUpsertInfo(ctx context.Context, branch *string, 
 	}, nil
 }
 
-// MaxBulkUpsertPayloadBytes is the typical LambdaDB bulk upsert payload limit (200MB). The actual limit is returned by GetBulkUpsertInfo (sizeLimitBytes); use this constant only for reference or when validating before calling the API.
+// MaxBulkUpsertPayloadBytes is the typical LambdaDB bulk upsert payload limit (200 MiB). The actual limit is returned by GetBulkUpsertInfo (sizeLimitBytes); use this constant only for reference or when validating before calling the API.
 const MaxBulkUpsertPayloadBytes = 200 * 1024 * 1024
 
 // BulkUpsert bulk upserts documents into the collection.
-// The uploaded object (via presigned URL) must not exceed the size limit returned by GetBulkUpsertInfo (e.g. 200MB).
+// The uploaded object (via presigned URL) must not exceed the size limit returned by GetBulkUpsertInfo (e.g. 200 MiB).
 func (d *CollectionDocs) BulkUpsert(ctx context.Context, body BulkUpsertInput, opts ...operations.Option) (*operations.BulkUpsertDocsResponse, error) {
 	return d.client.docs.BulkUpsert(ctx, d.name, body, opts...)
 }
@@ -495,7 +495,7 @@ func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ..
 	}
 	obj := res.Object
 	if !obj.IsDocsInline && obj.DocsURL != nil && *obj.DocsURL != "" {
-		if err := d.client.fetchJSONFromURL(ctx, *obj.DocsURL, &obj.Docs); err != nil {
+		if err := fetchJSONFromURL(ctx, d.client, *obj.DocsURL, &obj.Docs); err != nil {
 			return nil, fmt.Errorf("fetch docs from URL: %w", err)
 		}
 	}
@@ -506,8 +506,9 @@ func (d *CollectionDocs) Fetch(ctx context.Context, body FetchDocsInput, opts ..
 	}, nil
 }
 
-// fetchJSONFromURL GETs the URL and unmarshals the response body as JSON into v.
-func (c *Client) fetchJSONFromURL(ctx context.Context, url string, v interface{}) error {
+// fetchJSONFromURL decodes one document at a time, without retaining a second
+// encoded copy of the entire array. The returned slice still holds all documents.
+func fetchJSONFromURL[T any](ctx context.Context, c *Client, url string, v *[]T) error {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
@@ -521,9 +522,36 @@ func (c *Client) fetchJSONFromURL(ctx context.Context, url string, v interface{}
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("download failed: status %d, body: %s", resp.StatusCode, string(body))
 	}
-	data, err := io.ReadAll(resp.Body)
+	decoder := json.NewDecoder(resp.Body)
+	token, err := decoder.Token()
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(data, v)
+	var docs []T
+	if token != nil { // Preserve JSON null as a nil slice.
+		if token != json.Delim('[') {
+			return fmt.Errorf("expected document array")
+		}
+		docs = make([]T, 0)
+		for decoder.More() {
+			var doc T
+			if err := decoder.Decode(&doc); err != nil {
+				return err
+			}
+			docs = append(docs, doc)
+		}
+		if _, err := decoder.Token(); err != nil { // Closing bracket, including truncation errors.
+			return err
+		}
+	}
+	// Require EOF so trailing JSON, transfer failures, and gzip checksum failures
+	// cannot turn a truncated or corrupted download into a partial success.
+	if _, err := decoder.Token(); err != io.EOF {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("unexpected data after document array")
+	}
+	*v = docs
+	return nil
 }

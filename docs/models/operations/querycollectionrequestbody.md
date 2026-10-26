@@ -4,15 +4,16 @@
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `Size` | **int64* | :heavy_minus_sign: | Number of documents to return, up to 100. |
-| `CandidateSize` | **int64* | :heavy_minus_sign: | Required for Bayesian without rerank: `1 <= size <= candidateSize <= 100`. With rerank use `rerank.candidateSize` instead. Unsupported for other queries. |
-| `Query` | map[string]*any* | :heavy_check_mark: | Query object. For native embeddings use `knn.queryText`; for unmanaged vector fields use `knn.queryVector`. |
+| `Size` | **int64* | :heavy_minus_sign: | Number of documents to return, up to 1000. Zero requires at least one facet. |
+| `CandidateSize` | **int64* | :heavy_minus_sign: | Required for Bayesian without rerank: `1 <= size <= candidateSize <= 1000`. With rerank use `rerank.candidateSize` instead. Unsupported for other queries. |
+| `Query` | map[string]*any* | :heavy_minus_sign: | Each KNN uses exactly one non-null `queryText` or `queryVector`, with `k` from 1 to 1000. Use query text for native embedding fields and query vectors for caller-provided vector fields. |
 | `ConsistentRead` | **bool* | :heavy_minus_sign: | True overlays eligible pending writes only for a direct Branch or omitted-ref `main`. Tag and Alias refs reject true, including Aliases targeting Branches. False or omitted reads committed data. |
 | `IncludeVectors` | **bool* | :heavy_minus_sign: | Includes vector values in the response when true. |
 | `Sort` | []map[string]*any* | :heavy_minus_sign: | Field name and sort direction pairs. |
 | `Fields` | [*components.FieldsSelectorUnion](../../models/components/fieldsselectorunion.md) | :heavy_minus_sign: | Fields to include or exclude. |
 | `PartitionFilter` | [*components.PartitionFilter](../../models/components/partitionfilter.md) | :heavy_minus_sign: | Restricts the request to matching partition values. |
 | `Ref` | [*components.RefContext](../../models/components/versioning.md#refcontext) | :heavy_minus_sign: | Branch, tag, or alias to read. A missing ref returns 404; a dangling alias returns 400. |
+| `Facets` | `map[string]components.FacetRequest` | :heavy_minus_sign: | Up to five keyword field paths; [facet request model](../components/facets.md#facetrequest). |
 | `Rerank` | `optionalnullable.OptionalNullable[components.RerankConfig]` | :heavy_minus_sign: | Query-level native reranking. Unset/null preserves legacy search; see [RerankConfig](../components/rerankconfig.md). |
 
 See [native reranking](../../native-reranking.md) for default/custom examples,

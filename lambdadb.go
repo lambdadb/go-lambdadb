@@ -39,7 +39,7 @@ func Float64(f float64) *float64 { return &f }
 func Pointer[T any](v T) *T { return &v }
 
 // Version is the SDK version. Use it for SDKVersion and User-Agent.
-const Version = "0.7.1"
+const Version = "0.7.2"
 
 // Client is the LambdaDB API client.
 type Client struct {
@@ -63,7 +63,7 @@ type Client struct {
 type SDKOption func(*Client)
 
 // WithBaseURL sets the API base URL (scheme + host, e.g. https://api.lambdadb.ai).
-// Default is https://api.lambdadb.ai per OpenAPI spec.
+// Default is https://api.lambdadb.ai in the SDK.
 func WithBaseURL(baseURL string) SDKOption {
 	return func(c *Client) {
 		c.sdkConfiguration.BaseURL = baseURL
@@ -71,7 +71,7 @@ func WithBaseURL(baseURL string) SDKOption {
 }
 
 // WithProjectName sets the project name (path segment, e.g. playground).
-// Default is "playground" per OpenAPI spec.
+// Default is "playground" in the SDK.
 func WithProjectName(projectName string) SDKOption {
 	return func(c *Client) {
 		c.sdkConfiguration.ProjectName = projectName

@@ -217,7 +217,7 @@ func TestIndexConfigsVectorMarshalRejectsInvalidUnmanagedSettings(t *testing.T) 
 }
 
 func TestNativeEmbeddingRoundTrip(t *testing.T) {
-	for _, extra := range []string{"", `,"dimensions":512,"similarity":"dot_product"`} {
+	for _, extra := range []string{"", `,"dimensions":512,"similarity":"euclidean"`} {
 		raw := `{"type":"vector","embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body"` + extra + `}}`
 		var union IndexConfigsUnion
 		if err := json.Unmarshal([]byte(raw), &union); err != nil {
@@ -284,7 +284,7 @@ func TestNativeEmbeddingReplacesReusedUnion(t *testing.T) {
 	const native = `{"type":"vector","embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body"}}`
 	for name, previous := range map[string]string{
 		"text":    `{"type":"text"}`,
-		"vector":  `{"type":"vector","dimensions":2}`,
+		"vector":  `{"type":"vector","dimensions":64}`,
 		"managed": `{"type":"vector","managedEmbedding":true,"embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"oldBody"}}`,
 		"keyword": `{"type":"keyword"}`,
 		"object":  `{"type":"object","objectIndexConfigs":{}}`,
@@ -295,7 +295,7 @@ func TestNativeEmbeddingReplacesReusedUnion(t *testing.T) {
 				t.Fatal(err)
 			}
 			before := union
-			invalid := `{"type":"vector","dimensions":2,"embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body"}}`
+			invalid := `{"type":"vector","dimensions":64,"embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body"}}`
 			if err := json.Unmarshal([]byte(invalid), &union); err == nil {
 				t.Fatal("accepted conflicting native dimensions")
 			}
@@ -333,7 +333,7 @@ func TestIndexConfigsUnionReplacesNativeWithOtherVariants(t *testing.T) {
 	const native = `{"type":"vector","embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body"}}`
 	for name, next := range map[string]string{
 		"text":         `{"type":"text"}`,
-		"vector":       `{"type":"vector","dimensions":2,"similarity":"cosine"}`,
+		"vector":       `{"type":"vector","dimensions":64,"similarity":"cosine"}`,
 		"managed":      `{"type":"vector","managedEmbedding":true,"embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"other"}}`,
 		"keyword":      `{"type":"keyword"}`,
 		"long":         `{"type":"long"}`,

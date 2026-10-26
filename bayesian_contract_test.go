@@ -14,7 +14,8 @@ import (
 	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// Contract: lambdadb/lambdadb@9072a1bc8925954369a887f558f1eaf387b7ea0e.
+// Contract: lambdadb/docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851,
+// server lambdadb/lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9.
 // Queries remain free-form; invalid fusion and budget requests reach the server.
 func TestBayesianRequestSerialization(t *testing.T) {
 	const signals = `[{"queryString":{"query":"body:restore"}},{"knn":{"field":"vector","queryVector":[1,0],"k":30}}]`
@@ -90,7 +91,7 @@ func TestBayesianRequestSerialization(t *testing.T) {
 func TestNativeEmbeddingCreateUpdateWire(t *testing.T) {
 	for _, legacy := range []bool{false, true} {
 		t.Run(map[bool]string{false: "native", true: "legacy"}[legacy], func(t *testing.T) {
-			embedding := components.EmbeddingConfig{Provider: components.EmbeddingConfigProviderOpenai, Model: "text-embedding-3-small", SourceField: "body"}
+			embedding := components.EmbeddingConfig{Provider: components.EmbeddingConfigProviderOpenai, Model: "text-embedding-3-small", SourceField: "article.body"}
 			vector := components.CreateIndexConfigsUnionNativeEmbeddingVector(components.IndexConfigsNativeEmbeddingVector{Embedding: embedding})
 			if legacy {
 				vector = components.CreateIndexConfigsUnionManagedEmbeddingVector(components.IndexConfigsManagedEmbeddingVector{Embedding: embedding})
@@ -98,7 +99,7 @@ func TestNativeEmbeddingCreateUpdateWire(t *testing.T) {
 			schema := map[string]components.IndexConfigsUnion{"vector": vector}
 			handler := func(req *http.Request) *http.Response {
 				body := decodeJSONBody(t, req)
-				want := map[string]any{"type": "vector", "embedding": map[string]any{"provider": "openai", "model": "text-embedding-3-small", "sourceField": "body"}}
+				want := map[string]any{"type": "vector", "embedding": map[string]any{"provider": "openai", "model": "text-embedding-3-small", "sourceField": "article.body"}}
 				if legacy {
 					want["managedEmbedding"] = true
 				}
@@ -109,7 +110,7 @@ func TestNativeEmbeddingCreateUpdateWire(t *testing.T) {
 				if req.Method == http.MethodPost {
 					status = 201
 				}
-				return jsonResponse(status, `{"collection":{"collectionName":"articles","indexConfigs":{"vector":{"type":"vector","managedEmbedding":true,"embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"body","dimensions":1536,"similarity":"cosine"}}}}}`)
+				return jsonResponse(status, `{"collection":{"collectionName":"articles","indexConfigs":{"vector":{"type":"vector","managedEmbedding":true,"embedding":{"provider":"openai","model":"text-embedding-3-small","sourceField":"article.body","dimensions":1536,"similarity":"cosine"}}}}}`)
 			}
 			mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{handler, handler}}
 			client := lambdadb.New(lambdadb.WithClient(mock))
