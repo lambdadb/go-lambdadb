@@ -10,12 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Align current contract documentation and SDK wire coverage with
-  [docs@ce2d8f7bd8ee2ab4f240be022085aab37cca0b91](https://github.com/lambdadb/docs/blob/ce2d8f7bd8ee2ab4f240be022085aab37cca0b91/reference/api/openapi.json)
+  [docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851](https://github.com/lambdadb/docs/blob/94a7b71613a3bf217a370d5117b3ff6ddfbae851/reference/api/openapi.json)
   and server `0a54b6ecb483ce7df9677ba2071a491f9f9879c9`: query/candidate,
   fetch and document-list limits of 1000; unindexed stored string paths for
   native embeddings and reranking; and request/result resource constraints.
   Existing SDK request types already express these features. No new local
   validation, client defaults, dependencies or public API changes are introduced.
+- Clarify the 64–4096 vector dimension range, native model maximum, and current
+  `cosine`/`euclidean` contract. Mark the other similarity constants deprecated
+  while preserving existing serialization and validation behavior.
 - Decode downloaded document arrays one document at a time instead of retaining
   a separate encoded copy of the entire array. Preserve gzip transport behavior,
   document order, metadata and complete-transfer validation. The returned slice

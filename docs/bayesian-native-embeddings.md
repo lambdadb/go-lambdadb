@@ -1,7 +1,7 @@
 # Bayesian search and native embeddings
 
 The current contract is pinned to
-[OpenAPI docs@ce2d8f7bd8ee2ab4f240be022085aab37cca0b91](https://github.com/lambdadb/docs/blob/ce2d8f7bd8ee2ab4f240be022085aab37cca0b91/reference/api/openapi.json)
+[OpenAPI docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851](https://github.com/lambdadb/docs/blob/94a7b71613a3bf217a370d5117b3ff6ddfbae851/reference/api/openapi.json)
 and backend
 [lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9](https://github.com/lambdadb/lambdadb/commit/0a54b6ecb483ce7df9677ba2071a491f9f9879c9).
 Source compatibility does not verify a target environment's deployment.
@@ -42,7 +42,7 @@ Use exactly one non-null `queryText` or `queryVector` per KNN leg, with `k`
 from 1 to 1000. Use query text for native embedding fields and query vectors
 for caller-provided vector fields, with the configured dimensions. The pinned
 server rejects direct query vectors on native embedding fields with HTTP 400;
-see the [known OpenAPI discrepancy](api-contract.md#known-openapi-discrepancy).
+see [native query input](api-contract.md#native-query-input).
 Bayesian candidate calibration and final output size are separate budgets. Scores are fusion scores, not relevance probabilities.
 
 ```go
@@ -102,7 +102,11 @@ _, err = client.Collection("articles").Update(ctx, lambdadb.UpdateCollectionOpti
 Update requests supply the full schema, preserving existing fields and settings.
 Native `Dimensions` and `Similarity` belong inside `Embedding`. Their omission
 survives JSON decode/encode and leaves model defaults to the server. The SDK no
-longer inserts `embedding.similarity` while decoding an omitted value.
+longer inserts `embedding.similarity` while decoding an omitted value. Explicit
+dimensions must be 64–4096 and no greater than the model maximum. The current
+contract supports `cosine` and `euclidean`, with `cosine` as the documented
+default. The server applies model-specific restrictions; see
+[vector dimensions and similarity](api-contract.md#vector-dimensions-and-similarity).
 
 ### Unindexed stored source paths
 

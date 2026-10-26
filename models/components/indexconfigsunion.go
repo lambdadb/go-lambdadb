@@ -153,13 +153,16 @@ func (e *EmbeddingConfigProvider) IsExact() bool {
 	return false
 }
 
-// Similarity - Resolved vector similarity metric.
+// Similarity is a vector similarity metric. The current OpenAPI contract supports
+// cosine and euclidean; other constants are retained for compatibility.
 type Similarity string
 
 const (
-	SimilarityCosine          Similarity = "cosine"
-	SimilarityEuclidean       Similarity = "euclidean"
-	SimilarityDotProduct      Similarity = "dot_product"
+	SimilarityCosine    Similarity = "cosine"
+	SimilarityEuclidean Similarity = "euclidean"
+	// Deprecated: Outside the current OpenAPI contract. Use cosine or euclidean for new configurations.
+	SimilarityDotProduct Similarity = "dot_product"
+	// Deprecated: Outside the current OpenAPI contract. Use cosine or euclidean for new configurations.
 	SimilarityMaxInnerProduct Similarity = "max_inner_product"
 )
 
@@ -167,7 +170,8 @@ func (e Similarity) ToPointer() *Similarity {
 	return &e
 }
 
-// IsExact returns true if the value matches a known enum value, false otherwise.
+// IsExact recognizes historical SDK enum values, including legacy constants.
+// It does not validate current OpenAPI support or model-specific restrictions.
 func (e *Similarity) IsExact() bool {
 	if e != nil {
 		switch *e {
@@ -188,9 +192,11 @@ type EmbeddingConfig struct {
 	// Declared leaves must be text or keyword. Missing sources skip generation;
 	// newly supported paths reject null and non-string values at write time.
 	SourceField string `json:"sourceField"`
-	// Resolved embedding dimensions. Optional in requests and resolved in stored collection metadata.
+	// 64–4096 dimensions, no greater than the model maximum; validated by the server.
+	// Omit to use the model default, resolved in stored collection metadata.
 	Dimensions *int64 `json:"dimensions,omitzero"`
-	// Resolved vector similarity metric. Optional in requests and resolved in stored collection metadata.
+	// Cosine or euclidean; the documented default is cosine. Omit to let the server
+	// apply model defaults and restrictions, resolved in stored collection metadata.
 	Similarity *Similarity `json:"similarity,omitzero"`
 }
 
@@ -244,9 +250,9 @@ type IndexConfigsVector struct {
 	Type TypeVector `json:"type"`
 	// Set to false or omit for unmanaged vector fields.
 	ManagedEmbedding *bool `json:"managedEmbedding,omitzero"`
-	// Vector dimensions for unmanaged vector fields.
+	// 64–4096 dimensions for caller-provided vectors; bounds are validated by the server.
 	Dimensions int64 `json:"dimensions"`
-	// Vector similarity metric for unmanaged vector fields.
+	// Cosine or euclidean for caller-provided vectors; defaults to cosine.
 	Similarity *Similarity `default:"cosine" json:"similarity"`
 }
 

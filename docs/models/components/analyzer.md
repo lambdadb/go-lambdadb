@@ -15,7 +15,7 @@ Elasticsearch/OpenSearch support.
 
 The expanded list follows [backend PR #437](https://github.com/lambdadb/lambdadb/pull/437),
 merged as [55d888299fee44466326a9db8016af9811ade13b](https://github.com/lambdadb/lambdadb/blob/55d888299fee44466326a9db8016af9811ade13b/core/src/main/java/ai/lambdadb/core/IndexingConstants.java).
-The current [OpenAPI at ce2d8f7bd8ee2ab4f240be022085aab37cca0b91](https://github.com/lambdadb/docs/blob/ce2d8f7bd8ee2ab4f240be022085aab37cca0b91/reference/api/openapi.json)
+The current [OpenAPI at 94a7b71613a3bf217a370d5117b3ff6ddfbae851](https://github.com/lambdadb/docs/blob/94a7b71613a3bf217a370d5117b3ff6ddfbae851/reference/api/openapi.json)
 also lists all 49 names. The wire shape and default remain unchanged.
 These are source contracts, not deployment evidence.
 

@@ -14,7 +14,7 @@ import (
 	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// Contract: lambdadb/docs@ce2d8f7bd8ee2ab4f240be022085aab37cca0b91,
+// Contract: lambdadb/docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851,
 // server lambdadb/lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9.
 // Queries remain free-form; invalid fusion and budget requests reach the server.
 func TestBayesianRequestSerialization(t *testing.T) {

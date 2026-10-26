@@ -15,7 +15,7 @@ import (
 	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// Contract: lambdadb/docs@ce2d8f7bd8ee2ab4f240be022085aab37cca0b91.
+// Contract: lambdadb/docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851.
 // These are wire tests, not simulated server validation. Even out-of-contract
 // requests must reach the server unchanged and preserve its error classification.
 func TestCurrentContractReadLimits(t *testing.T) {

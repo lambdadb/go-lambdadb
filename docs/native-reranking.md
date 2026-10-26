@@ -175,7 +175,7 @@ server errors and does not implement its own fallback or retry-specific ranking.
 ## Contract source and availability
 
 The current contract is pinned to
-[OpenAPI docs@ce2d8f7bd8ee2ab4f240be022085aab37cca0b91](https://github.com/lambdadb/docs/blob/ce2d8f7bd8ee2ab4f240be022085aab37cca0b91/reference/api/openapi.json)
+[OpenAPI docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851](https://github.com/lambdadb/docs/blob/94a7b71613a3bf217a370d5117b3ff6ddfbae851/reference/api/openapi.json)
 and backend
 [lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9](https://github.com/lambdadb/lambdadb/commit/0a54b6ecb483ce7df9677ba2071a491f9f9879c9).
 The OpenAPI includes reranking and all 49 analyzer presets. This manually

@@ -2,7 +2,7 @@
 
 SDK alignment is pinned to these immutable revisions:
 
-- [OpenAPI: docs@ce2d8f7bd8ee2ab4f240be022085aab37cca0b91](https://github.com/lambdadb/docs/blob/ce2d8f7bd8ee2ab4f240be022085aab37cca0b91/reference/api/openapi.json).
+- [OpenAPI: docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851](https://github.com/lambdadb/docs/blob/94a7b71613a3bf217a370d5117b3ff6ddfbae851/reference/api/openapi.json).
 - [Server: lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9](https://github.com/lambdadb/lambdadb/commit/0a54b6ecb483ce7df9677ba2071a491f9f9879c9).
 
 The OpenAPI `info.version` remains `1.1.1`; use the source SHA to identify this
@@ -28,15 +28,30 @@ order and HTTP error classification. Empty schemas, document lists/objects and
 explicit empty deletion IDs are rejected by the server. Nullable extended-List
 size, pageToken and filter can be omitted by using nil SDK fields.
 
-## Known OpenAPI discrepancy
+## Vector dimensions and similarity
 
-The pinned OpenAPI query description says direct `knn.queryVector` is accepted
-on native embedding fields. The deployed server instead rejects it with HTTP
-400; [NativeEmbeddingService at the pinned server SHA](https://github.com/lambdadb/lambdadb/blob/0a54b6ecb483ce7df9677ba2071a491f9f9879c9/runtime-aws/src/main/java/ai/lambdadb/service/embedding/NativeEmbeddingService.java#L245)
-explicitly enforces that restriction. Use `knn.queryText` on native embedding
-fields and `knn.queryVector` on caller-provided vector fields. The SDK preserves
-server validation rather than adding a local rejection. The upstream OpenAPI
-statement needs correction; SDK guidance follows the observed server behavior.
+The OpenAPI contract specifies 64–4096 dimensions for caller-provided vectors.
+Native `Embedding.Dimensions` uses the same range and must not exceed the selected
+model's supported maximum. Omit native dimensions to let the server resolve them.
+Stored and query vectors must match the field's configured dimension count.
+
+Both vector configurations advertise `cosine` and `euclidean`, with `cosine` as
+the documented default. Native dimensions and similarity belong inside
+`Embedding`; omitted values remain omitted on the wire so the server can apply
+model defaults and restrictions.
+
+The SDK retains its existing local checks and legacy enum constants for
+compatibility. It does not enforce the 64–4096 range or native model limits
+locally. `Similarity.IsExact()` recognizes legacy constants as well as current
+contract values; it is not a current-contract validator. `dot_product` and
+`max_inner_product` are outside the pinned OpenAPI contract and should not be
+used for new configurations. See [Similarity](models/components/similarity.md).
+
+## Native query input
+
+The pinned OpenAPI and server both require `knn.queryText` on native embedding
+fields; direct `knn.queryVector` returns HTTP 400. Use `knn.queryVector` on
+caller-provided vector fields. The SDK delegates this validation to the server.
 
 ## Stored source paths
 

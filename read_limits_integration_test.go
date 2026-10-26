@@ -14,7 +14,7 @@ import (
 	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// Contract: docs@ce2d8f7bd8ee2ab4f240be022085aab37cca0b91 and
+// Contract: docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851 and
 // server@0a54b6ecb483ce7df9677ba2071a491f9f9879c9. This opt-in smoke creates
 // and deletes temporary data. It makes no embedding or reranking provider calls.
 func TestIntegrationReadLimitsSmoke(t *testing.T) {
