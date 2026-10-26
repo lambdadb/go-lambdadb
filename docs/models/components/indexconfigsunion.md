@@ -21,7 +21,8 @@ indexConfigsUnion := components.CreateIndexConfigsUnionVector(components.IndexCo
 indexConfigsUnion := components.CreateIndexConfigsUnionNativeEmbeddingVector(components.IndexConfigsNativeEmbeddingVector{/* values here */})
 ```
 
-See [native embeddings](../../bayesian-native-embeddings.md#native-embedding-configuration)
+See [IndexConfigsNativeEmbeddingVector](indexconfigsnativeembeddingvector.md)
+for its fields and [native embeddings](../../bayesian-native-embeddings.md#native-embedding-configuration)
 for embedding-only create/update input and legacy compatibility.
 
 ### IndexConfigsManagedEmbeddingVector

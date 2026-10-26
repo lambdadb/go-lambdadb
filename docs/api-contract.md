@@ -47,6 +47,21 @@ segments are invalid. See [native embedding](bayesian-native-embeddings.md#unind
 for write/partial-update behavior and [native reranking](native-reranking.md)
 for candidate validation and projection. No new provider or SDK API is needed.
 
+## Write payload budgets
+
+Ordinary Upsert and Update batches share the Gateway request-body budget,
+including the JSON envelope and every document. The pinned Gateway default is
+6,029,312 bytes; oversized requests return HTTP 413. Independently, each document
+must fit the existing 5 MiB limit, including generated native embeddings. Use
+bulk upload for larger batches; it does not remove the per-document limit.
+
+For presigned bulk uploads, honor `SizeLimitBytes` returned by the server.
+`MaxBulkUpsertPayloadBytes` is a 200 MiB reference constant, not a separately
+enforced client maximum. `BulkUpsertDocuments` validates a positive returned
+limit before upload and does not substitute that constant when a limit is absent.
+See the [bulk upload guide](sdks/docs/README.md#bulkupsert) for signed headers,
+Branch binding and retry behavior.
+
 ## Result budgets and downloads
 
 Count limits do not guarantee that all requested document bodies fit. Fetch

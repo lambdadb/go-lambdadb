@@ -15,37 +15,7 @@
 
 List all collections in an existing project.
 
-### Example Usage: forkedCollection
-
-<!-- UsageSnippet language="go" operationID="listCollections" method="get" path="/collections" example="forkedCollection" -->
-```go
-package main
-
-import(
-	"context"
-	lambdadb "github.com/lambdadb/go-lambdadb"
-	"log"
-)
-
-func main() {
-    ctx := context.Background()
-
-    client := lambdadb.New(
-        lambdadb.WithBaseURL("https://api.lambdadb.ai"),
-        lambdadb.WithProjectName("playground"),
-        lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
-    )
-
-    res, err := client.Collections.List(ctx, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-    if res != nil {
-        // handle response
-    }
-}
-```
-### Example Usage: normalCollection
+### Example Usage
 
 <!-- UsageSnippet language="go" operationID="listCollections" method="get" path="/collections" example="normalCollection" -->
 ```go
@@ -81,11 +51,15 @@ func main() {
 | Parameter                                                | Type                                                     | Required                                                 | Description                                              |
 | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
+| `listOpts` | [*lambdadb.ListCollectionsOpts](../../../options.go) | :heavy_minus_sign: | Page size and continuation token; nil uses server defaults. |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
 
 ### Response
 
-**[*operations.ListCollectionsResponse](../../models/operations/listcollectionsresponse.md), error**
+**[*lambdadb.ListCollectionsResult](../../results.md#listcollectionsresult), error**
+
+Use `result.Collections` and `result.NextPageToken` directly. Pass
+`ListCollectionsOpts` for a page size from 1 to 100 or a continuation token.
 
 ### Errors
 
@@ -106,7 +80,7 @@ data; there is no Collection readiness status to poll.
 
 Create a collection.
 
-### Example Usage: example
+### Example Usage: minimal text schema
 
 <!-- UsageSnippet language="go" operationID="createCollection" method="post" path="/collections" example="example" -->
 ```go
@@ -144,7 +118,7 @@ func main() {
     }
 }
 ```
-### Example Usage: normalCollection
+### Example Usage: text and caller-provided vectors
 
 <!-- UsageSnippet language="go" operationID="createCollection" method="post" path="/collections" example="normalCollection" -->
 ```go
@@ -167,7 +141,7 @@ func main() {
     )
 
     res, err := client.Collections.Create(ctx, lambdadb.CreateCollectionOptions{
-        CollectionName: "example-collection-name",
+        CollectionName: "my-collection",
         IndexConfigs: map[string]components.IndexConfigsUnion{
             "example-field1": components.CreateIndexConfigsUnionText(
                 components.IndexConfigsText{
@@ -204,7 +178,11 @@ func main() {
 
 ### Response
 
-**[*operations.CreateCollectionResponse](../../models/operations/createcollectionresponse.md), error**
+**[*components.CollectionResponse](../../models/components/collectionresponse.md), error**
+
+The high-level method unwraps the compact create response; use Get for complete
+metadata. [CreateCollectionResponse](../../models/operations/createcollectionresponse.md)
+is the internal operation envelope.
 
 ### Errors
 
@@ -421,7 +399,11 @@ updated, err := client.Collection("my-collection").Update(ctx, lambdadb.UpdateCo
 
 ### Response
 
-**[*operations.UpdateCollectionResponse](../../models/operations/updatecollectionresponse.md), error**
+**[*components.CollectionResponse](../../models/components/collectionresponse.md), error**
+
+The high-level method returns metadata directly. See
+[UpdateCollectionResponse](../../models/operations/updatecollectionresponse.md)
+for the internal operation envelope.
 
 ### Errors
 
@@ -486,7 +468,7 @@ func main() {
 
 ### Response
 
-**[*lambdadb.QueryResult](../../../results.go), error**
+**[*lambdadb.QueryResult](../../results.md#queryresult), error**
 
 Optional `QueryInput.Rerank` selects [native reranking](../../native-reranking.md)
 for a single scoring query. `QueryResult.Rerank` preserves stage metadata, and

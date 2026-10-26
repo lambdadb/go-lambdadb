@@ -27,10 +27,10 @@ type SDKConfiguration struct {
 	Timeout     *time.Duration
 }
 
-// DefaultBaseURL is the default API base URL (OpenAPI spec default).
+// DefaultBaseURL is the default API base URL (SDK default).
 const DefaultBaseURL = "https://api.lambdadb.ai"
 
-// DefaultProjectName is the default project name (OpenAPI spec default).
+// DefaultProjectName is the default project name (SDK default).
 const DefaultProjectName = "playground"
 
 // GetServerDetails returns the effective base URL for API requests,

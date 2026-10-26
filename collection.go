@@ -378,7 +378,7 @@ func (d *CollectionDocs) Upsert(ctx context.Context, body UpsertDocsInput, opts 
 }
 
 // GetBulkUpsertInfo returns info required for bulk upload (presigned URL, object key, and optionally sizeLimitBytes).
-// When sizeLimitBytes is present, the upload payload must not exceed it (e.g. LambdaDB uses 200MB).
+// When sizeLimitBytes is present, the upload payload must not exceed it (e.g. LambdaDB uses 200 MiB).
 func (d *CollectionDocs) GetBulkUpsertInfo(ctx context.Context, opts ...operations.Option) (*GetBulkUpsertInfoResult, error) {
 	return d.getBulkUpsertInfo(ctx, nil, opts...)
 }
@@ -408,11 +408,11 @@ func (d *CollectionDocs) getBulkUpsertInfo(ctx context.Context, branch *string, 
 	}, nil
 }
 
-// MaxBulkUpsertPayloadBytes is the typical LambdaDB bulk upsert payload limit (200MB). The actual limit is returned by GetBulkUpsertInfo (sizeLimitBytes); use this constant only for reference or when validating before calling the API.
+// MaxBulkUpsertPayloadBytes is the typical LambdaDB bulk upsert payload limit (200 MiB). The actual limit is returned by GetBulkUpsertInfo (sizeLimitBytes); use this constant only for reference or when validating before calling the API.
 const MaxBulkUpsertPayloadBytes = 200 * 1024 * 1024
 
 // BulkUpsert bulk upserts documents into the collection.
-// The uploaded object (via presigned URL) must not exceed the size limit returned by GetBulkUpsertInfo (e.g. 200MB).
+// The uploaded object (via presigned URL) must not exceed the size limit returned by GetBulkUpsertInfo (e.g. 200 MiB).
 func (d *CollectionDocs) BulkUpsert(ctx context.Context, body BulkUpsertInput, opts ...operations.Option) (*operations.BulkUpsertDocsResponse, error) {
 	return d.client.docs.BulkUpsert(ctx, d.name, body, opts...)
 }

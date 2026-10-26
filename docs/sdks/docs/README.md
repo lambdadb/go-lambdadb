@@ -5,18 +5,20 @@
 ### Available Operations
 
 * [List](#list) - List documents in a collection.
-* [Upsert](#upsert) - Upsert documents into a collection. Note that the maximum supported payload size is 6MB.
-* [GetBulkUpsertInfo](#getbulkupsertinfo) - Request required info to upload documents (presigned URL, object key; payload limit 200MB).
+* [Upsert](#upsert) - Upsert a nonempty document batch; see [write payload budgets](../../api-contract.md#write-payload-budgets).
+* [GetBulkUpsertInfo](#getbulkupsertinfo) - Request required info to upload documents (presigned URL, object key; server-provided upload size limit).
 * **GetBulkUpsertInfoForBranch** (on `Collection.Docs()`) - Request upload information for a specific write Branch.
-* [BulkUpsert](#bulkupsert) - Bulk upsert documents into a collection. Payload must not exceed 200MB (`lambdadb.MaxBulkUpsertPayloadBytes`).
-* **BulkUpsertDocuments** (on `Collection.Docs()`) - One-step bulk upload: get presigned URL, upload docs, complete. Same 200MB payload limit.
-* [Update](#update) - Update documents in a collection. Note that the maximum supported payload size is 6MB.
+* [BulkUpsert](#bulkupsert) - Bulk upsert documents into a collection. Payload must fit `SizeLimitBytes` from the upload-info response.
+* **BulkUpsertDocuments** (on `Collection.Docs()`) - One-step bulk upload: get presigned URL, upload docs, complete. Uses the server-provided upload size limit.
+* [Update](#update) - Update a nonempty document batch; see [write payload budgets](../../api-contract.md#write-payload-budgets).
 * [Delete](#delete) - Delete documents by document IDs or query filter from a collection.
 * [Fetch](#fetch) - Lookup and return documents by document IDs from a collection.
 
 ## List
 
-List documents in a collection.
+List documents in a collection, up to 1000 per page with a server default of
+100. Pages can be shorter due to payload budgets; continue until
+`NextPageToken` is absent.
 
 ### Example Usage
 
@@ -77,7 +79,7 @@ res, err := client.Collection("my-collection").Docs().List(ctx, &lambdadb.ListDo
 
 ### Response
 
-**\*ListDocsResult** (one page): `Docs` is `[]operations.ListDocsDoc` (each has `Collection` and `Doc`), `Total`, `NextPageToken`. When the API returns `isDocsInline=false` and `docsUrl`, the SDK fetches the document list from the presigned URL automatically so `result.Docs` is always populated. See [ListDocsResponseBody](../../models/operations/listdocsresponsebody.md) for the API response shape.
+**[*lambdadb.ListDocsResult](../../results.md#listdocsresult), error** (one page): `Docs` is `[]operations.ListDocsDoc` (each has `Collection` and `Doc`), `Total`, `NextPageToken`. When the API returns `isDocsInline=false` and `docsUrl`, the SDK fetches the document list from the presigned URL automatically so `result.Docs` is always populated. See [ListDocsResponseBody](../../models/operations/listdocsresponsebody.md) for the API response shape.
 
 When `Ref` selects a ref that does not exist, List returns
 `apierrors.ResourceNotFoundError`. A dangling Alias returns
@@ -96,7 +98,11 @@ When `Ref` selects a ref that does not exist, List returns
 
 ## Upsert
 
-Upsert documents into a collection. Note that the maximum supported payload size is 6MB.
+Upsert a nonempty document batch; see [write payload budgets](../../api-contract.md#write-payload-budgets).
+
+These examples assume the text and 128-dimensional caller-provided vector
+schema in the [collection guide](../collections/README.md#create). Use the
+configured vector dimensions and retain document IDs for later updates.
 
 ### Example Usage
 
@@ -119,23 +125,20 @@ func main() {
         lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
+    vector := make([]float64, 128)
+    vector[0] = 1
+
     res, err := client.Collection("my-collection").Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
         Docs: []map[string]any{
             map[string]any{
+                "id": "example-id1",
                 "example-field1": "example-value1",
-                "example-field2": []any{
-                    0.1,
-                    0.2,
-                    0.3,
-                },
+                "example-field2": vector,
             },
             map[string]any{
+                "id": "example-id2",
                 "example-field1": "example-value2",
-                "example-field2": []any{
-                    0.4,
-                    0.5,
-                    0.6,
-                },
+                "example-field2": vector,
             },
         },
     })
@@ -223,7 +226,10 @@ Branch for both control requests.
 
 ### Response
 
-**[*operations.GetBulkUpsertDocsResponse](../../models/operations/getbulkupsertdocsresponse.md), error**
+**[*lambdadb.GetBulkUpsertInfoResult](../../results.md#getbulkupsertinforesult), error**
+
+Read `URL`, `ObjectKey`, `Type`, `HTTPMethod`, `SizeLimitBytes`, and `Headers`
+directly from the result; there is no `Object` wrapper.
 
 ### Errors
 
@@ -255,7 +261,10 @@ see [Errors and retries](../../../README.md#error-handling).
 An accepted bulk import becomes visible only after indexing commits it;
 `ConsistentRead: true` does not include pending bulk imports.
 
-Bulk upsert documents into a collection. The uploaded object (via presigned URL) must not exceed **200MB**; use `lambdadb.MaxBulkUpsertPayloadBytes` when validating payload size.
+The uploaded object must fit `SizeLimitBytes` from the upload-info response.
+`lambdadb.MaxBulkUpsertPayloadBytes` is a 200 MiB reference value, not a separate
+client cap. `BulkUpsertDocuments` checks a positive server-provided limit before
+uploading; it does not apply that constant when the response omits a limit.
 
 ### Example Usage
 
@@ -315,7 +324,11 @@ func main() {
 
 ## Update
 
-Update documents in a collection. Note that the maximum supported payload size is 6MB.
+Update a nonempty document batch; see [write payload budgets](../../api-contract.md#write-payload-budgets).
+
+These examples assume the text and 128-dimensional caller-provided vector
+schema in the [collection guide](../collections/README.md#create). Use the
+configured vector dimensions and retain document IDs for later updates.
 
 ### Example Usage
 
@@ -338,25 +351,20 @@ func main() {
         lambdadb.WithAPIKey("<YOUR_PROJECT_API_KEY>"),
     )
 
+    vector := make([]float64, 128)
+    vector[0] = 1
+
     res, err := client.Collection("my-collection").Docs().Update(ctx, lambdadb.UpdateDocsInput{
         Docs: []map[string]any{
             map[string]any{
                 "id": "example-id1",
                 "example-field1": "example-value1",
-                "example-field2": []any{
-                    0.1,
-                    0.2,
-                    0.3,
-                },
+                "example-field2": vector,
             },
             map[string]any{
                 "id": "example-id2",
                 "example-field1": "example-value2",
-                "example-field2": []any{
-                    0.4,
-                    0.5,
-                    0.6,
-                },
+                "example-field2": vector,
             },
         },
     })
@@ -576,7 +584,11 @@ func main() {
 
 ### Response
 
-**[*operations.FetchDocsResponse](../../models/operations/fetchdocsresponse.md), error**
+**[*lambdadb.FetchResult](../../results.md#fetchresult), error**
+
+Read `Docs`, `Total`, and `Took` directly. Fetch accepts 1–1000 nonblank IDs;
+projected bodies also have a 64 MiB per-node JSON budget. Size errors return
+HTTP 400 without partial results. See [result budgets](../../api-contract.md#result-budgets-and-downloads).
 
 When `Ref` selects a ref that does not exist, Fetch returns
 `apierrors.ResourceNotFoundError`. A dangling Alias returns

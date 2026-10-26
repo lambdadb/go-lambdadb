@@ -13,6 +13,7 @@
 | `Fields` | [*components.FieldsSelectorUnion](../../models/components/fieldsselectorunion.md) | :heavy_minus_sign: | Fields to include or exclude. |
 | `PartitionFilter` | [*components.PartitionFilter](../../models/components/partitionfilter.md) | :heavy_minus_sign: | Restricts the request to matching partition values. |
 | `Ref` | [*components.RefContext](../../models/components/versioning.md#refcontext) | :heavy_minus_sign: | Branch, tag, or alias to read. A missing ref returns 404; a dangling alias returns 400. |
+| `Facets` | `map[string]components.FacetRequest` | :heavy_minus_sign: | Up to five keyword field paths; [facet request model](../components/facets.md#facetrequest). |
 | `Rerank` | `optionalnullable.OptionalNullable[components.RerankConfig]` | :heavy_minus_sign: | Query-level native reranking. Unset/null preserves legacy search; see [RerankConfig](../components/rerankconfig.md). |
 
 See [native reranking](../../native-reranking.md) for default/custom examples,
