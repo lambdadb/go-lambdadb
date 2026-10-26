@@ -4,7 +4,7 @@
 
 ### Available Operations
 
-* [List](#list) - List all collections in an existing project.
+* [List](#list) - List one page of collections in an existing project.
 * [Create](#create) - Create a collection.
 * [Delete](#delete) - Delete an existing collection.
 * [Get](#get) - Get metadata of an existing collection.
@@ -13,7 +13,7 @@
 
 ## List
 
-List all collections in an existing project.
+List one page of collections in an existing project.
 
 ### Example Usage
 

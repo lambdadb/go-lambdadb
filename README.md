@@ -135,7 +135,7 @@ func main() {
 
 ### Project-level: `client.Collections`
 
-* [List](docs/sdks/collections/README.md#list) - List all collections in the project.
+* [List](docs/sdks/collections/README.md#list) - List one page of collections in the project.
 * [Create](docs/sdks/collections/README.md#create) - Create a collection.
 
 ### Collection-scoped: `client.Collection(name)`
