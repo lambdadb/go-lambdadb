@@ -1,10 +1,13 @@
-# Go modules are published through immutable Git tags. This workflow validates
-# release metadata, runs the SDK checks, and creates the matching GitHub Release.
+# Go modules are published through immutable Git tags. A push to main verifies
+# the committed release metadata and SDK checks without publishing. A v* tag push
+# runs the same checks, confirms that the tagged commit is on main, and creates the
+# matching GitHub Release.
 
 name: Publish
 
 on:
   push:
+    branches: [main]
     tags:
       - "v*"
 
@@ -23,10 +26,23 @@ jobs:
       prerelease: ${{ steps.release_metadata.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
+      # A tag push validates its own tag. A main push validates the committed
+      # SDK Version as the tag it would be released under.
       - name: Validate release metadata
         id: release_metadata
-        run: ./scripts/validate-release-metadata.sh "${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            release_tag="${GITHUB_REF_NAME}"
+          else
+            release_tag="v$(sed -n 's/^const Version = "\([^"]*\)"$/\1/p' lambdadb.go)"
+          fi
+          ./scripts/validate-release-metadata.sh "${release_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Verify the commit is on main
+        run: ./scripts/verify-main-ancestry.sh HEAD
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -44,6 +60,7 @@ jobs:
 
   release:
     needs: test
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: write

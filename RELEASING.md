@@ -8,20 +8,39 @@ release metadata, but it does not determine which version the Go toolchain
 selects. The Go toolchain uses semantic versions from Git tags and ignores
 GitHub's `prerelease` flag.
 
+## Branches
+
+Releases are trunk-based: `main` is the only long-lived branch.
+
+- Branch from `main`, open a pull request into `main`, and merge it with
+  **Squash and merge**. The organization ruleset `protect-main` requires a pull
+  request with one approval (the `dev` team may bypass the approval) and blocks
+  deletion and force pushes.
+- There are no `develop`, release, or hotfix branches and no back-merges.
+  Maintenance releases are cut from `main`; anything merged into `main` ships in
+  the next release.
+- Every RC and stable tag must point to a reviewed commit on `main`.
+
+`Version` in `lambdadb.go` is the only committed version. Between releases it
+keeps the most recently released version; a release pull request sets it to the
+next RC or stable version. There is no committed development placeholder and no
+automatic development publication.
+
 ## Release channels
 
 ### Development validation
 
-Use an untagged commit on `develop` for internal development and integration
+Use an untagged commit on `main` for internal development and integration
 testing. Consumers must pin the exact commit:
 
 ```bash
-go get github.com/lambdadb/go-lambdadb@<commit-sha>
+go get github.com/lambdadb/go-lambdadb@<main-commit-sha>
 ```
 
 The Go toolchain converts the commit to a pseudo-version in the consumer's
-`go.mod`. Prefer an exact commit over `@develop` so that test results are
-reproducible.
+`go.mod`, derived from the newest release tag reachable from that commit on
+`main` (for example, `v0.7.3-0.<timestamp>-<sha>` after `v0.7.2`). Prefer an
+exact commit over `@main` so that test results are reproducible.
 
 Do not create a `dev` tag for routine development validation. A tag in the
 public repository is a publicly retrievable Go module version even when its
@@ -30,8 +49,8 @@ GitHub Release is marked as a prerelease.
 ### Release candidate
 
 Publish a release candidate only after the implementation is reviewed, merged
-to `main`, and validated against the intended LambdaDB environment. Use a
-SemVer prerelease tag:
+to `main`, and validated against the intended LambdaDB environment. Tag the
+merge commit of the release pull request with a SemVer prerelease tag:
 
 ```text
 vX.Y.Z-rc.1
@@ -97,52 +116,35 @@ Release publication; obtain explicit approval before those actions.
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
-2. Implement and review the SDK changes on a feature branch.
-3. Merge the reviewed changes into `develop`.
-4. Validate the exact `develop` commit through a commit-SHA dependency.
-5. Run smoke tests against the intended LambdaDB development or staging environment.
-6. Merge the validated SDK commit into `main`.
-7. Synchronize the resulting reviewed `main` commit back into `develop` as
-   described in [Branch synchronization](#branch-synchronization) before
-   further development so release-only changes do not diverge.
-8. Publish `vX.Y.Z-rc.1` from that reviewed `main` commit and mark its GitHub
-   Release as a prerelease.
-9. Address feedback with a new commit and increment the RC number. Never move
-   an existing tag.
-10. Publish `vX.Y.Z` only after the release candidate is accepted, then
-    synchronize any stable-release-only commit from `main` back into `develop`.
-
-## Branch synchronization
-
-Synchronizing release changes from `main` back into `develop` must preserve the
-reviewed `main` commit as an ancestor of `develop`. Fast-forward `develop` when
-branch protections permit it and `develop` has not advanced. Otherwise, open a
-`main` to `develop` pull request and merge it with **Create a merge commit**.
-
-Never squash or rebase a synchronization pull request. Those methods can make
-the branch trees identical without preserving `main` ancestry, which causes
-later three-dot comparisons to report already-synchronized release changes.
-
-After synchronization, fetch both branches and verify the exact reviewed
-`main` commit is an ancestor of `develop`:
-
-```bash
-git fetch origin main develop
-git merge-base --is-ancestor <reviewed-main-commit> origin/develop
-```
-
-The ancestry command must exit with status 0. When no new development commits
-are expected after synchronization, also confirm the branch trees are equal:
-
-```bash
-git diff --exit-code <reviewed-main-commit>..origin/develop
-```
+2. Implement the SDK changes on a branch from `main`, open a pull request into
+   `main`, and squash-merge it after review.
+3. Validate the exact `main` commit through a commit-SHA dependency.
+4. Run smoke tests against the intended LambdaDB development or staging environment.
+5. Open a release pull request into `main` that sets `Version` in `lambdadb.go`
+   to `X.Y.Z-rc.1` and adds the matching `CHANGELOG.md` section. Run the
+   [validation checklist](#validation-checklist).
+6. Merge the release pull request. The resulting `main` push runs the publish
+   workflow in verification mode: it validates the committed `Version` and
+   changelog as the future tag, confirms the commit is on `main`, and runs the
+   SDK checks. It creates no tag or GitHub Release. Do not merge other pull
+   requests until the release is tagged, or tag the release pull request's merge
+   commit explicitly.
+7. After verification passes and with explicit approval, tag that exact merge
+   commit `vX.Y.Z-rc.1` and push the tag. The publish workflow repeats the
+   checks, confirms the tagged commit is on `main`, and creates a GitHub Release
+   marked as a prerelease.
+8. Address feedback in new pull requests into `main`, then release the next RC
+   number through another release pull request. Never move an existing tag.
+9. Publish `vX.Y.Z` only after the release candidate is accepted: a release
+   pull request sets `Version` to `X.Y.Z` with its changelog section, and its
+   verified merge commit is tagged as in steps 6 and 7.
 
 ## Validation checklist
 
 Before publishing either an RC or stable tag:
 
-- Confirm the working tree is clean and the tag target is the reviewed `main` commit.
+- Confirm the working tree is clean and the tag target is the reviewed merge
+  commit of the release pull request on `main`.
 - Confirm `Version` in `lambdadb.go` matches the tag without the leading `v`.
 - Update `CHANGELOG.md` with the same version and document breaking changes
   explicitly.
@@ -153,16 +155,22 @@ Before publishing either an RC or stable tag:
   LambdaDB environment.
 - Confirm the publish workflow marks `v*-*` tags as GitHub prereleases and does
   not make them the latest GitHub Release.
+- Confirm the publish workflow's verification run for the release pull request's
+  `main` push passed.
 
-Before pushing a tag, validate its format and its agreement with the SDK
-version and changelog locally:
+Before pushing a tag, check out the tagged commit and validate the tag's
+format, its agreement with the SDK version and changelog, and that the commit is
+on `main`:
 
 ```bash
 ./scripts/validate-release-metadata.sh vX.Y.Z-rc.N
+./scripts/verify-main-ancestry.sh vX.Y.Z-rc.N
 ```
 
-The publish workflow runs the same validator and accepts only `vX.Y.Z` stable
-tags or `vX.Y.Z-rc.N` release-candidate tags. RC numbering starts at 1.
+The publish workflow runs the same checks and accepts only `vX.Y.Z` stable tags
+or `vX.Y.Z-rc.N` release-candidate tags on `main`. RC numbering starts at 1. A
+pushed tag is already a retrievable Go module version, so the workflow's checks
+can only withhold the GitHub Release; run them locally before pushing.
 
 After publishing an RC, verify both selections explicitly:
 
@@ -207,8 +215,8 @@ LambdaDB environment after verifying the actual deployed backend revision.
 Load `LAMBDADB_BASE_URL`, `LAMBDADB_PROJECT_NAME`, and `LAMBDADB_PROJECT_API_KEY`
 without printing or saving credentials.
 
-Before the `main` merge, use a separate consumer module pinned to the exact SDK
-`develop` commit, with no local `replace` directive. Copy
+Before tagging a release, use a separate consumer module pinned to the exact SDK
+`main` commit, with no local `replace` directive. Copy
 `bayesian_integration_test.go` and `versioning_integration_test.go` (shared
 helpers) into that module, using the same test package name in both files.
 Confirm discovery and then execute:
@@ -274,8 +282,8 @@ It waits for baseline query readiness before any paid stage and disables client
 retries for provider-backed requests. It does not inject fallback failures or
 verify usage accounting, quality, load or production availability.
 
-Before the `main` merge, run these tests from a separate consumer module pinned
-to the exact SDK `develop` commit, with no local `replace` directive. Copy both
+Before tagging a release, run these tests from a separate consumer module pinned
+to the exact SDK `main` commit, with no local `replace` directive. Copy both
 `rerank_integration_test.go` (the analyzer and reranking smoke-test definitions)
 and `versioning_integration_test.go` (their shared helpers) into that module.
 Use the same test package name in both copied files, matching the consumer module.

@@ -17,6 +17,11 @@ If you encounter any bugs or have suggestions for improvements, please open an i
 - Information about your environment (e.g., operating system, software versions)
     - For example can be collected using the `npx envinfo` command from your terminal if you have Node.js installed
 
+## Preparing a Pull Request
+
+Branch from `main` and open the pull request against `main`; maintainers merge
+it with **Squash and merge**. There is no `develop` branch.
+
 ## API Contract Changes
 
 Use `reference/api/openapi.json` in [lambdadb/docs](https://github.com/lambdadb/docs)
@@ -44,8 +49,9 @@ git diff --check
 
 Maintainers must follow the development, release-candidate, and stable release
 procedure in [RELEASING.md](RELEASING.md). In particular, development validation
-uses an exact commit SHA, release candidates use `vX.Y.Z-rc.N`, and published
-tags must never be moved or replaced.
+uses an exact `main` commit SHA, release tags point to reviewed `main` commits,
+release candidates use `vX.Y.Z-rc.N`, and published tags must never be moved or
+replaced. Merging a pull request does not publish a tagged version.
 
 ## Contact
 
