@@ -125,14 +125,15 @@ Release publication; obtain explicit approval before those actions.
    [validation checklist](#validation-checklist).
 6. Merge the release pull request. The resulting `main` push runs the publish
    workflow in verification mode: it validates the committed `Version` and
-   changelog as the future tag, confirms the commit is on `main`, and runs the
-   SDK checks. It creates no tag or GitHub Release. Do not merge other pull
-   requests until the release is tagged, or tag the release pull request's merge
-   commit explicitly.
+   changelog as the future tag, confirms the commit is on `main`, runs the SDK
+   checks, and runs the [deployed live smoke tests](#deployed-live-smoke-gates)
+   against production. It creates no tag or GitHub Release. Do not merge other
+   pull requests until the release is tagged, or tag the release pull request's
+   merge commit explicitly.
 7. After verification passes and with explicit approval, tag that exact merge
    commit `vX.Y.Z-rc.1` and push the tag. The publish workflow repeats the
-   checks, confirms the tagged commit is on `main`, and creates a GitHub Release
-   marked as a prerelease.
+   checks and the production live smoke tests, confirms the tagged commit is on
+   `main`, and only then creates a GitHub Release marked as a prerelease.
 8. Address feedback in new pull requests into `main`, then release the next RC
    number through another release pull request. Never move an existing tag.
 9. Publish `vX.Y.Z` only after the release candidate is accepted: a release
@@ -153,6 +154,9 @@ Before publishing either an RC or stable tag:
 - Run `go build ./...`.
 - Complete the relevant integration and smoke tests against the intended
   LambdaDB environment.
+- Confirm the production live smoke gate of the release pull request's `main`
+  push passed. It is the last gate before the tag: a pushed tag is a public Go
+  module version even when the tag run's checks fail.
 - Confirm the publish workflow marks `v*-*` tags as GitHub prereleases and does
   not make them the latest GitHub Release.
 - Confirm the publish workflow's verification run for the release pull request's
@@ -181,6 +185,100 @@ go list -m -json github.com/lambdadb/go-lambdadb@vX.Y.Z-rc.1
 
 The first command must resolve to the latest stable version when one exists.
 The second command must resolve to the intended release candidate.
+
+## Deployed live smoke gates
+
+The publish workflow runs every LambdaDB live smoke test after the SDK checks:
+
+| Event | Live target |
+| :-- | :-- |
+| Pull request | None. Ordinary CI has no credentials and runs no live tests. |
+| `main` push whose `Version` is already tagged (development commit) | Dev environment |
+| `main` push whose `Version` has no `v<Version>` tag on `origin` yet (release commit) | Production, verification only |
+| `v*` tag push | Production, before the GitHub Release is created |
+
+`scripts/select-smoke-environment.sh` makes this selection; it queries the tags
+on `origin`, so a tag that exists only in a local checkout does not count. There
+is no development publication: development commits are consumed as
+pseudo-versions of `main` commits, and their gate is the dev live smoke result
+of the `main` push.
+
+`scripts/live-test.sh` is the live suite. It enables every opt-in flag
+(`LAMBDADB_RUN_ANALYZER_SMOKE`, `LAMBDADB_RUN_BAYESIAN_SMOKE`,
+`LAMBDADB_RUN_COHERE_SMOKE`, `LAMBDADB_RUN_VERSIONING_SMOKE`,
+`LAMBDADB_RUN_RERANK_SMOKE`, `LAMBDADB_RUN_READ_LIMITS_SMOKE`) and runs all six
+`TestIntegration*Smoke` tests one at a time (`go test -p 1`, no parallel tests); concurrent bulk writes
+can exceed the project's rate limit and return HTTP 429. Missing configuration,
+a failed test, a skipped test or subtest, and a test that did not run all fail
+the suite. Each test creates uniquely named temporary Collections and verifies
+their deletion. A new live test must be added to the script; the repository
+tests fail until it is.
+
+In the workflow, `scripts/run-live-smoke.sh` runs the suite. The job assumes a
+dedicated AWS role through GitHub OIDC, reads the dedicated smoke project's API
+key from Secrets Manager, masks it in the job log, and passes it only in the
+environment of the suite. The key never appears in command arguments, files,
+artifacts, or GitHub Secrets. Missing configuration or a failed secret read
+fails the run, which withholds the GitHub Release on a tag push.
+
+The workflow reads these repository Variables. The `LAMBDADB_DEV_` Variables
+serve development commits; the `LAMBDADB_PROD_` Variables serve release commits
+and tags. A missing Variable fails the run; it never falls back to the other
+environment.
+
+| Variable | Value |
+| :-- | :-- |
+| `LAMBDADB_DEV_BASE_URL` | Dev environment base URL |
+| `LAMBDADB_DEV_PROJECT_NAME` | Dedicated SDK smoke project in the dev environment (`go-sdk-ci`) |
+| `LAMBDADB_DEV_SMOKE_AWS_ROLE_ARN` | Dev smoke role (`lambdadb-go-sdk-smoke`) |
+| `LAMBDADB_DEV_SMOKE_SECRET_ARN` | Exact ARN of the dev project's API key secret |
+| `LAMBDADB_PROD_BASE_URL` | Production base URL |
+| `LAMBDADB_PROD_PROJECT_NAME` | Dedicated SDK smoke project in production (`go-sdk-ci`) |
+| `LAMBDADB_PROD_SMOKE_AWS_ROLE_ARN` | Production smoke role (`lambdadb-go-sdk-prod-smoke`) |
+| `LAMBDADB_PROD_SMOKE_SECRET_ARN` | Exact ARN of the production project's API key secret |
+
+Store each project key as a plain SecretString in `ap-northeast-2`. Use a
+dedicated project where test Collections may be created and deleted, with a
+`rateLimit` of at least 100 requests per second. The suite makes real
+provider calls (OpenAI and Cohere embeddings, Cohere and JEV reranking), so each
+environment's backend must have its Cohere Secret configured. Do not grant the workflow the stack
+admin key, project creation, deployment, or secret write permissions.
+
+Each role trusts GitHub OIDC for audience `sts.amazonaws.com` and only these
+subjects. The dev role:
+
+```text
+repo:lambdadb/go-lambdadb:ref:refs/heads/main
+```
+
+The production role (release commits on `main`, tags):
+
+```text
+repo:lambdadb/go-lambdadb:ref:refs/heads/main
+repo:lambdadb/go-lambdadb:ref:refs/tags/v*
+```
+
+Each role's permission policy needs `secretsmanager:GetSecretValue` on the exact
+smoke secret ARN of its own environment. Provisioning the roles, projects, keys,
+and Variables is a separate environment setup step.
+
+To run the same suite locally, load the target environment's
+`LAMBDADB_BASE_URL`, `LAMBDADB_PROJECT_NAME`, and `LAMBDADB_PROJECT_API_KEY`
+without printing the key, for example:
+
+```bash
+KEY=$(aws secretsmanager get-secret-value --region ap-northeast-2 \
+  --secret-id <smoke-secret-arn> --query SecretString --output text)
+LAMBDADB_BASE_URL=<base-url> LAMBDADB_PROJECT_NAME=<project> \
+  LAMBDADB_PROJECT_API_KEY="$KEY" ./scripts/live-test.sh
+unset KEY
+```
+
+Record the environment, SDK commit, duration, result, and cleanup evidence.
+Production may lag the dev environment; report a failure caused by an
+undeployed server change with its exact error rather than skipping the test.
+The sections below describe each live test and the exact-commit consumer
+validation that remains required before tagging a release.
 
 ## Data Versioning smoke test
 
