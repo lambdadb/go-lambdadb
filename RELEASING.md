@@ -123,8 +123,9 @@ branches are not covered.
 - Hotfix: cut `hotfix/X.Y.Z` from `main`, open a pull request into `main` and
   merge it with **Create a merge commit**, tag from `main`, then back-merge
   `main` into `develop`.
-- Delete `release/*` and `hotfix/*` branches after their promotion pull request
-  merges.
+- Branch cleanup: keep `release/X.Y.Z` through RC promotions and delete it
+  after the final stable promotion and back-merge. Delete `hotfix/X.Y.Z` after
+  its promotion pull request merges.
 
 ## Required sequence
 
