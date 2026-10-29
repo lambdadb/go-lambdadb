@@ -10,6 +10,7 @@ set -euo pipefail
 live_tests=(
   TestIntegrationAnalyzerPresetsSmoke
   TestIntegrationBayesianNativeEmbeddingSmoke
+  TestIntegrationCohereNativeSmoke
   TestIntegrationDataVersioningSmoke
   TestIntegrationNativeRerankingSmoke
   TestIntegrationReadLimitsSmoke
@@ -26,6 +27,7 @@ unset value
 
 export LAMBDADB_RUN_ANALYZER_SMOKE=1
 export LAMBDADB_RUN_BAYESIAN_SMOKE=1
+export LAMBDADB_RUN_COHERE_SMOKE=1
 export LAMBDADB_RUN_VERSIONING_SMOKE=1
 export LAMBDADB_RUN_RERANK_SMOKE=1
 export LAMBDADB_RUN_READ_LIMITS_SMOKE=1

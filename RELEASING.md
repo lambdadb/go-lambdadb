@@ -205,9 +205,9 @@ of the `main` push.
 
 `scripts/live-test.sh` is the live suite. It enables every opt-in flag
 (`LAMBDADB_RUN_ANALYZER_SMOKE`, `LAMBDADB_RUN_BAYESIAN_SMOKE`,
-`LAMBDADB_RUN_VERSIONING_SMOKE`, `LAMBDADB_RUN_RERANK_SMOKE`,
-`LAMBDADB_RUN_READ_LIMITS_SMOKE`) and runs all five `TestIntegration*Smoke`
-tests one at a time (`go test -p 1`, no parallel tests); concurrent bulk writes
+`LAMBDADB_RUN_COHERE_SMOKE`, `LAMBDADB_RUN_VERSIONING_SMOKE`,
+`LAMBDADB_RUN_RERANK_SMOKE`, `LAMBDADB_RUN_READ_LIMITS_SMOKE`) and runs all six
+`TestIntegration*Smoke` tests one at a time (`go test -p 1`, no parallel tests); concurrent bulk writes
 can exceed the project's rate limit and return HTTP 429. Missing configuration,
 a failed test, a skipped test or subtest, and a test that did not run all fail
 the suite. Each test creates uniquely named temporary Collections and verifies
@@ -240,7 +240,8 @@ environment.
 Store each project key as a plain SecretString in `ap-northeast-2`. Use a
 dedicated project where test Collections may be created and deleted, with a
 `rateLimit` of at least 100 requests per second. The suite makes real
-provider calls (OpenAI embeddings and JEV reranking). Do not grant the workflow the stack
+provider calls (OpenAI and Cohere embeddings, Cohere and JEV reranking), so each
+environment's backend must have its Cohere Secret configured. Do not grant the workflow the stack
 admin key, project creation, deployment, or secret write permissions.
 
 Each role trusts GitHub OIDC for audience `sts.amazonaws.com` and only these
