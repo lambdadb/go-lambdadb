@@ -7,7 +7,6 @@ import (
 	"math"
 	"os"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
@@ -18,8 +17,8 @@ import (
 	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// Contract: lambdadb/docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851,
-// server lambdadb/lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9.
+// Contract: lambdadb/lambdadb@1c3e7d453cca296a7b2af85a375b4c5016504101 api/openapi.json;
+// native queryVector acceptance requires a deployment of that revision.
 // Opt in only after verifying deployment and authorizing temporary collections
 // and provider calls. Keys stay in the process environment, never test output.
 func TestIntegrationBayesianNativeEmbeddingSmoke(t *testing.T) {
@@ -160,15 +159,14 @@ func TestIntegrationBayesianNativeEmbeddingSmoke(t *testing.T) {
 					_, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{Docs: []map[string]any{{"id": "invalid", "article": map[string]any{"body": source}}}})
 					requireIntegrationBadRequest(t, err, "invalid unindexed embedding source")
 				}
-				// The pinned OpenAPI overstates this capability; the deployed server rejects it.
+				// Native fields accept direct query vectors, which skip query inference.
 				raw := input
 				raw.Query = map[string]any{"knn": map[string]any{"field": "vector", "queryVector": updated, "k": 3}}
-				_, err = collection.Query(ctx, raw)
-				var bad *apierrors.BadRequestError
-				if !errors.As(err, &bad) || bad.Message == nil || !strings.Contains(*bad.Message, "queryVector is not allowed for native embedding field") {
-					t.Fatalf("native field queryVector rejection (%T): %v", err, err)
+				direct, err := collection.Query(ctx, raw)
+				if err != nil || direct == nil || len(direct.Docs) != 3 || direct.Docs[0].Doc["id"] != "restore" {
+					t.Fatalf("native field queryVector (%T)", err)
 				}
-				t.Log("unindexed nested source, sibling reuse, changed source regeneration, invalid sources and native queryVector rejection passed")
+				t.Log("unindexed nested source, sibling reuse, changed source regeneration, invalid sources and native queryVector passed")
 			}
 
 			input.Query = map[string]any{"knn": map[string]any{"field": "manual", "queryVector": manualVectors[0], "k": 3}}

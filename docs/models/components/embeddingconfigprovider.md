@@ -8,3 +8,4 @@ Embedding provider.
 | Name                             | Value  |
 | -------------------------------- | ------ |
 | `EmbeddingConfigProviderOpenai`  | openai |
+| `EmbeddingConfigProviderCohere`  | cohere |

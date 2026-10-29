@@ -378,3 +378,59 @@ func TestIndexConfigsUnionReplacesNativeWithOtherVariants(t *testing.T) {
 		})
 	}
 }
+
+func TestNativeEmbeddingSourcesRoundTrip(t *testing.T) {
+	const sources = `"sources":[{"field":"title","type":"text"},{"field":"images","type":"image"}]`
+	for name, raw := range map[string]string{
+		"request":  `{"type":"vector","embedding":{"provider":"cohere","model":"embed-v5.0-fast",` + sources + `,"dimensions":1024}}`,
+		"response": `{"type":"vector","managedEmbedding":true,"embedding":{"provider":"cohere","model":"embed-v5.0-pro",` + sources + `,"dimensions":2048,"similarity":"cosine"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			var union IndexConfigsUnion
+			if err := json.Unmarshal([]byte(raw), &union); err != nil {
+				t.Fatal(err)
+			}
+			embedding := union.IndexConfigsNativeEmbeddingVector.GetEmbedding()
+			if union.IndexConfigsManagedEmbeddingVector != nil {
+				embedding = union.IndexConfigsManagedEmbeddingVector.GetEmbedding()
+			}
+			want := []EmbeddingSource{{Field: "title", Type: EmbeddingSourceTypeText}, {Field: "images", Type: EmbeddingSourceTypeImage}}
+			if embedding.Provider != EmbeddingConfigProviderCohere || !embedding.Provider.IsExact() || !reflect.DeepEqual(embedding.GetSources(), want) || embedding.GetSourceField() != "" {
+				t.Fatalf("decoded embedding = %#v", embedding)
+			}
+			encoded, err := json.Marshal(union)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got, wantJSON map[string]any
+			if err := json.Unmarshal(encoded, &got); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal([]byte(raw), &wantJSON); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, wantJSON) {
+				t.Fatalf("roundtrip = %s, want %s", encoded, raw)
+			}
+		})
+	}
+	// Explicit null sourceField is accepted on input and omitted on output.
+	var config EmbeddingConfig
+	if err := json.Unmarshal([]byte(`{"provider":"cohere","model":"embed-v5.0-fast","sourceField":null,`+sources+`}`), &config); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got, want map[string]any
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(`{"provider":"cohere","model":"embed-v5.0-fast",`+sources+`}`), &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("encoded = %s", encoded)
+	}
+}

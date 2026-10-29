@@ -4,7 +4,7 @@
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `IndexConfigs` | map[string][components.IndexConfigsUnion](../../models/components/indexconfigsunion.md) | :heavy_minus_sign: | Nonempty full schema preserving every existing field and its settings. New top-level fields and nested children at any depth may be added. |
+| `IndexConfigs` | map[string][components.IndexConfigsUnion](../../models/components/indexconfigsunion.md) | :heavy_minus_sign: | Nonempty full schema preserving every existing field and its settings. New top-level fields and nested children at any depth may be added. The server-managed `id` field may be sent back as returned (`{"type":"keyword"}`) or omitted. |
 | `Description` | **string* | :heavy_minus_sign: | Nil leaves it unchanged; an empty string clears it. Maximum 255 characters. |
 | `Tags` | map[string]string | :heavy_minus_sign: | Nil leaves metadata unchanged; a supplied map replaces it; an empty map clears it. Up to five entries. |
 | `SnapshotRetentionInDays` | **int64* | :heavy_minus_sign: | Committed snapshot retention, from 1 through 31 days. Nil leaves it unchanged. |

@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Aligned with server `main`
+[lambdadb@1c3e7d453cca296a7b2af85a375b4c5016504101](https://github.com/lambdadb/lambdadb/blob/1c3e7d453cca296a7b2af85a375b4c5016504101/api/openapi.json)
+`api/openapi.json` (SHA-256 `8a78c2abb9f4169abed31176d9ee86deb1f4782bb2134bee513e52899a9c3aea`).
+The previous `docs@94a7b71` pin is byte-identical to that spec's first server
+revision; the contract changes are Cohere native embeddings and reranking
+(backend #483) and the server-managed `id` field in `indexConfigs` (backend #515).
+This pins the source contract and does not establish deployment.
+
+### Added
+
+- `EmbeddingConfigProviderCohere`, `EmbeddingConfig.Sources`, and
+  `EmbeddingSource`/`EmbeddingSourceType` (`text`, `image`) for ordered
+  multi-source and Cohere multimodal native embeddings.
+
+### Changed
+
+- `EmbeddingConfig.SourceField` is omitted when empty, so a `Sources`-only
+  configuration does not send `"sourceField":""`. Collections returned with
+  `sources` now keep them through decode and re-encode instead of dropping them.
+  A configuration with neither field is still rejected by the server with HTTP 400.
+- Document that Collection responses include the server-managed top-level `id`
+  field as `{"type":"keyword"}` in `IndexConfigs`, and that create/update
+  requests may send it back unchanged or omit it (backend #515). An `id`-only
+  schema is accepted; other `id` configurations remain server-rejected. The SDK
+  already forwards `IndexConfigs` without field-name validation.
+- Document Cohere reranking (`rerank-v5.0-pro`, `rerank-v5.0-fast`, null-only
+  criteria, `cohere-relevance-v1`), `knn.queryInputs`, direct vectors on native
+  fields for writes and queries, and bulk upload for native collections with
+  caller-supplied vectors. Queries remain free-form maps; the SDK adds no local
+  validation.
+- The Bayesian live smoke now expects native-field `queryVector` queries to
+  succeed instead of returning HTTP 400.
+- Add the opt-in `TestIntegrationCohereNativeSmoke` for Cohere text/image
+  sources, re-sending a returned schema including `id`, `queryInputs`, direct
+  vectors, Cohere reranking and native bulk upload.
+
 ## [0.7.2] - 2026-10-26
 
 ### Changed

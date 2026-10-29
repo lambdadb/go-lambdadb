@@ -1,9 +1,9 @@
 # Bayesian search and native embeddings
 
 The current contract is pinned to
-[OpenAPI docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851](https://github.com/lambdadb/docs/blob/94a7b71613a3bf217a370d5117b3ff6ddfbae851/reference/api/openapi.json)
-and backend
-[lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9](https://github.com/lambdadb/lambdadb/commit/0a54b6ecb483ce7df9677ba2071a491f9f9879c9).
+[OpenAPI `api/openapi.json`](https://github.com/lambdadb/lambdadb/blob/1c3e7d453cca296a7b2af85a375b4c5016504101/api/openapi.json)
+at backend `main`
+[lambdadb@1c3e7d453cca296a7b2af85a375b4c5016504101](https://github.com/lambdadb/lambdadb/commit/1c3e7d453cca296a7b2af85a375b4c5016504101).
 Source compatibility does not verify a target environment's deployment.
 
 ## Bayesian hybrid search
@@ -38,11 +38,11 @@ retrieved, err := collection.Query(ctx, lambdadb.QueryInput{
 })
 ```
 
-Use exactly one non-null `queryText` or `queryVector` per KNN leg, with `k`
-from 1 to 1000. Use query text for native embedding fields and query vectors
-for caller-provided vector fields, with the configured dimensions. The pinned
-server rejects direct query vectors on native embedding fields with HTTP 400;
-see [native query input](api-contract.md#native-query-input).
+Use exactly one non-null `queryText`, `queryInputs` or `queryVector` per KNN
+leg, with `k` from 1 to 1000. Query text and query inputs require a native
+embedding field. Query vectors work on any vector field with the configured
+dimensions; on native fields they skip inference and must come from a compatible
+embedding space. See [native query input](api-contract.md#native-query-input).
 Bayesian candidate calibration and final output size are separate budgets. Scores are fusion scores, not relevance probabilities.
 
 ```go
@@ -110,7 +110,8 @@ default. The server applies model-specific restrictions; see
 
 ### Unindexed stored source paths
 
-`Embedding.SourceField` selects a scalar string in the original document, for
+`Embedding.SourceField` (or a text entry in `Embedding.Sources`) selects a scalar
+string in the original document, for
 example `article.body`. Neither the source nor its object ancestors needs an
 index declaration. A collection can declare only the generated vector; write
 `{"id":"1","article":{"body":"Text to embed","title":"Stored sibling"}}`
@@ -118,14 +119,74 @@ through the ordinary `Docs` envelope. No wrapper or write-time source mapping is
 needed. The same stored path can be selected by `RerankConfig.Fields`.
 
 Declared source leaves must be `text` or `keyword`, and declared ancestors must
-be objects. Empty path segments and array traversal are invalid. Newly supported
-source paths reject null, arrays, objects, and non-string values before inference;
-a missing source on a full upsert skips the vector. Existing indexed text source
-behavior is preserved. Partial updates merge with stored JSON: unchanged source
-text reuses an existing vector, changed text regenerates it, and an empty ancestor
-object does not remove existing source text. Full upserts still replace documents
-and do not preserve a previous vector when the source is omitted. Adding an
-appropriate source index later uses the existing additive schema API.
+be objects. Empty path segments and array traversal are invalid. Text sources
+reject null, arrays, objects, and non-string values when inference is needed;
+a missing source on a full upsert skips the vector. Partial updates merge with
+stored JSON: unchanged source input reuses an existing vector, changed input
+regenerates it, removing the last source removes an inherited vector, and an
+empty ancestor object does not remove existing source text. Full upserts still
+replace documents and do not preserve a previous vector when neither a source
+nor a vector is supplied. Adding an appropriate source index later uses the
+existing additive schema API.
+
+### Direct vectors
+
+Upsert and Update can include a vector in a native field, for example a
+precomputed vector from a compatible model. An explicitly supplied vector takes
+precedence over inference for that request and skips provider calls and image
+retrieval for that field. It is not a permanent manual mode: metadata-only
+updates retain it, while a later source change without a new vector regenerates
+it. Explicit null or invalid vectors are rejected.
+
+Bulk upload accepts native embedding collections but never generates embeddings.
+Each record with a present source must include its vector; otherwise the whole
+upload fails before any document is committed. Empty image arrays are skipped.
+
+### Cohere multimodal sources
+
+Cohere uses `EmbeddingConfigProviderCohere` with `embed-v5.0-pro` or
+`embed-v5.0-fast`. Optional `Dimensions` must be 256, 512, 768, 1024, 1536 or
+2048 (default 2048). Use ordered `Sources` instead of `SourceField` to combine
+text and images into one vector:
+
+```go
+vector := components.CreateIndexConfigsUnionNativeEmbeddingVector(
+    components.IndexConfigsNativeEmbeddingVector{
+        Embedding: components.EmbeddingConfig{
+            Provider: components.EmbeddingConfigProviderCohere,
+            Model:    "embed-v5.0-fast",
+            Sources: []components.EmbeddingSource{
+                {Field: "title", Type: components.EmbeddingSourceTypeText},
+                {Field: "images", Type: components.EmbeddingSourceTypeImage},
+            },
+        },
+    },
+)
+```
+
+Set exactly one of `SourceField` or `Sources`; the SDK omits an empty
+`SourceField`, and the server rejects a combination. Paths must be unique, and
+OpenAI accepts exactly one text source. An image source holds a public HTTPS URL
+or a `data:image/{png,jpeg,gif,webp};base64,...` URI, or a flat array of them,
+expanded in place. Each input allows at most 16 effective parts, 8 images,
+1 MiB decoded image bytes, and 4,194,304 pixels per image. Missing sources and
+empty image arrays are skipped. URL-looking strings in text sources remain text.
+An unchanged URL does not detect remotely replaced content; use versioned URLs.
+
+Query a Cohere field with ordered `queryInputs` parts; OpenAI accepts one text
+part:
+
+```go
+query := map[string]any{"knn": map[string]any{
+    "field": "vector", "k": 10,
+    "queryInputs": []map[string]any{
+        {"type": "text", "value": "red shoes"},
+        {"type": "image", "value": "https://example.com/shoe.png"},
+    },
+}}
+```
+
+The SDK does not validate providers, models, URLs, image formats or limits.
 
 `IndexConfigsManagedEmbeddingVector` and
 `CreateIndexConfigsUnionManagedEmbeddingVector` retain their existing behavior,
@@ -154,11 +215,13 @@ LAMBDADB_RUN_BAYESIAN_SMOKE=1 \
 The test creates unique temporary collections and verifies deletion by GET 404.
 It covers native and legacy create/update, normalized metadata, actual OpenAI
 embedding generation, nested unindexed sources, source update reuse/regeneration,
-ordinary native/caller-vector KNN, Bayesian retrieval at candidate budgets
+ordinary native/caller-vector KNN, direct query vectors on native fields, Bayesian retrieval at candidate budgets
 101/1000, null rerank, existing fusion methods, invalid requests, and two JEV
 rerank calls on unindexed stored text with default/explicit candidate budgets. Client retries are disabled;
-readiness polling precedes query embedding and rerank calls. It does not verify
-relevance quality, throughput, usage accounting, or injected provider failures.
+readiness polling precedes query embedding and rerank calls. Cohere coverage is
+in `TestIntegrationCohereNativeSmoke`; see [RELEASING.md](../RELEASING.md).
+It does not verify relevance quality, throughput, usage
+accounting, or injected provider failures.
 Revoke temporary keys, remove temporary projects, and verify absence separately;
 never remove persistent CI resources.
 

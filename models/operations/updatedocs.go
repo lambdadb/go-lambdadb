@@ -6,7 +6,7 @@ import (
 )
 
 type UpdateDocsRequestBody struct {
-	// A nonempty list of nonempty document objects to update. Each document must contain 'id' field to be updated. For native embedding vector fields, omit the native embedding vector field and update only the configured source text field.
+	// A nonempty list of nonempty document objects to update. Each document must contain 'id' field to be updated. For native embedding fields, an explicitly supplied vector takes precedence; otherwise unchanged source input reuses the existing vector and changed source input regenerates it.
 	Docs []map[string]any `json:"docs"`
 	// Write target branch. Defaults to main when omitted.
 	Branch *string `json:"branch,omitzero"`
