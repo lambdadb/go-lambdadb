@@ -126,6 +126,11 @@ branches are not covered.
 - Branch cleanup: keep `release/X.Y.Z` through RC promotions and delete it
   after the final stable promotion and back-merge. Delete `hotfix/X.Y.Z` after
   its promotion pull request merges.
+- CI coverage: `.github/workflows/ci.yaml` runs only for pushes and pull
+  requests targeting `main` and `develop`, so it does not run on pull requests
+  into `release/*` or `hotfix/*`. Run `go test ./...`, `go vet ./...`,
+  `go build ./...`, and `git diff --check` locally for those pull requests and
+  record the results.
 
 ## Required sequence
 
