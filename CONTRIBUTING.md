@@ -45,6 +45,11 @@ go build ./...
 git diff --check
 ```
 
+Pull request CI runs no live tests. After a merge, the publish workflow runs
+`scripts/live-test.sh` against the dev environment. To run it locally and to
+add a new live test, see
+[Deployed live smoke gates](RELEASING.md#deployed-live-smoke-gates).
+
 ## Releasing
 
 Maintainers must follow the development, release-candidate, and stable release

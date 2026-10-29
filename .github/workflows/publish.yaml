@@ -2,6 +2,11 @@
 # the committed release metadata and SDK checks without publishing. A v* tag push
 # runs the same checks, confirms that the tagged commit is on main, and creates the
 # matching GitHub Release.
+#
+# Every run ends with the deployed live smoke tests. A main push whose Version is
+# already tagged targets the dev environment. A release commit on main (its Version
+# is not tagged yet) and a v* tag push target production, so the GitHub Release is
+# created only after the production smoke passes.
 
 name: Publish
 
@@ -21,6 +26,9 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     outputs:
       make_latest: ${{ steps.release_metadata.outputs.make_latest }}
       prerelease: ${{ steps.release_metadata.outputs.prerelease }}
@@ -44,6 +52,10 @@ jobs:
       - name: Verify the commit is on main
         run: ./scripts/verify-main-ancestry.sh HEAD
 
+      - name: Select the live smoke environment
+        id: smoke
+        run: ./scripts/select-smoke-environment.sh >> "${GITHUB_OUTPUT}"
+
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
@@ -57,6 +69,24 @@ jobs:
 
       - name: Build
         run: go build -v ./...
+
+      # A missing Variable resolves to an empty value and fails the run; it never
+      # falls back to the other environment.
+      - name: Authenticate smoke tests to AWS
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars[format('{0}SMOKE_AWS_ROLE_ARN', steps.smoke.outputs.smoke_prefix)] }}
+          aws-region: ap-northeast-2
+          role-session-name: go-sdk-smoke-${{ github.run_id }}
+
+      - name: Run deployed live smoke tests
+        env:
+          LAMBDADB_BASE_URL: ${{ vars[format('{0}BASE_URL', steps.smoke.outputs.smoke_prefix)] }}
+          LAMBDADB_PROJECT_NAME: ${{ vars[format('{0}PROJECT_NAME', steps.smoke.outputs.smoke_prefix)] }}
+          LAMBDADB_SMOKE_SECRET_ARN: ${{ vars[format('{0}SMOKE_SECRET_ARN', steps.smoke.outputs.smoke_prefix)] }}
+        run: |
+          echo "Live smoke target: ${LAMBDADB_BASE_URL}"
+          ./scripts/run-live-smoke.sh
 
   release:
     needs: test
