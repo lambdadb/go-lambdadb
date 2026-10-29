@@ -21,9 +21,9 @@ If you encounter any bugs or have suggestions for improvements, please open an i
 
 Branch from current `develop` and open pull requests against `develop`. GitHub
 defaults to `main`, so select the base branch explicitly. Feature and fix pull
-requests are merged with **Squash and merge**. Only maintainers promote
-`develop` to `main` and synchronize `main` back into `develop` after every
-promotion, both with merge commits, as described in [RELEASING.md](RELEASING.md#branches-and-merge-methods).
+requests are merged with **Squash and merge**. Maintainers handle `release/*`
+and `hotfix/*` branches, promotion to `main`, and back-merging `main` into
+`develop` as described in [RELEASING.md](RELEASING.md#branches-and-merge-methods).
 
 ## API Contract Changes
 

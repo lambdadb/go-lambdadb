@@ -25,11 +25,11 @@ The following rules are mandatory:
 - Pin the exact API contract revision used for implementation. Do not treat a
   source branch, source version, or documentation change as deployment or
   general-availability evidence.
-- Target `develop` with feature and fix pull requests. Prepare releases on
-  `develop`, promote `develop` to `main` with a merge commit, and synchronize
-  `main` back into `develop` with a merge commit after every promotion and
-  release tag, and whenever `main` has other commits absent from `develop`.
-  Never squash or rebase a synchronization pull request.
+- Target `develop` with feature and fix pull requests. Prepare releases and RC
+  fixes on a `release/X.Y.Z` branch cut from `develop`, promote it to `main`
+  with a merge commit, and after every promotion and tag back-merge `main` (not
+  the release branch) into `develop` with a merge commit. Never squash or
+  rebase a back-merge pull request.
 - Use an exact commit SHA for development validation. Do not create routine
   development tags.
 - Use `vX.Y.Z-rc.N` tags for release candidates. The prerelease suffix in the

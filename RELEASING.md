@@ -97,72 +97,78 @@ Release publication; obtain explicit approval before those actions.
 ## Branches and merge methods
 
 `develop` is the integration branch and `main` is the release branch and the
-default branch. Organization rulesets (enforced after lambdadb/lambdadb-iac#22
-is applied) block deletion and force pushes on both branches and allow changes
-only through pull requests, with no bypass actors. `develop` accepts squash and
-merge-commit merges; `main` accepts merge commits only. The rulesets do not
-apply to tags.
+default branch. After lambdadb/lambdadb-iac#22 is applied, organization
+rulesets block deletion and force pushes on both branches and require pull
+requests, with no bypass actors. `develop` accepts squash and merge-commit
+merges; `main` accepts merge commits only. Tags and `release/*` and `hotfix/*`
+branches are not covered.
 
 - Feature and fix work: branch from current `develop`, open a pull request
   targeting `develop` (select the base explicitly; GitHub defaults to `main`),
   and merge with **Squash and merge**.
-- Release preparation (`Version`, `CHANGELOG.md`, release notes): commit on a
-  branch from `develop` and squash-merge it into `develop`. Do not add
-  release-only commits directly to `main`.
-- Promotion: open a `develop` to `main` pull request and merge it with
-  **Create a merge commit**. Tag from the resulting reviewed `main` commit.
-- Synchronization: after every promotion and release tag, and whenever `main`
-  contains other commits absent from `develop`, merge `main` back into
-  `develop` with a merge commit as described in
+- Release branch: cut `release/X.Y.Z` from the reviewed `develop` commit.
+  Commit release preparation (`Version`, `CHANGELOG.md`, release notes) and any
+  RC fixes through pull requests into the release branch. `develop` keeps
+  receiving feature work; nothing merged into `develop` after the cut ships in
+  this release. For a release with nothing to stabilize, the release branch may
+  be skipped and `develop` promoted directly.
+- Promotion: open a `release/X.Y.Z` to `main` pull request (or `develop` to
+  `main` when the release branch is skipped) and merge it with
+  **Create a merge commit**. Tag from the resulting reviewed `main` merge
+  commit. Each RC repeats this: fix on the release branch, promote, and tag the
+  next `-rc.N`.
+- Back-merge: after every promotion and tag, merge `main` back into `develop`
+  with a merge commit as described in
   [Branch synchronization](#branch-synchronization).
-- Hotfix: branch from `main`, open a pull request into `main` and merge it with
-  **Create a merge commit**, release from `main`, then synchronize `main` back
-  into `develop`.
+- Hotfix: cut `hotfix/X.Y.Z` from `main`, open a pull request into `main` and
+  merge it with **Create a merge commit**, tag from `main`, then back-merge
+  `main` into `develop`.
+- Delete `release/*` and `hotfix/*` branches after their promotion pull request
+  merges.
 
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
 2. Implement and review the SDK changes on a feature branch from `develop`.
 3. Squash-merge the reviewed changes into `develop`.
-4. Prepare the release (`Version`, `CHANGELOG.md`) on a branch from `develop`
-   and squash-merge it into `develop`.
-5. Validate the exact `develop` commit through a commit-SHA dependency.
+4. Cut `release/X.Y.Z` from the reviewed `develop` commit and prepare the
+   release (`Version`, `CHANGELOG.md`) through a pull request into that branch.
+5. Validate the exact commit to be promoted (the `release/X.Y.Z` head, or the
+   `develop` commit when the release branch is skipped) through a commit-SHA
+   dependency.
 6. Run smoke tests against the intended LambdaDB development or staging environment.
-7. Promote the validated `develop` commit through a `develop` to `main` pull
-   request merged with **Create a merge commit**.
-8. Synchronize the resulting reviewed `main` commit back into `develop` as
-   described in [Branch synchronization](#branch-synchronization) before
-   further development so release tags stay reachable from `develop`. This
-   applies to every RC and stable release, not only to hotfixes.
-9. Publish `vX.Y.Z-rc.1` from that reviewed `main` commit and mark its GitHub
-   Release as a prerelease.
-10. Address feedback on `develop`, including the incremented RC number in
-    `Version` and `CHANGELOG.md`, then promote and synchronize as above. Never
-    move an existing tag.
-11. Publish `vX.Y.Z` only after the release candidate is accepted. Make any
-    stable-release-only change on `develop` and promote it to `main` as above,
-    then synchronize `main` back into `develop`.
+7. Promote the validated commit through a `release/X.Y.Z` to `main` pull
+   request (or `develop` to `main`) merged with **Create a merge commit**.
+8. Publish `vX.Y.Z-rc.1` from the resulting reviewed `main` merge commit and
+   mark its GitHub Release as a prerelease.
+9. Back-merge `main` into `develop` as described in
+   [Branch synchronization](#branch-synchronization) so the release tag is
+   reachable from `develop`. This applies after every promotion and tag.
+10. Address feedback on the release branch, including the incremented RC number
+    in `Version` and `CHANGELOG.md`, then validate, promote, tag, and
+    back-merge as above. Never move an existing tag.
+11. Publish `vX.Y.Z` only after the release candidate is accepted. Make the
+    stable-release change on the release branch, promote it to `main`, tag the
+    resulting merge commit, back-merge `main` into `develop`, and delete the
+    release branch.
 
 ## Branch synchronization
 
-Synchronize `main` back into `develop` after every promotion and release tag,
-and whenever `main` contains other commits absent from `develop`, such as a
-hotfix or anything merged directly into `main` (for example, Dependabot
-security updates). The `develop` to `main` promotion merge commit is itself
-absent from `develop`, so without this synchronization the release tag on that
-commit is unreachable from `develop`. Synchronization must
-preserve the reviewed `main` commit as an ancestor of `develop`. Open a `main`
-to `develop` pull request and merge it with **Create a merge commit**.
+After every promotion and tag, open a `main` to `develop` back-merge pull
+request and merge it with **Create a merge commit**. Back-merge `main`, not the
+release branch: only `main` carries the promotion merge commit and its tag,
+plus any hotfix or change merged directly into `main`, such as Dependabot
+security updates. Resolve conflicts in the back-merge pull request, typically
+keeping `develop`'s newer content.
 
-Never squash or rebase a synchronization pull request. Those methods can make
-the branch trees identical without preserving `main` ancestry, which causes
-later three-dot comparisons to report already-synchronized release changes and
-leaves release tags unreachable from `develop`. Go pseudo-versions for
-`develop` commits are then derived from an older tag and sort below the
-released version.
+Never squash or rebase a back-merge pull request. Those methods can make the
+branch trees identical without preserving `main` ancestry, which causes later
+three-dot comparisons to report already-merged changes and leaves release tags
+unreachable from `develop`. Go pseudo-versions for `develop` commits are then
+derived from an older tag and sort below the released version.
 
-After synchronization, fetch both branches and verify the exact reviewed
-`main` commit is an ancestor of `develop`:
+After the back-merge, fetch both branches and verify the exact reviewed `main`
+commit is an ancestor of `develop`:
 
 ```bash
 git fetch origin main develop
@@ -170,7 +176,7 @@ git merge-base --is-ancestor <reviewed-main-commit> origin/develop
 ```
 
 The ancestry command must exit with status 0. When no new development commits
-are expected after synchronization, also confirm the branch trees are equal:
+are expected after the back-merge, also confirm the branch trees are equal:
 
 ```bash
 git diff --exit-code <reviewed-main-commit>..origin/develop
@@ -246,7 +252,7 @@ Load `LAMBDADB_BASE_URL`, `LAMBDADB_PROJECT_NAME`, and `LAMBDADB_PROJECT_API_KEY
 without printing or saving credentials.
 
 Before the `main` merge, use a separate consumer module pinned to the exact SDK
-`develop` commit, with no local `replace` directive. Copy
+commit to be promoted, with no local `replace` directive. Copy
 `bayesian_integration_test.go` and `versioning_integration_test.go` (shared
 helpers) into that module, using the same test package name in both files.
 Confirm discovery and then execute:
@@ -313,7 +319,7 @@ retries for provider-backed requests. It does not inject fallback failures or
 verify usage accounting, quality, load or production availability.
 
 Before the `main` merge, run these tests from a separate consumer module pinned
-to the exact SDK `develop` commit, with no local `replace` directive. Copy both
+to the exact SDK commit to be promoted, with no local `replace` directive. Copy both
 `rerank_integration_test.go` (the analyzer and reranking smoke-test definitions)
 and `versioning_integration_test.go` (their shared helpers) into that module.
 Use the same test package name in both copied files, matching the consumer module.
