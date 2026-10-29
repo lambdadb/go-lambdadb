@@ -25,8 +25,13 @@ The following rules are mandatory:
 - Pin the exact API contract revision used for implementation. Do not treat a
   source branch, source version, or documentation change as deployment or
   general-availability evidence.
-- Use an exact commit SHA for development validation. Do not create routine
-  development tags.
+- Releases are trunk-based: open pull requests into `main` (squash merge).
+  There are no `develop`, release, or hotfix branches and no back-merges.
+  Maintenance releases are cut from `main`.
+- Use an exact `main` commit SHA for development validation. Do not create
+  routine development tags.
+- Tag RC and stable releases only on the reviewed merge commit of a release
+  pull request on `main`, after its verification run passes.
 - Use `vX.Y.Z-rc.N` tags for release candidates. The prerelease suffix in the
   Git tag, not the GitHub Release setting, keeps the version out of Go's
   `@latest` selection while a stable version exists.
