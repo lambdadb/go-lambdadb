@@ -12,7 +12,7 @@ Absent for requests without reranking. See [native reranking](../../native-reran
 | `CandidateCount` | `int64` | Yes | Actual unique candidate count. |
 | `ScoredCount` | `int64` | Yes | Equal to candidate count when applied; zero on skip/fallback. |
 | `Took` | `int64` | Yes | Rerank-stage milliseconds. |
-| `CriteriaVersion` | `*string` | No | Applied only: default-relevance-v1 or custom. custom is not a content hash/unique version. |
+| `CriteriaVersion` | `*string` | No | Applied only. TypeSafe: default-relevance-v1 or custom (not a content hash/unique version). Cohere: cohere-relevance-v1. |
 | `Reason` | `*string` | No | skipped: noCandidates; fallback: timeout, rateLimit, unavailable, invalidResponse, or credentials. |
 
 Zero counts and zero milliseconds are present values. Empty candidates return

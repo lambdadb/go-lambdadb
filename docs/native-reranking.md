@@ -2,7 +2,7 @@
 
 Select reranking separately for each scoring search request through `QueryInput.Rerank`.
 It is not a collection setting. LambdaDB manages provider credentials; use only your
-normal LambdaDB project API key. No Jev API key is required from the caller.
+normal LambdaDB project API key. No provider API key is required from the caller.
 An unset or explicitly null `rerank` retains existing search behavior.
 
 ## Default criteria
@@ -58,11 +58,30 @@ for server validation; it does not select the default. Custom criteria replace
 the default descriptions for that request. Supplying ten custom descriptions
 does not reproduce the default scoring configuration.
 
+## Cohere reranking
+
+Use provider `cohere` with `rerank-v5.0-pro` or `rerank-v5.0-fast`:
+
+```go
+config := components.RerankConfig{
+    Provider: "cohere",
+    Model: "rerank-v5.0-fast",
+    QueryText: "How do I restore a previous collection version?",
+    Fields: []string{"title", "body"},
+}
+```
+
+Cohere uses its own relevance scoring: leave `Criteria` unset or explicitly
+null. Custom criteria, including an empty list, are rejected by the server.
+Applied results report `CriteriaVersion: "cohere-relevance-v1"`. Candidate
+budgets, fields, size limits, projection, metadata and `onFailure` behave as
+for TypeSafe. Cohere reranking is text-only; it does not rerank image sources.
+
 ## Request constraints and candidate counts
 
 | Input | Meaning |
 | --- | --- |
-| `provider`, `model` | Required: `typesafe`, `jev-1.13.0`. |
+| `provider`, `model` | Required: `typesafe` with `jev-1.13.0`, or `cohere` with `rerank-v5.0-pro`/`rerank-v5.0-fast`. |
 | `queryText` | Required nonblank text, at most 8 KiB UTF-8, independent of retrieval query text or vectors. |
 | `fields` | 1–8 unique stored scalar string paths, including unindexed paths. Declared leaves must be `text` or `keyword`, and declared ancestors must be objects. Arrays and non-string values are invalid. |
 | `size` | Final number of returned documents, positive and at most 1000 when reranking. |
@@ -120,7 +139,7 @@ from `docsUrl`:
 | `CandidateCount` | Required actual unique candidate count. |
 | `ScoredCount` | Required; equals candidate count when applied, zero when skipped/fallback. Partial scores are never exposed. |
 | `Took` | Required rerank-stage milliseconds. |
-| `CriteriaVersion` | Applied only: `default-relevance-v1` or `custom`. `custom` identifies caller-supplied criteria, not a hash or unique version. |
+| `CriteriaVersion` | Applied only. TypeSafe: `default-relevance-v1` or `custom`; `custom` identifies caller-supplied criteria, not a hash or unique version. Cohere: `cohere-relevance-v1`. |
 | `Reason` | Skipped/fallback diagnostic code. |
 
 For example, an applied custom result can contain a valid zero score:
@@ -175,9 +194,10 @@ server errors and does not implement its own fallback or retry-specific ranking.
 ## Contract source and availability
 
 The current contract is pinned to
-[OpenAPI docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851](https://github.com/lambdadb/docs/blob/94a7b71613a3bf217a370d5117b3ff6ddfbae851/reference/api/openapi.json)
-and backend
-[lambdadb@0a54b6ecb483ce7df9677ba2071a491f9f9879c9](https://github.com/lambdadb/lambdadb/commit/0a54b6ecb483ce7df9677ba2071a491f9f9879c9).
-The OpenAPI includes reranking and all 49 analyzer presets. This manually
+[OpenAPI `api/openapi.json`](https://github.com/lambdadb/lambdadb/blob/1c3e7d453cca296a7b2af85a375b4c5016504101/api/openapi.json)
+at backend `main`
+[lambdadb@1c3e7d453cca296a7b2af85a375b4c5016504101](https://github.com/lambdadb/lambdadb/commit/1c3e7d453cca296a7b2af85a375b4c5016504101).
+The OpenAPI includes TypeSafe and Cohere reranking and all 49 analyzer presets.
+The reranking smoke covers TypeSafe; `TestIntegrationCohereNativeSmoke` covers Cohere. This manually
 maintained SDK has no active generator. Source commits and SDK types do not
 verify availability in a target environment.

@@ -136,6 +136,7 @@ type EmbeddingConfigProvider string
 
 const (
 	EmbeddingConfigProviderOpenai EmbeddingConfigProvider = "openai"
+	EmbeddingConfigProviderCohere EmbeddingConfigProvider = "cohere"
 )
 
 func (e EmbeddingConfigProvider) ToPointer() *EmbeddingConfigProvider {
@@ -146,11 +147,57 @@ func (e EmbeddingConfigProvider) ToPointer() *EmbeddingConfigProvider {
 func (e *EmbeddingConfigProvider) IsExact() bool {
 	if e != nil {
 		switch *e {
-		case "openai":
+		case "openai", "cohere":
 			return true
 		}
 	}
 	return false
+}
+
+// EmbeddingSourceType is the input modality of one native embedding source.
+type EmbeddingSourceType string
+
+const (
+	EmbeddingSourceTypeText  EmbeddingSourceType = "text"
+	EmbeddingSourceTypeImage EmbeddingSourceType = "image"
+)
+
+func (e EmbeddingSourceType) ToPointer() *EmbeddingSourceType {
+	return &e
+}
+
+// IsExact returns true if the value matches a known enum value, false otherwise.
+func (e *EmbeddingSourceType) IsExact() bool {
+	if e != nil {
+		switch *e {
+		case "text", "image":
+			return true
+		}
+	}
+	return false
+}
+
+// EmbeddingSource maps one stored document path to an ordered embedding input.
+type EmbeddingSource struct {
+	// Unique dotted path in the original stored JSON; no index declaration is required.
+	Field string `json:"field"`
+	// text selects a scalar string. image (Cohere only) selects a string or flat
+	// string array of public HTTPS URLs or supported data URIs.
+	Type EmbeddingSourceType `json:"type"`
+}
+
+func (e *EmbeddingSource) GetField() string {
+	if e == nil {
+		return ""
+	}
+	return e.Field
+}
+
+func (e *EmbeddingSource) GetType() EmbeddingSourceType {
+	if e == nil {
+		return EmbeddingSourceType("")
+	}
+	return e.Type
 }
 
 // Similarity is a vector similarity metric. The current OpenAPI contract supports
@@ -188,11 +235,17 @@ type EmbeddingConfig struct {
 	Provider EmbeddingConfigProvider `json:"provider"`
 	// Embedding model name.
 	Model string `json:"model"`
-	// Stored scalar string path through objects; no source index is required.
-	// Declared leaves must be text or keyword. Missing sources skip generation;
-	// newly supported paths reject null and non-string values at write time.
-	SourceField string `json:"sourceField"`
+	// Legacy single text source: a stored scalar string path through objects; no
+	// source index is required. Set exactly one of SourceField or Sources; an empty
+	// value is omitted. Missing text skips generation; invalid values fail when
+	// inference is needed.
+	SourceField string `json:"sourceField,omitzero"`
+	// Ordered source mappings with unique paths, combined into one vector. OpenAI
+	// requires exactly one text source; Cohere accepts up to 16 text/image sources.
+	// Part, image and byte limits are validated by the server.
+	Sources []EmbeddingSource `json:"sources,omitzero"`
 	// 64–4096 dimensions, no greater than the model maximum; validated by the server.
+	// Cohere accepts 256, 512, 768, 1024, 1536 or 2048 and defaults to 2048.
 	// Omit to use the model default, resolved in stored collection metadata.
 	Dimensions *int64 `json:"dimensions,omitzero"`
 	// Cosine or euclidean; the documented default is cosine. Omit to let the server
@@ -230,6 +283,13 @@ func (e *EmbeddingConfig) GetSourceField() string {
 		return ""
 	}
 	return e.SourceField
+}
+
+func (e *EmbeddingConfig) GetSources() []EmbeddingSource {
+	if e == nil {
+		return nil
+	}
+	return e.Sources
 }
 
 func (e *EmbeddingConfig) GetDimensions() *int64 {

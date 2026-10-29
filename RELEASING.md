@@ -235,6 +235,30 @@ OpenAI document/query embeddings and JEV reranking, creates temporary
 Collections, and verifies their deletion. Revoke temporary project keys and
 remove temporary projects separately; never delete persistent CI resources.
 
+## Cohere native embedding and reranking smoke test
+
+For Cohere, multi-source or direct-vector native embedding changes, run this in
+an authorized project whose deployed backend includes Cohere and has its
+Cohere Secret configured, using the usual environment variables:
+
+```bash
+LAMBDADB_RUN_COHERE_SMOKE=1 \
+  go test -run '^TestIntegrationCohereNativeSmoke$' -count=1 -v .
+```
+
+The test creates one uniquely named temporary Collection with a 256-dimension
+`embed-v5.0-fast` field using text and image `Sources`, then re-sends the
+returned schema unchanged, including the server-managed `id` field (backend
+#515). It writes text, mixed, image-only and direct-vector documents,
+runs `queryText`, mixed `queryInputs` and direct `queryVector` KNN, applies one
+`rerank-v5.0-fast` stage, rejects explicit criteria, and checks bulk upload with
+supplied vectors and rejection without them. Images are inline 32x32 PNG data
+URIs, so no external URL is fetched. It deletes the Collection and verifies GET
+404. It does not verify relevance quality, HTTPS image retrieval, usage
+accounting, quotas or provider failure injection. For exact-commit consumer
+validation, copy `cohere_integration_test.go` and `versioning_integration_test.go`
+(shared helpers) into the same consumer test package.
+
 ## Read limit smoke test
 
 For query/fetch/document-list contract changes, run the provider-free smoke in
@@ -255,7 +279,7 @@ load or production capacity. For exact-commit consumer validation, copy
 helpers) into the same consumer test package, without a local replace directive.
 Confirm the test is discovered and runs without skipping. The Bayesian smoke
 also covers nested unindexed source paths, update reuse/regeneration and direct
-query-vector rejection on native fields. These live checks remain required before release;
+query vectors on native fields. These live checks remain required before release;
 local wire tests are not substitutes.
 
 ## Analyzer and native reranking smoke tests

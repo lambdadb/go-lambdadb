@@ -5,13 +5,13 @@ for default/custom examples, nullable wrappers, validation, and fallback behavio
 
 | Field | Go type | Required | Contract |
 | --- | --- | --- | --- |
-| `Provider` | `string` | Yes | `typesafe`. |
-| `Model` | `string` | Yes | `jev-1.13.0`. |
+| `Provider` | `string` | Yes | `typesafe` or `cohere`. |
+| `Model` | `string` | Yes | `jev-1.13.0` for `typesafe`; `rerank-v5.0-pro` or `rerank-v5.0-fast` for `cohere`. |
 | `QueryText` | `string` | Yes | Nonblank, at most 8 KiB UTF-8. |
 | `Fields` | `[]string` | Yes | 1–8 unique stored scalar string paths, including unindexed paths. Declared leaves must be text or keyword; traversal requires objects. |
 | `CandidateSize` | `*int64` | No | Default `max(50, size)`; positive size <= candidateSize <= 1000. |
 | `OnFailure` | `*string` | No | `error` (default) or `returnOriginal`. |
-| `Criteria` | `optionalnullable.OptionalNullable[[]string]` | No | Omitted/null selects default; otherwise 2–10 distinct nonblank descriptions, low to high relevance, at most 2 KiB each and 8 KiB total UTF-8. |
+| `Criteria` | `optionalnullable.OptionalNullable[[]string]` | No | TypeSafe only; Cohere requires omitted/null. Omitted/null selects default; otherwise 2–10 distinct nonblank descriptions, low to high relevance, at most 2 KiB each and 8 KiB total UTF-8. |
 
 The server applies validation and defaults. Required fields are serialized even
 when invalid; optional explicit empty criteria remain `[]` for server rejection.

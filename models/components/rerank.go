@@ -13,9 +13,10 @@ import (
 // The server validates the input and applies defaults; the SDK does not rewrite
 // size, knn.k, fields, or criteria. No provider API key is supplied by the caller.
 type RerankConfig struct {
-	// Required provider: typesafe.
+	// Required provider: typesafe or cohere.
 	Provider string `json:"provider"`
-	// Required model: jev-1.13.0.
+	// Required model: jev-1.13.0 for typesafe; rerank-v5.0-pro or
+	// rerank-v5.0-fast for cohere.
 	Model string `json:"model"`
 	// Nonblank evaluation query, at most 8 KiB UTF-8.
 	QueryText string `json:"queryText"`
@@ -26,8 +27,9 @@ type RerankConfig struct {
 	CandidateSize *int64 `json:"candidateSize,omitempty"`
 	// error (default) or returnOriginal; only eligible provider errors can fall back.
 	OnFailure *string `json:"onFailure,omitempty"`
-	// Omitted/null uses default criteria. Otherwise 2-10 distinct nonblank
-	// descriptions, low to high relevance, at most 2 KiB each and 8 KiB total UTF-8.
+	// TypeSafe/Jev only; Cohere requires omitted or null criteria. Omitted/null uses
+	// default criteria. Otherwise 2-10 distinct nonblank descriptions, low to high
+	// relevance, at most 2 KiB each and 8 KiB total UTF-8.
 	Criteria optionalnullable.OptionalNullable[[]string] `json:"criteria,omitempty"`
 }
 
@@ -64,7 +66,8 @@ type RerankResponse struct {
 	ScoredCount int64 `json:"scoredCount"`
 	// Rerank-stage elapsed time in milliseconds.
 	Took int64 `json:"took"`
-	// Applied only: default-relevance-v1 or custom. custom is not a content hash.
+	// Applied only. TypeSafe/Jev: default-relevance-v1 or custom (not a content
+	// hash). Cohere: cohere-relevance-v1.
 	CriteriaVersion *string `json:"criteriaVersion,omitempty"`
 	// Skipped: noCandidates. Fallback: timeout, rateLimit, unavailable,
 	// invalidResponse, or credentials.

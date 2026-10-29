@@ -154,7 +154,7 @@ Use `client.Collection("name")` for operations on a single collection (no need t
 ## API contract
 
 See the [pinned API contract](docs/api-contract.md) for current read limits,
-unindexed native embedding/reranking source paths, result budgets and validation.
+native embedding sources and query inputs, Cohere options, result budgets and validation.
 
 ## Data Versioning
 
@@ -208,7 +208,7 @@ use an explicit Bayesian candidate budget and the embedding-only vector helper.
 
 For optional query-level reranking, see [native reranking](docs/native-reranking.md)
 for default/custom criteria, separate candidate limits, and score/fallback semantics.
-LambdaDB manages provider credentials; no separate Jev API key is required.
+LambdaDB manages provider credentials; no provider API key is required.
 
 Select a writable branch for document mutations with `Branch`:
 

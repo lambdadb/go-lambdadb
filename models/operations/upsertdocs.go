@@ -6,7 +6,7 @@ import (
 )
 
 type UpsertDocsRequestBody struct {
-	// A nonempty list of nonempty document objects to upsert. For native embedding vector fields, omit the native embedding vector field and provide only the configured source text field.
+	// A nonempty list of nonempty document objects to upsert. For native embedding fields, supply source fields to generate a vector, or a vector directly to skip inference for that field. A full replacement with neither does not preserve the previous vector.
 	Docs []map[string]any `json:"docs"`
 	// Write target branch. Defaults to main when omitted.
 	Branch *string `json:"branch,omitzero"`

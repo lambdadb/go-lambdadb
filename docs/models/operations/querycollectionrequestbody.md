@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | `Size` | **int64* | :heavy_minus_sign: | Number of documents to return, up to 1000. Zero requires at least one facet. |
 | `CandidateSize` | **int64* | :heavy_minus_sign: | Required for Bayesian without rerank: `1 <= size <= candidateSize <= 1000`. With rerank use `rerank.candidateSize` instead. Unsupported for other queries. |
-| `Query` | map[string]*any* | :heavy_minus_sign: | Each KNN uses exactly one non-null `queryText` or `queryVector`, with `k` from 1 to 1000. Use query text for native embedding fields and query vectors for caller-provided vector fields. |
+| `Query` | map[string]*any* | :heavy_minus_sign: | Each KNN uses exactly one non-null `queryText`, `queryInputs` or `queryVector`, with `k` from 1 to 1000. Query text and ordered `queryInputs` parts (`text`/`image`) require a native embedding field; query vectors work on any vector field and skip inference. See [native query input](../../api-contract.md#native-query-input). |
 | `ConsistentRead` | **bool* | :heavy_minus_sign: | True overlays eligible pending writes only for a direct Branch or omitted-ref `main`. Tag and Alias refs reject true, including Aliases targeting Branches. False or omitted reads committed data. |
 | `IncludeVectors` | **bool* | :heavy_minus_sign: | Includes vector values in the response when true. |
 | `Sort` | []map[string]*any* | :heavy_minus_sign: | Field name and sort direction pairs. |

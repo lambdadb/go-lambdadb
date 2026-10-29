@@ -324,8 +324,13 @@ clears them. Send at least one non-nil field. Retention is 1–31 days. See the
 Schema updates require the nonempty full schema, preserving every existing
 field and its settings. New top-level fields and children under existing objects
 at any depth are supported. For example, adding `profile.city` requires retaining
-`profile.name` and its settings. The schema example below assumes the
-Collection has the two fields shown in the create example, unchanged.
+`profile.name` and its settings. Get returns the server-managed top-level `id`
+field as `{"type":"keyword"}`; send it back unchanged or omit it, so a
+returned `IndexConfigs` map can be the base of an update. Other `id`
+configurations are rejected by the server; see the
+[API contract](../../api-contract.md#server-managed-id-field). The schema
+example below assumes the Collection has the two fields shown in the create
+example, unchanged.
 
 ### Example Usage: example
 
