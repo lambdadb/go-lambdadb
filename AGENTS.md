@@ -27,8 +27,9 @@ The following rules are mandatory:
   general-availability evidence.
 - Target `develop` with feature and fix pull requests. Prepare releases on
   `develop`, promote `develop` to `main` with a merge commit, and synchronize
-  `main` back into `develop` with a merge commit whenever `main` has commits
-  absent from `develop`. Never squash or rebase a synchronization pull request.
+  `main` back into `develop` with a merge commit after every promotion and
+  release tag, and whenever `main` has other commits absent from `develop`.
+  Never squash or rebase a synchronization pull request.
 - Use an exact commit SHA for development validation. Do not create routine
   development tags.
 - Use `vX.Y.Z-rc.N` tags for release candidates. The prerelease suffix in the

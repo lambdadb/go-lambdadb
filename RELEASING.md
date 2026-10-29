@@ -111,8 +111,9 @@ apply to tags.
   release-only commits directly to `main`.
 - Promotion: open a `develop` to `main` pull request and merge it with
   **Create a merge commit**. Tag from the resulting reviewed `main` commit.
-- Synchronization: whenever `main` contains commits absent from `develop`,
-  merge `main` back into `develop` as described in
+- Synchronization: after every promotion and release tag, and whenever `main`
+  contains other commits absent from `develop`, merge `main` back into
+  `develop` with a merge commit as described in
   [Branch synchronization](#branch-synchronization).
 - Hotfix: branch from `main`, open a pull request into `main` and merge it with
   **Create a merge commit**, release from `main`, then synchronize `main` back
@@ -131,7 +132,8 @@ apply to tags.
    request merged with **Create a merge commit**.
 8. Synchronize the resulting reviewed `main` commit back into `develop` as
    described in [Branch synchronization](#branch-synchronization) before
-   further development so release tags stay reachable from `develop`.
+   further development so release tags stay reachable from `develop`. This
+   applies to every RC and stable release, not only to hotfixes.
 9. Publish `vX.Y.Z-rc.1` from that reviewed `main` commit and mark its GitHub
    Release as a prerelease.
 10. Address feedback on `develop`, including the incremented RC number in
@@ -143,9 +145,12 @@ apply to tags.
 
 ## Branch synchronization
 
-Synchronize `main` back into `develop` whenever `main` contains commits absent
-from `develop`: after each promotion, after a hotfix, and after anything merged
-directly into `main`, such as Dependabot security updates. Synchronization must
+Synchronize `main` back into `develop` after every promotion and release tag,
+and whenever `main` contains other commits absent from `develop`, such as a
+hotfix or anything merged directly into `main` (for example, Dependabot
+security updates). The `develop` to `main` promotion merge commit is itself
+absent from `develop`, so without this synchronization the release tag on that
+commit is unreachable from `develop`. Synchronization must
 preserve the reviewed `main` commit as an ancestor of `develop`. Open a `main`
 to `develop` pull request and merge it with **Create a merge commit**.
 
