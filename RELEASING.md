@@ -94,34 +94,67 @@ review, metadata verification, and branch synchronization remain required.
 Release preparation does not authorize merging, tag publication, or GitHub
 Release publication; obtain explicit approval before those actions.
 
+## Branches and merge methods
+
+`develop` is the integration branch and `main` is the release branch and the
+default branch. Organization rulesets (enforced after lambdadb/lambdadb-iac#22
+is applied) block deletion and force pushes on both branches and allow changes
+only through pull requests, with no bypass actors. `develop` accepts squash and
+merge-commit merges; `main` accepts merge commits only. The rulesets do not
+apply to tags.
+
+- Feature and fix work: branch from current `develop`, open a pull request
+  targeting `develop` (select the base explicitly; GitHub defaults to `main`),
+  and merge with **Squash and merge**.
+- Release preparation (`Version`, `CHANGELOG.md`, release notes): commit on a
+  branch from `develop` and squash-merge it into `develop`. Do not add
+  release-only commits directly to `main`.
+- Promotion: open a `develop` to `main` pull request and merge it with
+  **Create a merge commit**. Tag from the resulting reviewed `main` commit.
+- Synchronization: whenever `main` contains commits absent from `develop`,
+  merge `main` back into `develop` as described in
+  [Branch synchronization](#branch-synchronization).
+- Hotfix: branch from `main`, open a pull request into `main` and merge it with
+  **Create a merge commit**, release from `main`, then synchronize `main` back
+  into `develop`.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
-2. Implement and review the SDK changes on a feature branch.
-3. Merge the reviewed changes into `develop`.
-4. Validate the exact `develop` commit through a commit-SHA dependency.
-5. Run smoke tests against the intended LambdaDB development or staging environment.
-6. Merge the validated SDK commit into `main`.
-7. Synchronize the resulting reviewed `main` commit back into `develop` as
+2. Implement and review the SDK changes on a feature branch from `develop`.
+3. Squash-merge the reviewed changes into `develop`.
+4. Prepare the release (`Version`, `CHANGELOG.md`) on a branch from `develop`
+   and squash-merge it into `develop`.
+5. Validate the exact `develop` commit through a commit-SHA dependency.
+6. Run smoke tests against the intended LambdaDB development or staging environment.
+7. Promote the validated `develop` commit through a `develop` to `main` pull
+   request merged with **Create a merge commit**.
+8. Synchronize the resulting reviewed `main` commit back into `develop` as
    described in [Branch synchronization](#branch-synchronization) before
-   further development so release-only changes do not diverge.
-8. Publish `vX.Y.Z-rc.1` from that reviewed `main` commit and mark its GitHub
+   further development so release tags stay reachable from `develop`.
+9. Publish `vX.Y.Z-rc.1` from that reviewed `main` commit and mark its GitHub
    Release as a prerelease.
-9. Address feedback with a new commit and increment the RC number. Never move
-   an existing tag.
-10. Publish `vX.Y.Z` only after the release candidate is accepted, then
-    synchronize any stable-release-only commit from `main` back into `develop`.
+10. Address feedback on `develop`, including the incremented RC number in
+    `Version` and `CHANGELOG.md`, then promote and synchronize as above. Never
+    move an existing tag.
+11. Publish `vX.Y.Z` only after the release candidate is accepted. Make any
+    stable-release-only change on `develop` and promote it to `main` as above,
+    then synchronize `main` back into `develop`.
 
 ## Branch synchronization
 
-Synchronizing release changes from `main` back into `develop` must preserve the
-reviewed `main` commit as an ancestor of `develop`. Fast-forward `develop` when
-branch protections permit it and `develop` has not advanced. Otherwise, open a
-`main` to `develop` pull request and merge it with **Create a merge commit**.
+Synchronize `main` back into `develop` whenever `main` contains commits absent
+from `develop`: after each promotion, after a hotfix, and after anything merged
+directly into `main`, such as Dependabot security updates. Synchronization must
+preserve the reviewed `main` commit as an ancestor of `develop`. Open a `main`
+to `develop` pull request and merge it with **Create a merge commit**.
 
 Never squash or rebase a synchronization pull request. Those methods can make
 the branch trees identical without preserving `main` ancestry, which causes
-later three-dot comparisons to report already-synchronized release changes.
+later three-dot comparisons to report already-synchronized release changes and
+leaves release tags unreachable from `develop`. Go pseudo-versions for
+`develop` commits are then derived from an older tag and sort below the
+released version.
 
 After synchronization, fetch both branches and verify the exact reviewed
 `main` commit is an ancestor of `develop`:

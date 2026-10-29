@@ -546,4 +546,4 @@ looking for the latest version.
 
 ## Contributions
 
-We look forward to hearing your feedback. Feel free to open a PR or an issue with a proof of concept and we'll do our best to include it in a future release.
+We look forward to hearing your feedback. Feel free to open a PR or an issue with a proof of concept and we'll do our best to include it in a future release. Open pull requests against the `develop` branch; see [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow.

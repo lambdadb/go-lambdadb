@@ -17,6 +17,14 @@ If you encounter any bugs or have suggestions for improvements, please open an i
 - Information about your environment (e.g., operating system, software versions)
     - For example can be collected using the `npx envinfo` command from your terminal if you have Node.js installed
 
+## Branches and Pull Requests
+
+Branch from current `develop` and open pull requests against `develop`. GitHub
+defaults to `main`, so select the base branch explicitly. Feature and fix pull
+requests are merged with **Squash and merge**. Only maintainers promote
+`develop` to `main` and synchronize `main` back into `develop`, both with merge
+commits, as described in [RELEASING.md](RELEASING.md#branches-and-merge-methods).
+
 ## API Contract Changes
 
 Use `reference/api/openapi.json` in [lambdadb/docs](https://github.com/lambdadb/docs)
