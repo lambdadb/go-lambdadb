@@ -214,6 +214,16 @@ the suite. Each test creates uniquely named temporary Collections and verifies
 their deletion. A new live test must be added to the script; the repository
 tests fail until it is.
 
+Every Cohere and JEV rerank query that is expected to succeed goes through
+`queryIntegrationRerank` (`versioning_integration_test.go`), which sends
+`onFailure: "returnOriginal"`. An `applied` result is checked as before. A
+`fallback` must have the documented shape (`scoredCount` 0, no
+`criteriaVersion` or `retrievalScore`, at most `size` documents) and is retried
+only for reason `timeout`, `rateLimit` or `unavailable`, with at most 3 attempts
+in total and a 5 s, then 10 s backoff. Any other reason or a third fallback fails
+the test, so a fallback never counts as applied reranking. A request that sets
+`onFailure` itself is sent once, unchanged.
+
 In the workflow, `scripts/run-live-smoke.sh` runs the suite. The job assumes a
 dedicated AWS role through GitHub OIDC, reads the dedicated smoke project's API
 key from Secrets Manager, masks it in the job log, and passes it only in the
@@ -401,8 +411,10 @@ The reranking test makes five provider-backed query requests (default, null
 criteria, and custom 2/3/10 levels), plus legacy/null, empty-result and invalid-input
 checks. It verifies final scores/order, retrieval scores, metadata and projection.
 It waits for baseline query readiness before any paid stage and disables client
-retries for provider-backed requests. It does not inject fallback failures or
-verify usage accounting, quality, load or production availability.
+retries. A provider-backed query is repeated only on a transient `onFailure`
+fallback, as described under "Deployed live smoke gates". It does not inject
+fallback failures or verify usage accounting, quality, load or production
+availability.
 
 Before tagging a release, run these tests from a separate consumer module pinned
 to the exact SDK `main` commit, with no local `replace` directive. Copy both

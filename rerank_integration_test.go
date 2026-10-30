@@ -16,8 +16,9 @@ import (
 	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// This opt-in test creates and deletes one temporary collection and invokes the
-// reranking provider through the server five times. It checks SDK contracts, not ranking quality,
+// This opt-in test creates and deletes one temporary collection and sends five
+// provider-backed rerank queries. Each is retried at most twice, only on a transient
+// onFailure fallback (queryIntegrationRerank). It checks SDK contracts, not ranking quality,
 // load, injected provider failures, usage accounting, or production availability.
 func TestIntegrationNativeRerankingSmoke(t *testing.T) {
 	if os.Getenv("LAMBDADB_RUN_RERANK_SMOKE") != "1" {
@@ -111,7 +112,7 @@ func TestIntegrationNativeRerankingSmoke(t *testing.T) {
 			request := input
 			request.Size = lambdadb.Int64(2)
 			request.Rerank = optionalnullable.From(&config)
-			result, err := collection.Query(ctx, request)
+			result, err := queryIntegrationRerank(t, ctx, collection, request)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -149,7 +150,7 @@ func TestIntegrationNativeRerankingSmoke(t *testing.T) {
 	config := components.RerankConfig{Provider: "typesafe", Model: "jev-1.13.0", QueryText: "restore", Fields: []string{"body"}}
 	input.Rerank = optionalnullable.From(&config)
 	input.Query = map[string]any{"queryString": map[string]any{"query": "body:unmatchableSdkSmokeTerm"}}
-	empty, err := collection.Query(ctx, input)
+	empty, err := queryIntegrationRerank(t, ctx, collection, input)
 	if err != nil {
 		t.Fatal(err)
 	}

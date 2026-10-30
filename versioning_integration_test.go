@@ -16,6 +16,7 @@ import (
 	"github.com/lambdadb/go-lambdadb/models/apierrors"
 	"github.com/lambdadb/go-lambdadb/models/components"
 	"github.com/lambdadb/go-lambdadb/models/operations"
+	"github.com/lambdadb/go-lambdadb/optionalnullable"
 )
 
 const integrationConditionTimeout = 2 * time.Minute
@@ -502,6 +503,58 @@ func checkIntegrationFetchRef(t *testing.T, ctx context.Context, collection *lam
 	}
 	t.Fatalf("fetch through branch: %v", err)
 	return false
+}
+
+// Provider timeouts, rate limits and outages are transient under shared load; with
+// onFailure returnOriginal they arrive as a fallback naming the reason. Retry only
+// those, a bounded number of times. Credential, invalid-response and any other
+// fallback fails at once, and a fallback never counts as applied reranking.
+var transientIntegrationRerankReasons = map[string]bool{"timeout": true, "rateLimit": true, "unavailable": true}
+
+const integrationRerankAttempts = 3
+
+// queryIntegrationRerank sends a rerank query with onFailure returnOriginal and
+// returns the first response that is not a transient fallback. A request that
+// already sets OnFailure is sent unchanged, once. Query errors are returned as is.
+func queryIntegrationRerank(t *testing.T, ctx context.Context, collection *lambdadb.Collection, input lambdadb.QueryInput) (*lambdadb.QueryResult, error) {
+	t.Helper()
+	config, _ := input.Rerank.Get()
+	if config == nil || config.OnFailure != nil {
+		return collection.Query(ctx, input)
+	}
+	withFallback := *config
+	withFallback.OnFailure = lambdadb.String("returnOriginal")
+	input.Rerank = optionalnullable.From(&withFallback)
+	label := config.Provider + " " + config.Model
+	for attempt := 1; ; attempt++ {
+		result, err := collection.Query(ctx, input)
+		if err != nil || result.Rerank == nil || result.Rerank.Status != "fallback" {
+			return result, err
+		}
+		meta := result.Rerank
+		reason := "<missing>"
+		if meta.Reason != nil {
+			reason = *meta.Reason
+		}
+		// Documented fallback shape: retrieval order without rerank scores or criteria.
+		if meta.ScoredCount != 0 || meta.CriteriaVersion != nil || (input.Size != nil && int64(len(result.Docs)) > *input.Size) {
+			t.Fatalf("%s fallback (%s) shape: scoredCount=%d criteriaVersion=%t docs=%d", label, reason, meta.ScoredCount, meta.CriteriaVersion != nil, len(result.Docs))
+		}
+		for _, doc := range result.Docs {
+			if doc.RetrievalScore != nil {
+				t.Fatalf("%s fallback (%s) must omit retrievalScore", label, reason)
+			}
+		}
+		if !transientIntegrationRerankReasons[reason] || attempt == integrationRerankAttempts {
+			t.Fatalf("%s fell back with reason %s on attempt %d/%d", label, reason, attempt, integrationRerankAttempts)
+		}
+		t.Logf("%s fell back with reason %s; retrying (%d/%d)", label, reason, attempt+1, integrationRerankAttempts)
+		select {
+		case <-ctx.Done():
+			t.Fatalf("%s rerank retry: %v", label, ctx.Err())
+		case <-time.After(time.Duration(attempt) * 5 * time.Second):
+		}
+	}
 }
 
 func requireIntegrationEnv(t *testing.T, name string) string {
