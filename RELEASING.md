@@ -224,12 +224,14 @@ in total and a 5 s, then 10 s backoff. Any other reason or a third fallback fail
 the test, so a fallback never counts as applied reranking. A request that sets
 `onFailure` itself is sent once, unchanged.
 
-In the workflow, `scripts/run-live-smoke.sh` runs the suite. The job assumes a
-dedicated AWS role through GitHub OIDC, reads the dedicated smoke project's API
-key from Secrets Manager, masks it in the job log, and passes it only in the
-environment of the suite. The key never appears in command arguments, files,
-artifacts, or GitHub Secrets. Missing configuration or a failed secret read
-fails the run, which withholds the GitHub Release on a tag push.
+In the workflow, `scripts/run-live-smoke.sh` runs the suite. The
+`smoke-environment` job runs `scripts/select-smoke-environment.sh` and selects
+the GitHub Environment: `dev` for development commits, `prod` for release
+commits and tags. The `test` job runs in that Environment, whose secret
+`LAMBDADB_PROJECT_API_KEY` holds the dedicated smoke project's API key. Actions
+masks the key in logs; it is passed only in the smoke step's environment, never
+in command arguments, files, or artifacts. A missing key or Variable fails the
+run, which withholds the GitHub Release on a tag push.
 
 The workflow reads these repository Variables. The `LAMBDADB_DEV_` Variables
 serve development commits; the `LAMBDADB_PROD_` Variables serve release commits
@@ -240,48 +242,33 @@ environment.
 | :-- | :-- |
 | `LAMBDADB_DEV_BASE_URL` | Dev environment base URL |
 | `LAMBDADB_DEV_PROJECT_NAME` | Dedicated SDK smoke project in the dev environment (`go-sdk-ci`) |
-| `LAMBDADB_DEV_SMOKE_AWS_ROLE_ARN` | Dev smoke role (`lambdadb-go-sdk-smoke`) |
-| `LAMBDADB_DEV_SMOKE_SECRET_ARN` | Exact ARN of the dev project's API key secret |
 | `LAMBDADB_PROD_BASE_URL` | Production base URL |
 | `LAMBDADB_PROD_PROJECT_NAME` | Dedicated SDK smoke project in production (`go-sdk-ci`) |
-| `LAMBDADB_PROD_SMOKE_AWS_ROLE_ARN` | Production smoke role (`lambdadb-go-sdk-prod-smoke`) |
-| `LAMBDADB_PROD_SMOKE_SECRET_ARN` | Exact ARN of the production project's API key secret |
 
-Store each project key as a plain SecretString in `ap-northeast-2`. Use a
+Configure two GitHub Environments, each with the secret
+`LAMBDADB_PROJECT_API_KEY` set to its project's API key:
+
+| Environment | Deployment branches and tags | Key |
+| :-- | :-- | :-- |
+| `dev` | branch `main` | Dev smoke project |
+| `prod` | branch `main`, tag `v*` | Production smoke project |
+
+The deployment policy keeps the key away from other branches and tags. Use a
 dedicated project where test Collections may be created and deleted, with a
 `rateLimit` of at least 100 requests per second. The suite makes real
 provider calls (OpenAI and Cohere embeddings, Cohere and JEV reranking), so each
-environment's backend must have its Cohere Secret configured. Do not grant the workflow the stack
-admin key, project creation, deployment, or secret write permissions.
+environment's backend must have its Cohere Secret configured. Never use the
+stack admin key. Rotate a key by issuing a new project key and replacing the
+Environment secret (`gh secret set LAMBDADB_PROJECT_API_KEY --env <name>`).
 
-Each role trusts GitHub OIDC for audience `sts.amazonaws.com` and only these
-subjects. The dev role:
-
-```text
-repo:lambdadb/go-lambdadb:ref:refs/heads/main
-```
-
-The production role (release commits on `main`, tags):
-
-```text
-repo:lambdadb/go-lambdadb:ref:refs/heads/main
-repo:lambdadb/go-lambdadb:ref:refs/tags/v*
-```
-
-Each role's permission policy needs `secretsmanager:GetSecretValue` on the exact
-smoke secret ARN of its own environment. Provisioning the roles, projects, keys,
-and Variables is a separate environment setup step.
-
-To run the same suite locally, load the target environment's
-`LAMBDADB_BASE_URL`, `LAMBDADB_PROJECT_NAME`, and `LAMBDADB_PROJECT_API_KEY`
-without printing the key, for example:
+For local live runs, keep the dev smoke project's settings outside the
+repository in `~/.config/lambdadb/smoke/dev/go-sdk-ci.env` (mode `0600`) with
+`LAMBDADB_BASE_URL`, `LAMBDADB_PROJECT_NAME`, and `LAMBDADB_PROJECT_API_KEY`,
+load it into the shell without printing the key, and run the suite:
 
 ```bash
-KEY=$(aws secretsmanager get-secret-value --region ap-northeast-2 \
-  --secret-id <smoke-secret-arn> --query SecretString --output text)
-LAMBDADB_BASE_URL=<base-url> LAMBDADB_PROJECT_NAME=<project> \
-  LAMBDADB_PROJECT_API_KEY="$KEY" ./scripts/live-test.sh
-unset KEY
+set -a; . ~/.config/lambdadb/smoke/dev/go-sdk-ci.env; set +a
+./scripts/live-test.sh
 ```
 
 Record the environment, SDK commit, duration, result, and cleanup evidence.

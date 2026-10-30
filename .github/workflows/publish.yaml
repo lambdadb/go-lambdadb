@@ -24,11 +24,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
+  # A job's GitHub Environment must be known before the job starts, so the
+  # target is selected here. The Environment holds the smoke project API key;
+  # its deployment policy admits only main (dev, prod) and v* tags (prod).
+  smoke-environment:
     runs-on: ubuntu-latest
+    outputs:
+      smoke_prefix: ${{ steps.smoke.outputs.smoke_prefix }}
+      environment: ${{ steps.smoke.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select the live smoke environment
+        id: smoke
+        run: ./scripts/select-smoke-environment.sh >> "${GITHUB_OUTPUT}"
+
+  test:
+    needs: smoke-environment
+    runs-on: ubuntu-latest
+    environment: ${{ needs.smoke-environment.outputs.environment }}
     permissions:
       contents: read
-      id-token: write
     outputs:
       make_latest: ${{ steps.release_metadata.outputs.make_latest }}
       prerelease: ${{ steps.release_metadata.outputs.prerelease }}
@@ -52,10 +68,6 @@ jobs:
       - name: Verify the commit is on main
         run: ./scripts/verify-main-ancestry.sh HEAD
 
-      - name: Select the live smoke environment
-        id: smoke
-        run: ./scripts/select-smoke-environment.sh >> "${GITHUB_OUTPUT}"
-
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
@@ -70,20 +82,13 @@ jobs:
       - name: Build
         run: go build -v ./...
 
-      # A missing Variable resolves to an empty value and fails the run; it never
-      # falls back to the other environment.
-      - name: Authenticate smoke tests to AWS
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ vars[format('{0}SMOKE_AWS_ROLE_ARN', steps.smoke.outputs.smoke_prefix)] }}
-          aws-region: ap-northeast-2
-          role-session-name: go-sdk-smoke-${{ github.run_id }}
-
+      # A missing Variable or secret resolves to an empty value and fails the run;
+      # it never falls back to the other environment.
       - name: Run deployed live smoke tests
         env:
-          LAMBDADB_BASE_URL: ${{ vars[format('{0}BASE_URL', steps.smoke.outputs.smoke_prefix)] }}
-          LAMBDADB_PROJECT_NAME: ${{ vars[format('{0}PROJECT_NAME', steps.smoke.outputs.smoke_prefix)] }}
-          LAMBDADB_SMOKE_SECRET_ARN: ${{ vars[format('{0}SMOKE_SECRET_ARN', steps.smoke.outputs.smoke_prefix)] }}
+          LAMBDADB_BASE_URL: ${{ vars[format('{0}BASE_URL', needs.smoke-environment.outputs.smoke_prefix)] }}
+          LAMBDADB_PROJECT_NAME: ${{ vars[format('{0}PROJECT_NAME', needs.smoke-environment.outputs.smoke_prefix)] }}
+          LAMBDADB_PROJECT_API_KEY: ${{ secrets.LAMBDADB_PROJECT_API_KEY }}
         run: |
           echo "Live smoke target: ${LAMBDADB_BASE_URL}"
           ./scripts/run-live-smoke.sh
