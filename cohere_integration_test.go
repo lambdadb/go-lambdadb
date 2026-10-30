@@ -155,10 +155,7 @@ func TestIntegrationCohereNativeSmoke(t *testing.T) {
 	input.Query = map[string]any{"queryString": map[string]any{"query": "title:shoes OR title:sneakers"}}
 	input.Size = lambdadb.Int64(2)
 	input.Rerank = optionalnullable.From(&config)
-	result, err := collection.Query(ctx, input)
-	if err != nil {
-		t.Fatalf("Cohere rerank (%T): %v", err, err)
-	}
+	result := queryCohereRerank(t, ctx, collection, input)
 	meta := result.Rerank
 	if meta == nil || meta.Status != "applied" || meta.Provider != "cohere" || meta.Model != "rerank-v5.0-fast" || meta.CriteriaVersion == nil || *meta.CriteriaVersion != "cohere-relevance-v1" || meta.CandidateCount != 2 || meta.ScoredCount != 2 {
 		t.Fatalf("Cohere rerank metadata = %#v", meta)
@@ -185,6 +182,56 @@ func TestIntegrationCohereNativeSmoke(t *testing.T) {
 	requireIntegrationBadRequest(t, err, "bulk source without vector")
 	waitForIntegrationMainDoc(t, ctx, collection, "bulk", "Bulk with vector")
 	t.Log("bulk accepted supplied vectors and rejected a source without a vector")
+}
+
+// Provider timeouts, rate limits and outages are transient under shared load; with
+// onFailure returnOriginal they arrive as a fallback naming the reason. Retry only
+// those, a bounded number of times. Credential, invalid-response and any other
+// fallback fails at once, and a fallback never counts as applied reranking.
+var transientCohereRerankReasons = map[string]bool{"timeout": true, "rateLimit": true, "unavailable": true}
+
+const cohereRerankAttempts = 3
+
+// queryCohereRerank sends input with onFailure returnOriginal and returns the first
+// response that is not a transient fallback. Errors fail the test as before.
+func queryCohereRerank(t *testing.T, ctx context.Context, collection *lambdadb.Collection, input lambdadb.QueryInput) *lambdadb.QueryResult {
+	t.Helper()
+	config, _ := input.Rerank.Get()
+	withFallback := *config
+	withFallback.OnFailure = lambdadb.String("returnOriginal")
+	input.Rerank = optionalnullable.From(&withFallback)
+	for attempt := 1; ; attempt++ {
+		result, err := collection.Query(ctx, input)
+		if err != nil {
+			t.Fatalf("Cohere rerank (%T): %v", err, err)
+		}
+		meta := result.Rerank
+		if meta == nil || meta.Status != "fallback" {
+			return result
+		}
+		reason := "<missing>"
+		if meta.Reason != nil {
+			reason = *meta.Reason
+		}
+		// Documented fallback shape: retrieval order without rerank scores or criteria.
+		if meta.ScoredCount != 0 || meta.CriteriaVersion != nil || int64(len(result.Docs)) > *input.Size {
+			t.Fatalf("Cohere %s fallback (%s) shape: scoredCount=%d criteriaVersion=%t docs=%d (size %d)", config.Model, reason, meta.ScoredCount, meta.CriteriaVersion != nil, len(result.Docs), *input.Size)
+		}
+		for _, doc := range result.Docs {
+			if doc.RetrievalScore != nil {
+				t.Fatalf("Cohere %s fallback (%s) must omit retrievalScore", config.Model, reason)
+			}
+		}
+		if !transientCohereRerankReasons[reason] || attempt == cohereRerankAttempts {
+			t.Fatalf("Cohere %s fell back with reason %s on attempt %d/%d", config.Model, reason, attempt, cohereRerankAttempts)
+		}
+		t.Logf("Cohere %s fell back with reason %s; retrying (%d/%d)", config.Model, reason, attempt+1, cohereRerankAttempts)
+		select {
+		case <-ctx.Done():
+			t.Fatalf("Cohere %s rerank retry: %v", config.Model, ctx.Err())
+		case <-time.After(time.Duration(attempt) * 5 * time.Second):
+		}
+	}
 }
 
 func integrationPNG(t *testing.T, fill color.RGBA) string {
