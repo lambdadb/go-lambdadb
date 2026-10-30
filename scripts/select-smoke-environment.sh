@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 # Prints the repository Variable prefix of the LambdaDB environment that the
-# publish workflow's live smoke tests target, as smoke_prefix=<prefix>.
+# publish workflow's live smoke tests target, as smoke_prefix=<prefix>, and the
+# GitHub Environment that holds its API key, as environment=<dev|prod>.
 #
 # - A v* tag push is a release: production.
 # - A main push whose committed Version has no v<Version> tag on origin yet is a
@@ -17,6 +18,7 @@ ref_name="${2:-${GITHUB_REF_NAME:-}}"
 if [[ "${ref_type}" == "tag" ]]; then
   echo "Release tag ${ref_name}: production live smoke" >&2
   echo "smoke_prefix=LAMBDADB_PROD_"
+  echo "environment=prod"
   exit 0
 fi
 if [[ "${ref_type}" != "branch" || "${ref_name}" != "main" ]]; then
@@ -38,10 +40,12 @@ case "${status}" in
   0)
     echo "v${version} is already tagged; development commit: dev live smoke" >&2
     echo "smoke_prefix=LAMBDADB_DEV_"
+    echo "environment=dev"
     ;;
   2)
     echo "v${version} is not tagged yet; release commit: production live smoke" >&2
     echo "smoke_prefix=LAMBDADB_PROD_"
+    echo "environment=prod"
     ;;
   *)
     echo "could not query origin for tag v${version}" >&2

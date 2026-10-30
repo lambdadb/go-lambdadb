@@ -10,7 +10,7 @@ import (
 )
 
 // These tests exercise the deployed live smoke scripts used by
-// .github/workflows/publish.yaml with fake aws and go commands.
+// .github/workflows/publish.yaml with fake go and live test commands.
 
 const syntheticSmokeKey = "synthetic%smoke-key"
 
@@ -167,25 +167,10 @@ exit "${GO_STATUS:-0}"
 	}
 }
 
-func TestRunLiveSmokeReadsMasksAndScopesTheKey(t *testing.T) {
+func TestRunLiveSmokeChecksTheKeyAndRunsTheSuite(t *testing.T) {
 	requireTools(t, "bash")
 	dir := t.TempDir()
 	script := copyScript(t, dir, "run-live-smoke.sh")
-	bin := filepath.Join(dir, "bin")
-	if err := os.MkdirAll(bin, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	// The fake aws command records its arguments and environment, then prints
-	// AWS_SECRET_OUTPUT or fails with sensitive stderr when AWS_FAIL is set.
-	writeExecutable(t, filepath.Join(bin, "aws"), `#!/usr/bin/env bash
-printf '%s\n' "$@" > "${RECORD_DIR}/aws-args"
-env > "${RECORD_DIR}/aws-env"
-if [[ -n "${AWS_FAIL:-}" ]]; then
-  echo "sensitive aws output" >&2
-  exit 255
-fi
-printf '%s\n' "${AWS_SECRET_OUTPUT}"
-`)
 	// The fake live test records its arguments and environment and exits with
 	// LIVE_STATUS.
 	writeExecutable(t, filepath.Join(dir, "scripts", "live-test.sh"), `#!/usr/bin/env bash
@@ -197,14 +182,10 @@ exit "${LIVE_STATUS:-0}"
 
 	baseEnv := func(record string) []string {
 		return []string{
-			"PATH=" + bin + string(os.PathListSeparator) + os.Getenv("PATH"),
 			"RECORD_DIR=" + record,
 			"LAMBDADB_BASE_URL=https://test.example",
 			"LAMBDADB_PROJECT_NAME=go-sdk-ci",
-			"LAMBDADB_SMOKE_SECRET_ARN=arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:smoke-key",
-			"LAMBDADB_PROJECT_API_KEY=",
-			"AWS_SECRET_OUTPUT=" + syntheticSmokeKey,
-			"GITHUB_ACTIONS=true",
+			"LAMBDADB_PROJECT_API_KEY=" + syntheticSmokeKey,
 		}
 	}
 	run := func(t *testing.T, extra ...string) (record, output string, err error) {
@@ -213,22 +194,13 @@ exit "${LIVE_STATUS:-0}"
 		return record, output, err
 	}
 
-	t.Run("key is masked and passed only to the live test environment", func(t *testing.T) {
+	t.Run("key is passed in the live test environment and never printed", func(t *testing.T) {
 		record, output, err := run(t)
 		if err != nil {
 			t.Fatalf("got err=%v output=%q", err, output)
 		}
-		awsArgs, _ := readRecord(t, filepath.Join(record, "aws-args"))
-		wantArgs := "secretsmanager\nget-secret-value\n--region\nap-northeast-2\n--secret-id\n" +
-			"arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:smoke-key\n--query\nSecretString\n--output\ntext\n"
-		if awsArgs != wantArgs {
-			t.Fatalf("aws arguments = %q, want %q", awsArgs, wantArgs)
-		}
-		if lines := strings.Split(output, "\n"); lines[0] != "::add-mask::synthetic%25smoke-key" {
-			t.Fatalf("first output line = %q, want the mask command before any test output", lines[0])
-		}
-		if strings.Count(output, syntheticSmokeKey) != 0 {
-			t.Fatalf("raw key printed: %q", output)
+		if strings.Contains(output, "smoke-key") || strings.Contains(output, "::add-mask::") {
+			t.Fatalf("key printed: %q", output)
 		}
 		liveArgs, _ := readRecord(t, filepath.Join(record, "live-args"))
 		liveEnv, _ := readRecord(t, filepath.Join(record, "live-env"))
@@ -236,46 +208,26 @@ exit "${LIVE_STATUS:-0}"
 		if liveArgs != "\n" || !keyLine.MatchString(liveEnv) {
 			t.Fatalf("live test args=%q; key not passed in its environment", liveArgs)
 		}
-		awsEnv, _ := readRecord(t, filepath.Join(record, "aws-env"))
-		if keyLine.MatchString(awsEnv) {
-			t.Fatal("key exported beyond the live test environment")
-		}
-	})
-
-	t.Run("outside GitHub Actions the key is not printed", func(t *testing.T) {
-		_, output, err := run(t, "GITHUB_ACTIONS=")
-		if err != nil || strings.Contains(output, "smoke-key") || strings.Contains(output, "::add-mask::") {
-			t.Fatalf("got err=%v output=%q", err, output)
-		}
 	})
 
 	failures := []struct {
 		name    string
 		env     []string
 		wantErr string
-		wantAWS bool
 	}{
 		{name: "missing base URL", env: []string{"LAMBDADB_BASE_URL="}, wantErr: "Missing smoke configuration: LAMBDADB_BASE_URL"},
-		{name: "missing project", env: []string{"LAMBDADB_PROJECT_NAME="}, wantErr: "Missing smoke configuration: LAMBDADB_PROJECT_NAME"},
-		{name: "blank secret ARN", env: []string{"LAMBDADB_SMOKE_SECRET_ARN= "}, wantErr: "Missing smoke configuration: LAMBDADB_SMOKE_SECRET_ARN"},
-		{name: "secret read failure", env: []string{"AWS_FAIL=1"}, wantAWS: true,
-			wantErr: "Unable to read the dedicated smoke project key from Secrets Manager"},
-		{name: "empty secret", env: []string{"AWS_SECRET_OUTPUT="}, wantAWS: true, wantErr: "single project API key"},
-		{name: "missing SecretString", env: []string{"AWS_SECRET_OUTPUT=None"}, wantAWS: true, wantErr: "single project API key"},
-		{name: "multiple lines", env: []string{"AWS_SECRET_OUTPUT=key\nother-key"}, wantAWS: true, wantErr: "single project API key"},
-		{name: "live test failure", env: []string{"LIVE_STATUS=1"}, wantAWS: true, wantErr: "Deployed live smoke failed"},
+		{name: "blank project", env: []string{"LAMBDADB_PROJECT_NAME= "}, wantErr: "Missing smoke configuration: LAMBDADB_PROJECT_NAME"},
+		{name: "missing key", env: []string{"LAMBDADB_PROJECT_API_KEY="}, wantErr: "Missing smoke configuration: LAMBDADB_PROJECT_API_KEY"},
+		{name: "blank key", env: []string{"LAMBDADB_PROJECT_API_KEY= \t"}, wantErr: "Missing smoke configuration: LAMBDADB_PROJECT_API_KEY"},
+		{name: "multiple lines", env: []string{"LAMBDADB_PROJECT_API_KEY=key\nother-key"}, wantErr: "single project API key"},
+		{name: "carriage return", env: []string{"LAMBDADB_PROJECT_API_KEY=key\r"}, wantErr: "single project API key"},
+		{name: "live test failure", env: []string{"LIVE_STATUS=1"}, wantErr: "Deployed live smoke failed"},
 	}
 	for _, test := range failures {
 		t.Run(test.name, func(t *testing.T) {
 			record, output, err := run(t, test.env...)
 			if err == nil || !strings.Contains(output, test.wantErr) {
 				t.Fatalf("got err=%v output=%q, want failure containing %q", err, output, test.wantErr)
-			}
-			if strings.Contains(output, "sensitive aws output") {
-				t.Fatalf("aws output forwarded: %q", output)
-			}
-			if _, ran := readRecord(t, filepath.Join(record, "aws-args")); ran != test.wantAWS {
-				t.Fatalf("aws ran=%v, want %v", ran, test.wantAWS)
 			}
 			_, ranLive := readRecord(t, filepath.Join(record, "live-args"))
 			if ranLive != (test.name == "live test failure") {
@@ -303,24 +255,25 @@ func TestSelectSmokeEnvironment(t *testing.T) {
 	selectEnv := func(args ...string) (string, error) {
 		return runCommand(t, work, []string{"GITHUB_REF_TYPE=", "GITHUB_REF_NAME="}, "bash", append([]string{script}, args...)...)
 	}
-	expect := func(name, wantPrefix string, args ...string) {
+	expect := func(name, wantPrefix, wantEnvironment string, args ...string) {
 		t.Helper()
 		output, err := selectEnv(args...)
-		if err != nil || !strings.HasSuffix(output, "\nsmoke_prefix="+wantPrefix) {
-			t.Fatalf("%s: got err=%v output=%q, want smoke_prefix=%s", name, err, output, wantPrefix)
+		want := "\nsmoke_prefix=" + wantPrefix + "\nenvironment=" + wantEnvironment
+		if err != nil || !strings.HasSuffix(output, want) {
+			t.Fatalf("%s: got err=%v output=%q, want suffix %q", name, err, output, want)
 		}
 	}
 
 	// The committed Version is not tagged yet: a release commit gates its tag on production.
-	expect("untagged release commit", "LAMBDADB_PROD_", "branch", "main")
+	expect("untagged release commit", "LAMBDADB_PROD_", "prod", "branch", "main")
 	// A local tag that was not pushed does not make the commit a development commit.
 	mustRunCommand(t, work, "git", "tag", "v0.8.0")
-	expect("tag only in the local checkout", "LAMBDADB_PROD_", "branch", "main")
+	expect("tag only in the local checkout", "LAMBDADB_PROD_", "prod", "branch", "main")
 	// After the tag is pushed, later main commits keep that Version and are development commits.
 	mustRunCommand(t, work, "git", "push", "--quiet", "origin", "v0.8.0")
-	expect("development commit after the release", "LAMBDADB_DEV_", "branch", "main")
+	expect("development commit after the release", "LAMBDADB_DEV_", "dev", "branch", "main")
 	// A release tag push always targets production.
-	expect("release tag", "LAMBDADB_PROD_", "tag", "v0.8.0")
+	expect("release tag", "LAMBDADB_PROD_", "prod", "tag", "v0.8.0")
 
 	if output, err := selectEnv("branch", "feature"); err == nil || !strings.Contains(output, "only for main pushes") {
 		t.Fatalf("feature branch: err=%v output=%q", err, output)
@@ -337,12 +290,14 @@ func TestPublishWorkflowRunsLiveSmokeBeforeRelease(t *testing.T) {
 		name    string
 		pattern string
 	}{
-		{"test job may request an OIDC token", `test:\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n      id-token: write\n`},
-		{"environment is selected by the script", `- name: Select the live smoke environment\n        id: smoke\n        run: \./scripts/select-smoke-environment\.sh >> "\$\{GITHUB_OUTPUT\}"\n`},
-		{"role comes from the selected Variables", `role-to-assume: \$\{\{ vars\[format\('\{0\}SMOKE_AWS_ROLE_ARN', steps\.smoke\.outputs\.smoke_prefix\)\] \}\}\n`},
-		{"base URL comes from the selected Variables", `LAMBDADB_BASE_URL: \$\{\{ vars\[format\('\{0\}BASE_URL', steps\.smoke\.outputs\.smoke_prefix\)\] \}\}\n`},
-		{"project comes from the selected Variables", `LAMBDADB_PROJECT_NAME: \$\{\{ vars\[format\('\{0\}PROJECT_NAME', steps\.smoke\.outputs\.smoke_prefix\)\] \}\}\n`},
-		{"secret ARN comes from the selected Variables", `LAMBDADB_SMOKE_SECRET_ARN: \$\{\{ vars\[format\('\{0\}SMOKE_SECRET_ARN', steps\.smoke\.outputs\.smoke_prefix\)\] \}\}\n`},
+		{"an earlier job selects the environment with the script", `\n  smoke-environment:\n    runs-on: ubuntu-latest\n    outputs:\n` +
+			`      smoke_prefix: \$\{\{ steps\.smoke\.outputs\.smoke_prefix \}\}\n      environment: \$\{\{ steps\.smoke\.outputs\.environment \}\}\n` +
+			`(?s:.*?)- name: Select the live smoke environment\n        id: smoke\n        run: \./scripts/select-smoke-environment\.sh >> "\$\{GITHUB_OUTPUT\}"\n\n  test:\n`},
+		{"test job runs in the selected GitHub Environment", `\n  test:\n    needs: smoke-environment\n    runs-on: ubuntu-latest\n` +
+			`    environment: \$\{\{ needs\.smoke-environment\.outputs\.environment \}\}\n    permissions:\n      contents: read\n    outputs:\n`},
+		{"base URL comes from the selected Variables", `LAMBDADB_BASE_URL: \$\{\{ vars\[format\('\{0\}BASE_URL', needs\.smoke-environment\.outputs\.smoke_prefix\)\] \}\}\n`},
+		{"project comes from the selected Variables", `LAMBDADB_PROJECT_NAME: \$\{\{ vars\[format\('\{0\}PROJECT_NAME', needs\.smoke-environment\.outputs\.smoke_prefix\)\] \}\}\n`},
+		{"key comes from the Environment secret", `LAMBDADB_PROJECT_API_KEY: \$\{\{ secrets\.LAMBDADB_PROJECT_API_KEY \}\}\n`},
 		{"smoke runs after the build in the test job", `- name: Build\n        run: go build -v \./\.\.\.\n\n(?s:.*)\./scripts/run-live-smoke\.sh\n\n  release:\n    needs: test\n`},
 	}
 	for _, check := range checks {
@@ -350,7 +305,12 @@ func TestPublishWorkflowRunsLiveSmokeBeforeRelease(t *testing.T) {
 			t.Errorf("%s: pattern %q not found", check.name, check.pattern)
 		}
 	}
-	if strings.Contains(publish, "LAMBDADB_PROJECT_API_KEY") || strings.Contains(publish, "secrets.LAMBDADB") {
-		t.Error("publish.yaml must not pass a project API key; the smoke runner reads it from Secrets Manager")
+	if count := strings.Count(publish, "LAMBDADB_PROJECT_API_KEY"); count != 2 {
+		t.Errorf("publish.yaml references LAMBDADB_PROJECT_API_KEY %d times, want only the smoke step's secret", count)
+	}
+	for _, removed := range []string{"configure-aws-credentials", "SMOKE_AWS_ROLE_ARN", "SMOKE_SECRET_ARN", "id-token", "steps.smoke.outputs.smoke_prefix)"} {
+		if strings.Contains(publish, removed) {
+			t.Errorf("publish.yaml still contains %q", removed)
+		}
 	}
 }
