@@ -155,7 +155,7 @@ func TestIntegrationCohereNativeSmoke(t *testing.T) {
 	input.Query = map[string]any{"queryString": map[string]any{"query": "title:shoes OR title:sneakers"}}
 	input.Size = lambdadb.Int64(2)
 	input.Rerank = optionalnullable.From(&config)
-	result, err := collection.Query(ctx, input)
+	result, err := queryIntegrationRerank(t, ctx, collection, input)
 	if err != nil {
 		t.Fatalf("Cohere rerank (%T): %v", err, err)
 	}

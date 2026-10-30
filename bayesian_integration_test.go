@@ -258,7 +258,7 @@ func TestIntegrationBayesianNativeEmbeddingSmoke(t *testing.T) {
 			for _, budget := range []*int64{nil, lambdadb.Int64(3)} {
 				config.CandidateSize = budget
 				input.Rerank = optionalnullable.From(&config)
-				result, err := collection.Query(ctx, input)
+				result, err := queryIntegrationRerank(t, ctx, collection, input)
 				if err != nil {
 					t.Fatalf("Bayesian rerank (%T)", err)
 				}
