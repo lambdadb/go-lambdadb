@@ -73,7 +73,10 @@ Use `result.Collections` and `result.NextPageToken` directly. Pass
 
 ## Create
 
-Use a nonempty `IndexConfigs`. Nil retention selects the server default of 30
+Use a nonempty `IndexConfigs`. Each field accepts an optional `Description`
+(at most 255 characters) that reads return only when set; see
+[field descriptions](../../models/components/indexconfigsunion.md#field-descriptions).
+Nil retention selects the server default of 30
 days; valid explicit values are 1–31. The compact 201 response confirms catalog
 creation. Use Get or List for the full model and actual reads to verify indexed
 data; there is no Collection readiness status to poll.
@@ -328,7 +331,10 @@ at any depth are supported. For example, adding `profile.city` requires retainin
 field as `{"type":"keyword"}`; send it back unchanged or omit it, so a
 returned `IndexConfigs` map can be the base of an update. Other `id`
 configurations are rejected by the server; see the
-[API contract](../../api-contract.md#server-managed-id-field). The schema
+[API contract](../../api-contract.md#server-managed-id-field). Field
+descriptions are the one setting that may change on an existing field: a nil
+`Description` keeps the stored one, `lambdadb.String("")` clears it, and a new
+value replaces it without reindexing. The schema
 example below assumes the Collection has the two fields shown in the create
 example, unchanged.
 

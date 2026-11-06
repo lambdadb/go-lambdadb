@@ -219,8 +219,10 @@ _, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
 })
 ```
 
-`ConsistentRead: true` requires a directly selected Branch, including `main`
-when `Ref` is omitted. False or omitted is valid for Branch, Tag, and Alias
+`ConsistentRead: true` requires a Branch: a directly selected Branch, `main`
+when `Ref` is omitted, or an Alias that currently targets a Branch, which the
+server resolves when the request is admitted. Tag reads and Aliases targeting
+Tags reject it with 400. False or omitted is valid for Branch, Tag, and Alias
 reads. Document List has no consistent-read option. Tags are immutable; Aliases
 resolve at request time and can be retargeted.
 

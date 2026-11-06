@@ -9,9 +9,11 @@ type FetchDocsRequestBody struct {
 	// 1-1000 nonblank document IDs. Projected bodies must also fit the server
 	// 64 MiB per-node JSON budget; a size error returns no partial result.
 	Ids []string `json:"ids"`
-	// True overlays eligible pending writes only for a directly selected branch
-	// (or main when Ref is omitted). Tag and alias refs reject true, even for
-	// aliases targeting branches. False or nil reads committed data.
+	// True overlays eligible pending writes on the selected branch: a directly
+	// selected branch (or main when Ref is omitted) or an alias that currently
+	// targets a branch, resolved by the server when the request is admitted. Tag
+	// refs and aliases targeting tags reject true with 400. False or nil reads
+	// committed data.
 	ConsistentRead *bool `default:"false" json:"consistentRead"`
 	// If your application need to include vector values in the response, set includeVectors to true.
 	IncludeVectors *bool `default:"false" json:"includeVectors"`
