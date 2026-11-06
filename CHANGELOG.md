@@ -5,14 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.0] - 2026-11-06
 
 Aligned with the public API contract
 [docs@1714009a2659a18b26cb68193dd7a071fd6efb42](https://github.com/lambdadb/docs/blob/1714009a2659a18b26cb68193dd7a071fd6efb42/reference/api/openapi.json)
 `reference/api/openapi.json` (SHA-256 `604e6fdcf0e0a5af2c9ac8714e60d282d0ebfb9847a49371ff0452fac48be070`).
 The contract changes are optional index field descriptions and consistent
 reads through an Alias that targets a Branch. This pins the source contract
-and does not establish deployment.
+and does not establish deployment. Published directly as a stable release
+without a release candidate, as authorized by the maintainer on 2026-11-06;
+the publish workflow's production live smoke suite is the release gate.
 
 ### Added
 
