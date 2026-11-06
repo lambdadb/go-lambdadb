@@ -113,6 +113,13 @@ review, metadata verification, and branch synchronization remain required.
 Release preparation does not authorize merging, tag publication, or GitHub
 Release publication; obtain explicit approval before those actions.
 
+For `0.9.0`, the maintainer explicitly authorized direct stable publication on
+2026-11-06, skipping RC publication and RC feedback for this release only. The
+release adds an optional field (index field descriptions) and documents alias
+consistent reads; the publish workflow's dev live smoke on the feature merge
+commit and its production live smoke on the release commit and tag remain the
+gates, together with SDK checks, review, and metadata verification.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
