@@ -33,6 +33,12 @@ func (e *TypeObject) UnmarshalJSON(data []byte) error {
 type IndexConfigsObject struct {
 	Type               TypeObject     `json:"type"`
 	ObjectIndexConfigs map[string]any `json:"objectIndexConfigs"`
+	// Optional explanation of what the field holds, at most 255 characters.
+	// Nil omits it: no description on create, unchanged on update. An empty
+	// string clears it on update. Reads include it only when set. Changing
+	// only the description of an existing field is allowed; the server-managed
+	// id field rejects one.
+	Description *string `json:"description,omitempty"`
 }
 
 func (i IndexConfigsObject) MarshalJSON() ([]byte, error) {
@@ -58,6 +64,13 @@ func (i *IndexConfigsObject) GetObjectIndexConfigs() map[string]any {
 		return map[string]any{}
 	}
 	return i.ObjectIndexConfigs
+}
+
+func (i *IndexConfigsObject) GetDescription() *string {
+	if i == nil {
+		return nil
+	}
+	return i.Description
 }
 
 type Type string
@@ -89,6 +102,12 @@ func (e *Type) IsExact() bool {
 // IndexConfigs - Types that do not need additional parameters.
 type IndexConfigs struct {
 	Type Type `json:"type"`
+	// Optional explanation of what the field holds, at most 255 characters.
+	// Nil omits it: no description on create, unchanged on update. An empty
+	// string clears it on update. Reads include it only when set. Changing
+	// only the description of an existing field is allowed; the server-managed
+	// id field rejects one.
+	Description *string `json:"description,omitempty"`
 }
 
 func (i IndexConfigs) MarshalJSON() ([]byte, error) {
@@ -107,6 +126,13 @@ func (i *IndexConfigs) GetType() Type {
 		return Type("")
 	}
 	return i.Type
+}
+
+func (i *IndexConfigs) GetDescription() *string {
+	if i == nil {
+		return nil
+	}
+	return i.Description
 }
 
 type TypeVector string
@@ -314,6 +340,12 @@ type IndexConfigsVector struct {
 	Dimensions int64 `json:"dimensions"`
 	// Cosine or euclidean for caller-provided vectors; defaults to cosine.
 	Similarity *Similarity `default:"cosine" json:"similarity"`
+	// Optional explanation of what the field holds, at most 255 characters.
+	// Nil omits it: no description on create, unchanged on update. An empty
+	// string clears it on update. Reads include it only when set. Changing
+	// only the description of an existing field is allowed; the server-managed
+	// id field rejects one.
+	Description *string `json:"description,omitempty"`
 }
 
 func (i IndexConfigsVector) MarshalJSON() ([]byte, error) {
@@ -383,11 +415,24 @@ func (i *IndexConfigsVector) GetSimilarity() *Similarity {
 	return i.Similarity
 }
 
+func (i *IndexConfigsVector) GetDescription() *string {
+	if i == nil {
+		return nil
+	}
+	return i.Description
+}
+
 type IndexConfigsManagedEmbeddingVector struct {
 	Type TypeVector `json:"type"`
 	// Legacy flag for native embedding vector fields.
 	ManagedEmbedding bool            `json:"managedEmbedding"`
 	Embedding        EmbeddingConfig `json:"embedding"`
+	// Optional explanation of what the field holds, at most 255 characters.
+	// Nil omits it: no description on create, unchanged on update. An empty
+	// string clears it on update. Reads include it only when set. Changing
+	// only the description of an existing field is allowed; the server-managed
+	// id field rejects one.
+	Description *string `json:"description,omitempty"`
 }
 
 func (i IndexConfigsManagedEmbeddingVector) MarshalJSON() ([]byte, error) {
@@ -442,6 +487,13 @@ func (i *IndexConfigsManagedEmbeddingVector) GetEmbedding() EmbeddingConfig {
 	return i.Embedding
 }
 
+func (i *IndexConfigsManagedEmbeddingVector) GetDescription() *string {
+	if i == nil {
+		return nil
+	}
+	return i.Description
+}
+
 // IndexConfigsNativeEmbeddingVector enables native embeddings without inserting
 // managedEmbedding. Use the legacy managed helper when an explicit true is needed.
 type IndexConfigsNativeEmbeddingVector struct {
@@ -449,6 +501,12 @@ type IndexConfigsNativeEmbeddingVector struct {
 	Embedding EmbeddingConfig `json:"embedding"`
 	// Omit or set true. Explicit false with embedding is invalid.
 	ManagedEmbedding *bool `json:"managedEmbedding,omitzero"`
+	// Optional explanation of what the field holds, at most 255 characters.
+	// Nil omits it: no description on create, unchanged on update. An empty
+	// string clears it on update. Reads include it only when set. Changing
+	// only the description of an existing field is allowed; the server-managed
+	// id field rejects one.
+	Description *string `json:"description,omitempty"`
 }
 
 func (i IndexConfigsNativeEmbeddingVector) MarshalJSON() ([]byte, error) {
@@ -497,6 +555,13 @@ func (i *IndexConfigsNativeEmbeddingVector) GetManagedEmbedding() *bool {
 		return nil
 	}
 	return i.ManagedEmbedding
+}
+
+func (i *IndexConfigsNativeEmbeddingVector) GetDescription() *string {
+	if i == nil {
+		return nil
+	}
+	return i.Description
 }
 
 type TypeText string
@@ -608,6 +673,12 @@ type IndexConfigsText struct {
 	// allowing the server default ["standard"]; an empty slice sends [].
 	// Names, order, and duplicates are preserved without local validation.
 	Analyzers []Analyzer `json:"analyzers,omitzero"`
+	// Optional explanation of what the field holds, at most 255 characters.
+	// Nil omits it: no description on create, unchanged on update. An empty
+	// string clears it on update. Reads include it only when set. Changing
+	// only the description of an existing field is allowed; the server-managed
+	// id field rejects one.
+	Description *string `json:"description,omitempty"`
 }
 
 func (i IndexConfigsText) MarshalJSON() ([]byte, error) {
@@ -633,6 +704,13 @@ func (i *IndexConfigsText) GetAnalyzers() []Analyzer {
 		return nil
 	}
 	return i.Analyzers
+}
+
+func (i *IndexConfigsText) GetDescription() *string {
+	if i == nil {
+		return nil
+	}
+	return i.Description
 }
 
 type IndexConfigsUnionType string

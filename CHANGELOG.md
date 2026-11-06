@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Aligned with the public API contract
+[docs@1714009a2659a18b26cb68193dd7a071fd6efb42](https://github.com/lambdadb/docs/blob/1714009a2659a18b26cb68193dd7a071fd6efb42/reference/api/openapi.json)
+`reference/api/openapi.json` (SHA-256 `604e6fdcf0e0a5af2c9ac8714e60d282d0ebfb9847a49371ff0452fac48be070`).
+The contract changes are optional index field descriptions and consistent
+reads through an Alias that targets a Branch. This pins the source contract
+and does not establish deployment.
+
+### Added
+
+- `Description *string` (`description`, at most 255 characters) with a
+  `GetDescription()` getter on every `IndexConfigsUnion` member:
+  `IndexConfigsText`, `IndexConfigsVector`, `IndexConfigsNativeEmbeddingVector`,
+  `IndexConfigsManagedEmbeddingVector`, `IndexConfigs` and `IndexConfigsObject`.
+  Nested fields under `ObjectIndexConfigs` accept the same `description` key.
+  Nil omits the key (no description on create, unchanged on update),
+  `lambdadb.String("")` sends `""` to clear it on update, and reads decode it
+  only when set. The length limit and the server-managed `id` rejection remain
+  server checks.
+
+### Changed
+
+- `ConsistentRead: true` is documented as valid for a directly selected Branch
+  or an Alias that currently targets a Branch; Tag reads and Aliases targeting
+  Tags are rejected by the server with HTTP 400. The SDK had no local ref
+  validation, so request bodies are unchanged.
+- Contract provenance now cites the public reference copy in `lambdadb/docs`,
+  pinned by commit and SHA-256.
+
 ## [0.8.0] - 2026-10-30
 
 Stable release of `0.8.0-rc.1` with no SDK changes. The release candidate

@@ -8,6 +8,7 @@ Use `CreateIndexConfigsUnionNativeEmbeddingVector` to construct the union member
 | `Type` | `components.TypeVector` | Yes | `vector`; the union helper supplies it. |
 | `Embedding` | [components.EmbeddingConfig](embeddingconfig.md) | Yes | Provider, model, source path, and optional model dimensions/similarity. |
 | `ManagedEmbedding` | `*bool` | No | Omit or set true. Explicit false with an embedding config is invalid. |
+| `Description` | `*string` | No | Optional explanation of the field, at most 255 characters. Nil omits it; `lambdadb.String("")` clears it on update. Returned only when set. See [field descriptions](indexconfigsunion.md#field-descriptions). |
 
 Dimensions and similarity belong inside `Embedding`, not at the vector's top
 level. Omitted values remain omitted so the server selects model defaults.

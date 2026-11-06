@@ -16,7 +16,7 @@ import (
 	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// Contract: lambdadb/docs@c44180406c05b1a9043d8516e7c7f60df91fc9a7,
+// Contract: lambdadb/docs@1714009a2659a18b26cb68193dd7a071fd6efb42,
 // reference/api/openapi.json. These tests exercise the public SDK wire boundary.
 func TestPublicAPI_BulkCompletionExplicitType(t *testing.T) {
 	for _, contentType := range []*operations.Type{nil, operations.TypeApplicationJSON.ToPointer()} {
@@ -202,13 +202,16 @@ func TestPublicAPI_NestedSchemaUpdate(t *testing.T) {
 	mock.assertDone()
 }
 
+// consistentRead: true is valid for a direct branch or an alias that currently targets a
+// branch; tag refs and tag-targeting aliases are rejected by the server. The SDK adds no
+// local ref validation, so every combination is forwarded unchanged.
 func TestPublicAPI_ConsistentReadRefConditions(t *testing.T) {
 	for _, operation := range []string{"query", "fetch"} {
-		for _, ref := range []*lambdadb.RefContext{nil, lambdadb.BranchRef("candidate"), lambdadb.TagRef("release"), lambdadb.AliasRef("branch-alias")} {
+		for _, ref := range []*lambdadb.RefContext{nil, lambdadb.BranchRef("candidate"), lambdadb.TagRef("release"), lambdadb.AliasRef("branch-alias"), lambdadb.AliasRef("tag-alias")} {
 			for _, consistent := range []*bool{nil, lambdadb.Bool(false), lambdadb.Bool(true)} {
 				name := operation + "/default"
 				if ref != nil {
-					name = operation + "/" + string(ref.Kind)
+					name = operation + "/" + string(ref.Kind) + "/" + ref.Name
 				}
 				mode := "omitted"
 				if consistent != nil {
@@ -216,7 +219,7 @@ func TestPublicAPI_ConsistentReadRefConditions(t *testing.T) {
 				}
 				t.Run(name+"/"+mode, func(t *testing.T) {
 					wantTrue := consistent != nil && *consistent
-					rejected := wantTrue && ref != nil && ref.Kind != lambdadb.RefKindBranch
+					rejected := wantTrue && ref != nil && (ref.Kind == lambdadb.RefKindTag || ref.Name == "tag-alias")
 					mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
 						func(req *http.Request) *http.Response {
 							body := decodeJSONBody(t, req)
@@ -231,7 +234,7 @@ func TestPublicAPI_ConsistentReadRefConditions(t *testing.T) {
 								assertRef(t, body, string(ref.Kind), ref.Name)
 							}
 							if rejected {
-								return jsonResponse(http.StatusBadRequest, `{"message":"consistentRead requires a direct branch"}`)
+								return jsonResponse(http.StatusBadRequest, `{"message":"consistentRead requires a branch or an alias that targets a branch"}`)
 							}
 							return jsonResponse(http.StatusOK, `{"took":1,"total":0,"docs":[],"isDocsInline":true}`)
 						},
@@ -244,7 +247,7 @@ func TestPublicAPI_ConsistentReadRefConditions(t *testing.T) {
 						_, err = collection.Docs().Fetch(context.Background(), lambdadb.FetchDocsInput{Ids: []string{"doc-1"}, Ref: ref, ConsistentRead: consistent})
 					}
 					if rejected {
-						assertRefReadError(t, err, http.StatusBadRequest, "consistentRead requires a direct branch")
+						assertRefReadError(t, err, http.StatusBadRequest, "consistentRead requires a branch or an alias that targets a branch")
 					} else if err != nil {
 						t.Fatal(err)
 					}

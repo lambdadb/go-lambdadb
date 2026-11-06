@@ -24,11 +24,12 @@ it with **Squash and merge**. There is no `develop` branch.
 
 ## API Contract Changes
 
-Use `reference/api/openapi.json` in [lambdadb/docs](https://github.com/lambdadb/docs)
-as the upstream contract. Pin the exact reviewed source commit in the change's
-Unreleased changelog entry and tests; a branch name or OpenAPI version alone is
-not a reproducible reference. Record the relevant backend revision as well.
-Source changes do not establish deployment or general availability.
+The API contract is owned by the backend. Its public reference copy is
+`reference/api/openapi.json` in [lambdadb/docs](https://github.com/lambdadb/docs),
+pinned by commit and SHA-256. Record that commit and SHA-256 in the change's
+Unreleased changelog entry, in `docs/api-contract.md` and in the contract
+tests; a branch name or OpenAPI version alone is not a reproducible reference.
+Contract changes do not establish deployment or general availability.
 
 Update the affected Go models, request/response behavior, and model or SDK
 documentation together. For extensible string enums such as `Analyzer`, update

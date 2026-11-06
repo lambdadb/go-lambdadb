@@ -7,6 +7,7 @@
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | `Type`                                                       | [components.TypeText](../../models/components/typetext.md)   | :heavy_check_mark:                                           | N/A                                                          |
 | `Analyzers`                                                  | [][components.Analyzer](../../models/components/analyzer.md) | :heavy_minus_sign:                                           | Text analyzers applied independently to this field.                                                   |
+| `Description` | **string* | :heavy_minus_sign: | Optional explanation of the field, at most 255 characters. Nil omits it; `lambdadb.String("")` clears it on update. Returned only when set. See [field descriptions](indexconfigsunion.md#field-descriptions). |
 
 Leave `Analyzers` nil to omit `analyzers` and use the server default
 `["standard"]`. An explicit empty slice sends `[]` and does not select the

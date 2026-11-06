@@ -132,11 +132,12 @@ docs, err := collection.Docs().ListAll(ctx, &lambdadb.ListDocsOpts{
 })
 ```
 
-`ConsistentRead: true` is valid only for a directly selected Branch, including the
-omitted-ref default `main`. It overlays eligible pending writes, excludes
-pending bulk imports, and can return 429 when the pending payload exceeds the
-limit. Tag and Alias reads reject true, even when an Alias targets a Branch.
-List does not support consistent reads.
+`ConsistentRead: true` is valid for a directly selected Branch, including the
+omitted-ref default `main`, and for an Alias that currently targets a Branch;
+the server resolves the Alias to its Branch when the request is admitted. It
+overlays eligible pending writes, excludes pending bulk imports, and can
+return 429 when the pending payload exceeds the limit. Tag reads and an Alias
+that targets a Tag reject true with 400. List does not support consistent reads.
 
 Page tokens are opaque search positions and do not pin a Snapshot. For a stable
 export, keep the same immutable Tag and unchanged filters/projection on every

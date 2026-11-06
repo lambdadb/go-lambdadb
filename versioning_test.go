@@ -361,7 +361,7 @@ func TestPublicAPI_RefDeletionConflictDoesNotRetry(t *testing.T) {
 	}
 }
 
-// Contract: lambdadb/docs@c44180406c05b1a9043d8516e7c7f60df91fc9a7.
+// Contract: lambdadb/docs@1714009a2659a18b26cb68193dd7a071fd6efb42.
 func TestPublicAPI_BranchSourceValidation(t *testing.T) {
 	for _, kind := range []lambdadb.RefSourceKind{lambdadb.RefSourceKindTag, "alias", "", "unknown"} {
 		t.Run(string(kind), func(t *testing.T) {

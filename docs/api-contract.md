@@ -1,19 +1,19 @@
 # Current API contract
 
-SDK alignment is pinned to these immutable revisions:
+SDK alignment is pinned to this immutable revision:
 
-- [OpenAPI: lambdadb@1c3e7d453cca296a7b2af85a375b4c5016504101 `api/openapi.json`](https://github.com/lambdadb/lambdadb/blob/1c3e7d453cca296a7b2af85a375b4c5016504101/api/openapi.json),
-  SHA-256 `8a78c2abb9f4169abed31176d9ee86deb1f4782bb2134bee513e52899a9c3aea`.
-- [Server: lambdadb@1c3e7d453cca296a7b2af85a375b4c5016504101](https://github.com/lambdadb/lambdadb/commit/1c3e7d453cca296a7b2af85a375b4c5016504101) (`main`).
+- [OpenAPI: docs@1714009a2659a18b26cb68193dd7a071fd6efb42 `reference/api/openapi.json`](https://github.com/lambdadb/docs/blob/1714009a2659a18b26cb68193dd7a071fd6efb42/reference/api/openapi.json),
+  SHA-256 `604e6fdcf0e0a5af2c9ac8714e60d282d0ebfb9847a49371ff0452fac48be070`.
 
-The server repository now owns the public OpenAPI document; `docs` keeps a
-publication copy. The previous pin, `docs@94a7b71613a3bf217a370d5117b3ff6ddfbae851`,
-is byte-identical to the spec introduced in `9887ee83`. This revision adds the
-Cohere native embedding/reranking contract from `17903847` (backend #483) and
-the server-managed `id` field in `indexConfigs` from `43f63d78` (backend #515);
-no paths changed. The OpenAPI
-`info.version` remains `1.1.1`; use the source SHA to identify this contract.
-SDK source alignment is not a live environment test or release approval.
+The backend owns the API contract; the public reference copy is
+`reference/api/openapi.json` in [lambdadb/docs](https://github.com/lambdadb/docs),
+pinned by commit and SHA-256. The previous pin (SHA-256
+`8a78c2abb9f4169abed31176d9ee86deb1f4782bb2134bee513e52899a9c3aea`) differs
+from this revision only by optional index field descriptions and consistent
+reads through an Alias that targets a Branch; no paths changed. The OpenAPI
+`info.version` remains `1.1.1`; use the commit and SHA-256 to identify this
+contract. SDK source alignment is not a live environment test or release
+approval.
 
 ## Read limits
 
@@ -46,6 +46,28 @@ Any other `id` configuration, `id` inside an object field, or another reserved
 internal field name is rejected by the server. The SDK forwards `IndexConfigs`
 unchanged and does not validate field names. Deployments before backend #515
 return `id` but reject it in requests; omit it there.
+
+## Index field descriptions
+
+Every `IndexConfigs` member, including nested fields under an object's
+`objectIndexConfigs`, accepts an optional `description` string of at most 255
+characters. It is a free-form explanation of what the field holds, returned in
+Collection reads only when set, and never affects indexing. On create, an
+omitted, null, or empty description means none. On Update, an omitted or null
+description keeps the stored one, an empty string clears it, and any other
+value replaces it; this is the only setting of an existing field that may
+change, and it needs no reindexing. The server-managed `id` field rejects a
+description. The SDK models it as `Description *string` on each member:
+nil omits the key and `lambdadb.String("")` sends `""`. The length limit and
+the `id` rule remain server checks.
+
+## Consistent reads through an Alias
+
+`consistentRead: true` is allowed when `ref` selects a Branch directly
+(including the omitted-ref default `main`) or an Alias that currently targets
+a Branch; the server resolves the Alias when the request is admitted. Tag
+reads and an Alias that targets a Tag reject true with HTTP 400. The SDK
+performs no local ref validation and forwards the request unchanged.
 
 ## Vector dimensions and similarity
 
@@ -152,6 +174,11 @@ client and do not receive LambdaDB authentication.
 check query-input, native query-vector and Cohere rerank pass-through, Cohere
 rerank metadata, `Sources` round trips without an empty `sourceField`, and
 unchanged pass-through of a returned `id` field and an `id`-only schema.
+`field_description_contract_test.go` checks `description` on every member and
+on nested object fields, omission when nil, `""` when cleared, and read
+round trips; `contract_alignment_test.go` checks that Alias refs forward
+`consistentRead: true` unchanged and preserve the server's 400 for Tag refs
+and Tag-targeting Aliases.
 `download_test.go` checks real HTTP gzip transfers,
 all high-level download callers, metadata, empty/null arrays and corrupted or
 interrupted downloads. These are local SDK tests, not server acceptance tests.
