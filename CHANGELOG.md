@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.0] - 2026-11-18
 
 Aligned with the public API contract
 [docs@7be299af9cac4195b75feb6e38b5cd7f8989f5a0](https://github.com/lambdadb/docs/blob/7be299af9cac4195b75feb6e38b5cd7f8989f5a0/reference/api/openapi.json)
@@ -16,7 +16,10 @@ Aligned with the public API contract
 schemas with individual Branch, Tag and Alias routes, paginated ref listings,
 Branches created from Tags, the full Collection shape in the create response,
 and the pending-write semantics of Branch and Tag creation. This pins the
-source contract and does not establish deployment.
+source contract and does not establish deployment. Published directly as a
+stable release without a release candidate, as authorized by the maintainer on
+2026-11-18; the publish workflow's production live smoke suite is the release
+gate.
 
 ### Added
 

@@ -120,6 +120,15 @@ consistent reads; the publish workflow's dev live smoke on the feature merge
 commit and its production live smoke on the release commit and tag remain the
 gates, together with SDK checks, review, and metadata verification.
 
+For `0.10.0`, the maintainer explicitly authorized direct stable publication on
+2026-11-18, skipping RC publication and RC feedback for this release only. The
+release follows API contract 1.3.0: Branch-scoped index schemas, individual
+Branch, Tag and Alias reads, paginated ref listings, and Branches created from
+Tags. The publish workflow's dev live smoke on the feature merge commit and its
+production live smoke on the release commit and tag remain the gates, together
+with SDK checks, review, and metadata verification. Those live suites do not
+call the operations this release adds; they are covered by mocked HTTP tests.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
