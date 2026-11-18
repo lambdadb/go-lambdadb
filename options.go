@@ -35,7 +35,8 @@ type ListDocsOpts struct {
 type ListCollectionsOpts struct {
 	// Max number of collections to return at once.
 	Size *int64
-	// Next page token for pagination.
+	// Next page token for pagination. Nil or empty sends no token, which
+	// selects the first page; the server rejects an empty token.
 	PageToken *string
 }
 
@@ -73,8 +74,8 @@ type RefContext = components.RefContext
 // RefKind identifies the kind of ref selected for a read.
 type RefKind = components.RefKind
 
-// RefSource selects a source in the same collection. Branch creation accepts
-// only branches; tag creation accepts branches or tags.
+// RefSource selects a source in the same collection. Branch and tag creation
+// both accept a branch or tag; AsOf is valid only for a branch source.
 type RefSource = components.RefSource
 
 // RefSourceKind identifies a branch or tag source.
@@ -135,8 +136,9 @@ func BranchSource(name string) *RefSource {
 	return &RefSource{Kind: RefSourceKindBranch, Name: name}
 }
 
-// BranchSourceAt selects the latest committed snapshot on a branch at or
-// before the supplied time as the source of a new branch or tag.
+// BranchSourceAt selects the latest retained committed snapshot on a branch at
+// or before the supplied time as the source of a new branch or tag. Inherited
+// and pending writes are excluded.
 func BranchSourceAt(name string, asOf time.Time) *RefSource {
 	return &RefSource{
 		Kind: RefSourceKindBranch,
@@ -145,8 +147,8 @@ func BranchSourceAt(name string, asOf time.Time) *RefSource {
 	}
 }
 
-// TagSource selects an immutable tag as the source of a new tag.
-// It cannot be used to create a branch.
+// TagSource selects an immutable tag as the source of a new branch or tag.
+// AsOf is not valid with a tag source.
 func TagSource(name string) *RefSource {
 	return &RefSource{Kind: RefSourceKindTag, Name: name}
 }

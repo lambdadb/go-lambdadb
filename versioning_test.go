@@ -361,9 +361,10 @@ func TestPublicAPI_RefDeletionConflictDoesNotRetry(t *testing.T) {
 	}
 }
 
-// Contract: lambdadb/docs@1714009a2659a18b26cb68193dd7a071fd6efb42.
+// Contract: lambdadb/docs@7be299af9cac4195b75feb6e38b5cd7f8989f5a0. A branch
+// may be created from a branch or tag; other source kinds stay rejected locally.
 func TestPublicAPI_BranchSourceValidation(t *testing.T) {
-	for _, kind := range []lambdadb.RefSourceKind{lambdadb.RefSourceKindTag, "alias", "", "unknown"} {
+	for _, kind := range []lambdadb.RefSourceKind{"alias", "", "unknown"} {
 		t.Run(string(kind), func(t *testing.T) {
 			// No handlers: invalid sources must not reach the HTTP client.
 			mock := &publicAPIMockClient{t: t}
@@ -372,7 +373,7 @@ func TestPublicAPI_BranchSourceValidation(t *testing.T) {
 				BranchName: "candidate",
 				Source:     &lambdadb.RefSource{Kind: kind, Name: "source"},
 			})
-			if branch != nil || err == nil || err.Error() != "branch source must be a branch" {
+			if branch != nil || err == nil || err.Error() != "branch source must be a branch or tag" {
 				t.Fatalf("Create = %#v, %v", branch, err)
 			}
 			mock.assertDone()
@@ -393,9 +394,6 @@ func TestPublicAPI_CreateSourceWireContract(t *testing.T) {
 			{"branch_asof", lambdadb.BranchSourceAt("dev", cutoff), `{"kind":"branch","name":"dev","asOf":1788335940456}`},
 			{"tag", lambdadb.TagSource("release"), `{"kind":"tag","name":"release"}`},
 		} {
-			if resource == "branches" && tc.name == "tag" {
-				continue // Covered by local validation above.
-			}
 			t.Run(resource+"/"+tc.name, func(t *testing.T) {
 				before, err := json.Marshal(tc.source)
 				if err != nil {
@@ -425,6 +423,8 @@ func TestPublicAPI_CreateSourceWireContract(t *testing.T) {
 						parent := `{"branchId":"dev-id","name":"dev"}`
 						if tc.source == nil {
 							parent = `{"branchId":"main-id","name":"main"}`
+						} else if tc.source.Kind == lambdadb.RefSourceKindTag {
+							parent = `null` // A branch created from a tag records no parent branch.
 						}
 						return jsonResponse(http.StatusCreated, `{"branch":{"name":"candidate","parentBranch":`+parent+`,"headSnapshot":{"snapshotId":"snapshot-main","snapshotCommittedAt":1788335940456},"parentSnapshot":{"snapshotId":"snapshot-main","snapshotCommittedAt":1788335940456},"createdAt":1788336000123}}`)
 					},
@@ -444,8 +444,12 @@ func TestPublicAPI_CreateSourceWireContract(t *testing.T) {
 					if tc.source == nil {
 						wantName = "main"
 					}
-					// The source is dev even when asOf selects a snapshot originating on main.
-					if branch.GetParentBranch().GetName() != wantName || branch.ParentBranch.GetBranchID() != wantName+"-id" {
+					if tc.source != nil && tc.source.Kind == lambdadb.RefSourceKindTag {
+						if branch.GetParentBranch() != nil || branch.GetParentSnapshot().GetSnapshotID() != "snapshot-main" {
+							t.Fatalf("branch from tag = %#v", branch)
+						}
+					} else if branch.GetParentBranch().GetName() != wantName || branch.ParentBranch.GetBranchID() != wantName+"-id" {
+						// The source is dev even when asOf selects a snapshot originating on main.
 						t.Fatalf("parentBranch = %#v", branch.ParentBranch)
 					}
 				}

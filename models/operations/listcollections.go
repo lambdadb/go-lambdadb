@@ -9,7 +9,7 @@ import (
 type ListCollectionsRequest struct {
 	// Max number of collections to return at once.
 	Size *int64 `queryParam:"style=form,explode=true,name=size"`
-	// Next page token.
+	// Next page token. Omit it for the first page; the server rejects an empty value.
 	PageToken *string `queryParam:"style=form,explode=true,name=pageToken"`
 }
 

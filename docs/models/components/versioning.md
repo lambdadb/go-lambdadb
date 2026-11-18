@@ -15,17 +15,18 @@ or Tag.
 
 ## RefSource
 
-`RefSource` is shared by Branch and Tag creation. Branch creation accepts only a
-Branch source and rejects other kinds locally before sending an HTTP request.
-Tag creation accepts a Branch or Tag source; aliases are not valid sources.
+`RefSource` is shared by Branch and Tag creation. Both accept a Branch or Tag
+source; aliases are not valid sources. Branch creation rejects Alias and
+unknown kinds locally before sending an HTTP request.
 Omitting `Source` selects `main`. `AsOf` is a Unix epoch millisecond cutoff and
-is valid only with a Branch source. Existing source helper signatures are unchanged.
+is valid only with a Branch source; the server rejects it on a Tag source with
+400. Existing source helper signatures are unchanged.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `Kind` | `components.RefSourceKind` | Yes | `branch` for Branch creation; `branch` or `tag` for Tag creation. |
+| `Kind` | `components.RefSourceKind` | Yes | `branch` or `tag`. |
 | `Name` | `string` | Yes | Source ref name. |
-| `AsOf` | `*int64` | No | Latest committed snapshot cutoff for a Branch source. |
+| `AsOf` | `*int64` | No | Selects the latest retained committed snapshot at or before the cutoff for a Branch source. Inherited and pending writes are excluded; this is not an exact-time restore. |
 
 ## SnapshotDetails
 
@@ -48,17 +49,22 @@ Available from both the root package and `models/components`, with nil-safe
 
 ## BranchDetails
 
-Branch Create/List return `*BranchDetails`/`[]BranchDetails`.
+Branch Create/Get/Update return `*BranchDetails`; List returns
+`[]BranchDetails` and `ListPage` a `*ListBranchesResult`.
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `Name` | `string` | Branch name. |
-| `ParentBranch` | `*ParentBranchDetails` | Fixed direct source Branch; nil for `main` or when no parent was recorded. |
+| `ParentBranch` | `*ParentBranchDetails` | Fixed direct source Branch; nil for `main`, for a Branch created from a Tag, or when no parent was recorded. |
 | `HeadSnapshot` | `*SnapshotDetails` | Current committed head; nil for an empty Branch. |
 | `ParentSnapshot` | `*SnapshotDetails` | Fixed snapshot from which the Branch was created, not its previous head. |
+| `NumDocs` | `int64` | Document count in the Branch's committed head; 0 for an empty Branch. |
+| `DataUpdatedAt` | `*types.UnixMilliTime` | Last data update of the committed head; nil for an empty Branch. `GetDataUpdatedAt()` returns `time.Time`, zero when nil. |
+| `IndexConfigs` | `map[string]components.IndexConfigsUnion` | The Branch's own index schema. |
 | `CreatedAt` | `types.UnixMilliTime` | Branch creation time. `GetCreatedAt()` returns `time.Time`. |
 
-`ParentBranch` and both snapshot fields encode nil as explicit JSON null.
+`ParentBranch`, both snapshot fields and `DataUpdatedAt` encode nil as explicit
+JSON null.
 `GetParentBranch()` is nil-safe. An empty Branch can have a non-nil
 `ParentBranch` while both snapshots are nil. The parent identifies the requested
 source, even when `AsOf` selects a snapshot originating on an ancestor. It is
@@ -73,16 +79,21 @@ Branch responses have no top-level `SnapshotID`.
 
 ## TagDetails
 
-Tag Create/List return `*TagDetails`/`[]TagDetails`.
+Tag Create/Get return `*TagDetails`; List returns `[]TagDetails` and `ListPage`
+a `*ListTagsResult`.
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `Name` | `string` | Tag name. |
 | `SnapshotID` | `string` | Immutable pinned snapshot; a Tag cannot pin an empty head. |
 | `SnapshotCommittedAt` | `types.UnixMilliTime` | Pinned snapshot commit time. |
+| `NumDocs` | `int64` | Document count in the pinned snapshot. |
+| `DataUpdatedAt` | `types.UnixMilliTime` | Last data update of the pinned snapshot. |
+| `IndexConfigs` | `map[string]components.IndexConfigsUnion` | Index schema pinned by the Tag; with a source `AsOf`, the selected snapshot's schema. |
 | `CreatedAt` | `types.UnixMilliTime` | Tag creation time, independent of snapshot commit time. |
 
-`GetSnapshotCommittedAt()` and `GetCreatedAt()` return `time.Time`.
+`GetSnapshotCommittedAt()`, `GetDataUpdatedAt()` and `GetCreatedAt()` return
+`time.Time`.
 
 ## AliasTarget
 
@@ -91,5 +102,31 @@ Tag Create/List return `*TagDetails`/`[]TagDetails`.
 ## AliasDetails
 
 `AliasDetails` includes the Alias ID and name, resolved target kind, name and
-ID, revision, dangling status, and creation time. The returned target kind is
-`BRANCH` or `TAG`.
+ID, revision, dangling status, `IndexConfigs`, and creation time. The returned
+target kind is `BRANCH` or `TAG`. Alias Create/Get/Retarget return
+`*AliasDetails`; List returns `[]AliasDetails` and `ListPage` a
+`*ListAliasesResult`.
+
+`IndexConfigs` (`map[string]components.IndexConfigsUnion`) is the schema reads
+through the Alias see: the target Branch's current schema or the target Tag's
+pinned schema. It is nil, and encodes as explicit JSON null, for a dangling
+Alias, which `Aliases().Get` still returns.
+
+## UpdateBranchInput
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `IndexConfigs` | `map[string]components.IndexConfigsUnion` | Yes | Nonempty complete schema of the Branch, preserving every existing field and its settings; new fields may be added at any depth. The server-managed `id` field may be sent back as returned or omitted. |
+
+It is the whole request body of `Branches().Update`; description, tags and
+snapshot retention stay on the Collection.
+
+## ListRefsOpts
+
+Optional parameters of `ListPage` and `ListIterator` on Branches, Tags and
+Aliases. Nil uses the defaults.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `Size` | `*int64` | Page size from 1 to 100; the server default is 10. Nil sends no `size`. |
+| `PageToken` | `*string` | Opaque token from the previous page. Nil or empty sends no `pageToken`, which selects the first page. |

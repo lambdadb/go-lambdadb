@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Aligned with the public API contract
+[docs@7be299af9cac4195b75feb6e38b5cd7f8989f5a0](https://github.com/lambdadb/docs/blob/7be299af9cac4195b75feb6e38b5cd7f8989f5a0/reference/api/openapi.json)
+`reference/api/openapi.json` (SHA-256 `ec499bb6ad4fd7359c1854359e9ecfd4cd8609420f440f7dcbf75566ccda8f32`,
+`info.version` `1.3.0`), synced from backend
+[lambdadb@f9aa63c79cbac2ac477a76ec45e5015ce665afd1](https://github.com/lambdadb/lambdadb/blob/f9aa63c79cbac2ac477a76ec45e5015ce665afd1/api/openapi.json)
+`api/openapi.json`. The contract changes since `1.1.1` are Branch-scoped index
+schemas with individual Branch, Tag and Alias routes, paginated ref listings,
+Branches created from Tags, the full Collection shape in the create response,
+and the pending-write semantics of Branch and Tag creation. This pins the
+source contract and does not establish deployment.
+
+### Added
+
+- `Branches().Get`, `Tags().Get` and `Aliases().Get` read one ref. A name that
+  is not a ref of that kind returns `ResourceNotFoundError`; a dangling Alias is
+  still returned.
+- `Branches().Update` with `UpdateBranchInput{IndexConfigs}` updates the index
+  schema of one Branch and returns the updated `*BranchDetails`.
+- `BranchDetails` gains `IndexConfigs`, `NumDocs` and nullable
+  `DataUpdatedAt *types.UnixMilliTime` (nil for an empty Branch); `TagDetails`
+  gains `IndexConfigs`, `NumDocs` and `DataUpdatedAt`; `AliasDetails` gains
+  `IndexConfigs` (nil for a dangling Alias). Each has a nil-safe getter. The
+  fields are decoded from every Create, Retarget, Get, Update and list
+  response.
+- `ListPage` and `ListIterator` on `Branches()`, `Tags()` and `Aliases()`, with
+  `ListRefsOpts{Size, PageToken}`, `ListBranchesResult`, `ListTagsResult`,
+  `ListAliasesResult` and `BranchListIterator`, `TagListIterator`,
+  `AliasListIterator`. Unset options send no query parameter.
+- `Branches().Create` accepts a Tag source (`TagSource(name)`).
+
+### Changed
+
+- `Branches().List`, `Tags().List` and `Aliases().List` keep their signatures
+  and still return every ref. The server now pages these listings (10 entries
+  by default), so `List` follows `nextPageToken` and may send several requests.
+- `Branches().Create` no longer rejects a Tag source locally. Alias and unknown
+  source kinds are still rejected before any request, now with the message
+  `branch source must be a branch or tag`. `AsOf` with a Tag source is sent
+  unchanged and rejected by the server with HTTP 400.
+- `Collections.List` omits an empty `PageToken` instead of sending
+  `pageToken=`, which the server now rejects, and returns HTTP 400 as
+  `*apierrors.BadRequestError` instead of `*apierrors.APIError`.
+- `Collections.Create` returns the full Collection shape, as Get does. The
+  return type was already `*components.CollectionResponse`; `ProjectName`,
+  `IndexConfigs`, `NumPartitions`, `NumDocs` and `UpdatedAt` are now populated.
+- Doc comments and guides describe what Branch and Tag creation capture
+  (pending writes without `AsOf`, committed snapshot only with `AsOf`), reads
+  through Tags, consistent reads, and snapshot-only document listing as in the
+  pinned contract. Request bodies are unchanged.
+
+### Deprecated
+
+- `UpdateCollectionRequestBody.IndexConfigs` (`UpdateCollectionOptions`) and
+  its getter. It still updates the index schema of the default `main` Branch;
+  use `Branches().Update`. Collection responses keep `IndexConfigs`.
+
 ## [0.9.0] - 2026-11-06
 
 Aligned with the public API contract

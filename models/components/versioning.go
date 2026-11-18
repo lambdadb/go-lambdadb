@@ -45,13 +45,16 @@ const (
 	RefSourceKindTag    RefSourceKind = "tag"
 )
 
-// RefSource selects a source in the same collection. Branch creation accepts
-// only RefSourceKindBranch; tag creation accepts a branch or tag source.
-// AsOf is valid only when Kind is RefSourceKindBranch.
+// RefSource selects a source in the same collection. Branch and tag creation
+// both accept a branch or tag source. AsOf is valid only when Kind is
+// RefSourceKindBranch; the server rejects it on a tag source with 400.
 type RefSource struct {
 	Kind RefSourceKind `json:"kind"`
 	Name string        `json:"name"`
-	AsOf *int64        `json:"asOf,omitempty"`
+	// Selects the latest retained committed snapshot at or before this Unix
+	// epoch millisecond cutoff. Inherited and pending writes are excluded; this
+	// is not an exact-time restore.
+	AsOf *int64 `json:"asOf,omitempty"`
 }
 
 func (r *RefSource) GetKind() RefSourceKind {
@@ -117,19 +120,28 @@ func (r *ParentBranchDetails) GetName() string {
 	return r.Name
 }
 
-// BranchDetails describes a writable branch and its snapshot lineage.
+// BranchDetails describes a writable branch, its snapshot lineage, its index
+// schema, and the data statistics of its committed head.
 type BranchDetails struct {
 	Name string `json:"name"`
 	// Direct source branch, even for an empty source or an ancestor snapshot
-	// selected through AsOf. Nil for main or when no parent was recorded.
+	// selected through AsOf. Nil for main, for a branch created from a tag, or
+	// when no parent was recorded.
 	ParentBranch *ParentBranchDetails `json:"parentBranch"`
 	// Current committed head; nil for an empty branch.
 	HeadSnapshot *SnapshotDetails `json:"headSnapshot"`
 	// Fixed creation source, not the previous head. Nil for main and branches
 	// created from an empty source, even after their head advances. This metadata
 	// does not extend snapshot retention.
-	ParentSnapshot *SnapshotDetails    `json:"parentSnapshot"`
-	CreatedAt      types.UnixMilliTime `json:"createdAt"`
+	ParentSnapshot *SnapshotDetails `json:"parentSnapshot"`
+	// Document count in the branch's committed head; 0 for an empty branch.
+	NumDocs int64 `json:"numDocs"`
+	// Last data update of the branch's committed head; nil for an empty branch.
+	DataUpdatedAt *types.UnixMilliTime `json:"dataUpdatedAt"`
+	// The branch's own index schema. A branch inherits it at creation and later
+	// updates of other branches, including main, do not change it.
+	IndexConfigs map[string]IndexConfigsUnion `json:"indexConfigs"`
+	CreatedAt    types.UnixMilliTime          `json:"createdAt"`
 }
 
 func (r *BranchDetails) GetName() string {
@@ -160,6 +172,29 @@ func (r *BranchDetails) GetParentSnapshot() *SnapshotDetails {
 	return r.ParentSnapshot
 }
 
+func (r *BranchDetails) GetNumDocs() int64 {
+	if r == nil {
+		return 0
+	}
+	return r.NumDocs
+}
+
+// GetDataUpdatedAt returns the last data update of the branch's committed
+// head, or the zero time for an empty branch.
+func (r *BranchDetails) GetDataUpdatedAt() time.Time {
+	if r == nil || r.DataUpdatedAt == nil {
+		return time.Time{}
+	}
+	return r.DataUpdatedAt.Time
+}
+
+func (r *BranchDetails) GetIndexConfigs() map[string]IndexConfigsUnion {
+	if r == nil {
+		return nil
+	}
+	return r.IndexConfigs
+}
+
 func (r *BranchDetails) GetCreatedAt() time.Time {
 	if r == nil {
 		return time.Time{}
@@ -167,13 +202,21 @@ func (r *BranchDetails) GetCreatedAt() time.Time {
 	return r.CreatedAt.Time
 }
 
-// TagDetails describes an immutable tag pinning a nonempty committed snapshot.
+// TagDetails describes an immutable tag: the snapshot it pins with that
+// snapshot's index schema and data statistics.
 type TagDetails struct {
 	Name       string `json:"name"`
 	SnapshotID string `json:"snapshotId"`
 	// Pinned snapshot commit time, independent of tag creation time.
 	SnapshotCommittedAt types.UnixMilliTime `json:"snapshotCommittedAt"`
-	CreatedAt           types.UnixMilliTime `json:"createdAt"`
+	// Document count in the pinned snapshot.
+	NumDocs int64 `json:"numDocs"`
+	// Last data update of the pinned snapshot.
+	DataUpdatedAt types.UnixMilliTime `json:"dataUpdatedAt"`
+	// Index schema pinned by the tag. It does not change when branches are
+	// updated afterwards.
+	IndexConfigs map[string]IndexConfigsUnion `json:"indexConfigs"`
+	CreatedAt    types.UnixMilliTime          `json:"createdAt"`
 }
 
 func (r *TagDetails) GetName() string {
@@ -195,6 +238,28 @@ func (r *TagDetails) GetSnapshotCommittedAt() time.Time {
 		return time.Time{}
 	}
 	return r.SnapshotCommittedAt.Time
+}
+
+func (r *TagDetails) GetNumDocs() int64 {
+	if r == nil {
+		return 0
+	}
+	return r.NumDocs
+}
+
+// GetDataUpdatedAt returns the last data update of the pinned snapshot.
+func (r *TagDetails) GetDataUpdatedAt() time.Time {
+	if r == nil {
+		return time.Time{}
+	}
+	return r.DataUpdatedAt.Time
+}
+
+func (r *TagDetails) GetIndexConfigs() map[string]IndexConfigsUnion {
+	if r == nil {
+		return nil
+	}
+	return r.IndexConfigs
 }
 
 func (r *TagDetails) GetCreatedAt() time.Time {
@@ -232,16 +297,22 @@ const (
 	AliasTargetKindTag    AliasTargetKind = "TAG"
 )
 
-// AliasDetails describes an alias and its current resolved target.
+// AliasDetails describes an alias, its current resolved target, and the index
+// schema reads through the alias see.
 type AliasDetails struct {
-	AliasID       string              `json:"aliasId"`
-	AliasName     string              `json:"aliasName"`
-	TargetKind    AliasTargetKind     `json:"targetKind"`
-	TargetName    string              `json:"targetName"`
-	TargetID      string              `json:"targetId"`
-	AliasRevision int64               `json:"aliasRevision"`
-	Dangling      bool                `json:"dangling"`
-	CreatedAt     types.UnixMilliTime `json:"createdAt"`
+	AliasID       string          `json:"aliasId"`
+	AliasName     string          `json:"aliasName"`
+	TargetKind    AliasTargetKind `json:"targetKind"`
+	TargetName    string          `json:"targetName"`
+	TargetID      string          `json:"targetId"`
+	AliasRevision int64           `json:"aliasRevision"`
+	// Whether the bound target identity is missing. Document reads through a
+	// dangling alias return 400; reading the alias itself still succeeds.
+	Dangling bool `json:"dangling"`
+	// Index schema of the target: a branch's current schema or a tag's pinned
+	// schema. Nil for a dangling alias.
+	IndexConfigs map[string]IndexConfigsUnion `json:"indexConfigs"`
+	CreatedAt    types.UnixMilliTime          `json:"createdAt"`
 }
 
 func (a *AliasDetails) GetAliasID() string {
@@ -291,6 +362,15 @@ func (a *AliasDetails) GetDangling() bool {
 		return false
 	}
 	return a.Dangling
+}
+
+// GetIndexConfigs returns the target's index schema, or nil for a dangling
+// alias.
+func (a *AliasDetails) GetIndexConfigs() map[string]IndexConfigsUnion {
+	if a == nil {
+		return nil
+	}
+	return a.IndexConfigs
 }
 
 // GetCreatedAt returns the alias creation time.

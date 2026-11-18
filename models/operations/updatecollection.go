@@ -10,6 +10,10 @@ type UpdateCollectionRequestBody struct {
 	// may be added at the top level or under existing objects at any depth. The
 	// server-managed id field may be sent back as returned ({"type":"keyword"})
 	// or omitted; other id configurations are rejected by the server.
+	//
+	// Deprecated: IndexConfigs here updates the index schema of the default main
+	// branch only. Use Collection.Branches().Update, which updates one branch's
+	// schema; updating main there has the same effect.
 	IndexConfigs map[string]components.IndexConfigsUnion `json:"indexConfigs,omitzero"`
 	Description  *string                                 `json:"description,omitzero"`
 	Tags         map[string]string                       `json:"tags,omitzero"`
@@ -38,6 +42,7 @@ func (u *UpdateCollectionRequestBody) GetSnapshotRetentionInDays() *int64 {
 	return u.SnapshotRetentionInDays
 }
 
+// Deprecated: see IndexConfigs; use Collection.Branches().Update.
 func (u *UpdateCollectionRequestBody) GetIndexConfigs() map[string]components.IndexConfigsUnion {
 	if u == nil {
 		return map[string]components.IndexConfigsUnion{}

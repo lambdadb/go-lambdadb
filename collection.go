@@ -17,7 +17,7 @@ type ProjectCollections struct {
 	client *Client
 }
 
-// List returns a page of collections in the project.
+// List returns a page of collections in the project, in name order.
 // Pass nil for listOpts to use defaults (no size/page token).
 func (p *ProjectCollections) List(ctx context.Context, listOpts *ListCollectionsOpts, opts ...operations.Option) (*ListCollectionsResult, error) {
 	res, err := p.client.collections.List(ctx, listOpts, opts...)
@@ -33,7 +33,9 @@ func (p *ProjectCollections) List(ctx context.Context, listOpts *ListCollections
 	}, nil
 }
 
-// Create creates a new collection and returns the created collection metadata.
+// Create creates a new collection and returns the created collection metadata
+// in the same shape as Collection.Get, including the normalized IndexConfigs of
+// its main branch.
 func (p *ProjectCollections) Create(ctx context.Context, request CreateCollectionOptions, callOpts ...operations.Option) (*components.CollectionResponse, error) {
 	res, err := p.client.collections.Create(ctx, request, callOpts...)
 	if err != nil {
@@ -138,7 +140,10 @@ func (c *Collection) Get(ctx context.Context, opts ...operations.Option) (*compo
 	return &res.Object.Collection, nil
 }
 
-// Update updates the collection configuration and returns the updated collection metadata.
+// Update updates the collection configuration (description, metadata tags and
+// snapshot retention) and returns the updated collection metadata. IndexConfigs
+// in the body is deprecated: it updates the default main branch's schema only;
+// use Branches().Update instead.
 func (c *Collection) Update(ctx context.Context, body UpdateCollectionOptions, opts ...operations.Option) (*components.CollectionResponse, error) {
 	res, err := c.client.collections.Update(ctx, c.name, body, opts...)
 	if err != nil {
@@ -209,7 +214,8 @@ type CollectionDocs struct {
 }
 
 // List lists documents in the collection (one page).
-// Pass nil for listOpts to use defaults (no size limit, no page token).
+// Pass nil for listOpts to use defaults: no size or page token is sent, and the
+// server returns its default page of 100 documents.
 // A missing listOpts Ref returns ResourceNotFoundError; a dangling Alias returns BadRequestError.
 func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts ...operations.Option) (*ListDocsResult, error) {
 	var size *int64

@@ -48,7 +48,7 @@ func ExampleTagSource() {
 func ExampleBranchDetails_parentBranch() {
 	// A branch created from an empty source still records its direct parent.
 	var branch lambdadb.BranchDetails
-	if err := json.Unmarshal([]byte(`{"name":"candidate","parentBranch":{"branchId":"main-id","name":"main"},"headSnapshot":null,"parentSnapshot":null,"createdAt":1788336000123}`), &branch); err != nil {
+	if err := json.Unmarshal([]byte(`{"name":"candidate","parentBranch":{"branchId":"main-id","name":"main"},"headSnapshot":null,"parentSnapshot":null,"indexConfigs":{"id":{"type":"keyword"}},"numDocs":0,"dataUpdatedAt":null,"createdAt":1788336000123}`), &branch); err != nil {
 		panic(err)
 	}
 	if parent := branch.GetParentBranch(); parent != nil {
