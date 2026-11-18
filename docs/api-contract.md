@@ -102,9 +102,8 @@ Collection responses keep `IndexConfigs`, which mirror `main`, and
 
 `GET .../branches`, `.../tags` and `.../aliases` return one page in name order
 and take `size` (1 to 100, default 10) and `pageToken`; `nextPageToken` is
-absent on the last page. They reject any other query parameter, and these
-listings and `GET /collections` reject an empty or malformed `pageToken` with
-400. The SDK therefore sends `size` and `pageToken` only when set and treats a
+absent on the last page. These listings and `GET /collections` reject any other
+query parameter and an empty or malformed `pageToken` with 400. The SDK therefore sends `size` and `pageToken` only when set and treats a
 nil or empty `PageToken` as the first page, for `ListRefsOpts` and
 `ListCollectionsOpts` alike. `GET /collections` declares the 400 response,
 which the SDK returns as `BadRequestError`.

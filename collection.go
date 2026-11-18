@@ -214,7 +214,8 @@ type CollectionDocs struct {
 }
 
 // List lists documents in the collection (one page).
-// Pass nil for listOpts to use defaults (no size limit, no page token).
+// Pass nil for listOpts to use defaults: no size or page token is sent, and the
+// server returns its default page of 100 documents.
 // A missing listOpts Ref returns ResourceNotFoundError; a dangling Alias returns BadRequestError.
 func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts ...operations.Option) (*ListDocsResult, error) {
 	var size *int64

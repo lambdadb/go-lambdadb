@@ -74,8 +74,8 @@ type RefContext = components.RefContext
 // RefKind identifies the kind of ref selected for a read.
 type RefKind = components.RefKind
 
-// RefSource selects a source in the same collection. Branch creation accepts
-// only branches; tag creation accepts branches or tags.
+// RefSource selects a source in the same collection. Branch and tag creation
+// both accept a branch or tag; AsOf is valid only for a branch source.
 type RefSource = components.RefSource
 
 // RefSourceKind identifies a branch or tag source.

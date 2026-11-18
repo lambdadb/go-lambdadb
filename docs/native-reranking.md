@@ -193,7 +193,8 @@ server errors and does not implement its own fallback or retry-specific ranking.
 
 ## Contract source and availability
 
-The current contract is pinned to
+The current contract is pinned in the [API contract guide](api-contract.md).
+This guide was written against
 [OpenAPI `api/openapi.json`](https://github.com/lambdadb/lambdadb/blob/1c3e7d453cca296a7b2af85a375b4c5016504101/api/openapi.json)
 at backend `main`
 [lambdadb@1c3e7d453cca296a7b2af85a375b4c5016504101](https://github.com/lambdadb/lambdadb/commit/1c3e7d453cca296a7b2af85a375b4c5016504101).

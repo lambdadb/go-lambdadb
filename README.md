@@ -426,6 +426,7 @@ For example, the `List` function may return the following errors:
 
 | Error Type                      | Status Code | Content Type     |
 | ------------------------------- | ----------- | ---------------- |
+| apierrors.BadRequestError       | 400         | application/json |
 | apierrors.UnauthenticatedError  | 401         | application/json |
 | apierrors.ResourceNotFoundError | 404         | application/json |
 | apierrors.TooManyRequestsError  | 429         | application/json |
