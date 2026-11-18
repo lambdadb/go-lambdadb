@@ -144,9 +144,9 @@ Use `client.Collection("name")` for operations on a single collection (no need t
 
 * **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `result.Docs` is always populated.
 * **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, GetBulkUpsertInfoForBranch, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, `Fields`, or `Ref` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete); it applies the same Branch to both bulk control calls. Bulk upload size is governed by `SizeLimitBytes` from the server; `lambdadb.MaxBulkUpsertPayloadBytes` is a 200 MiB reference value. See the [document API guide](docs/sdks/docs/README.md) for details.
-* **Collection.Branches()**: Create, List, and Delete writable branches.
-* **Collection.Tags()**: Create, List, and Delete immutable tags.
-* **Collection.Aliases()**: Create, List, Retarget, and Delete aliases. See the [Data Versioning API guide](docs/sdks/versioning/README.md).
+* **Collection.Branches()**: Create, Get, Update (index schema), List, ListPage, ListIterator, and Delete writable branches.
+* **Collection.Tags()**: Create, Get, List, ListPage, ListIterator, and Delete immutable tags.
+* **Collection.Aliases()**: Create, Get, List, ListPage, ListIterator, Retarget, and Delete aliases. See the [Data Versioning API guide](docs/sdks/versioning/README.md).
 
 </details>
 <!-- End Available Resources and Operations [operations] -->
@@ -182,11 +182,17 @@ _, err = collection.Aliases().Create(ctx, lambdadb.CreateAliasInput{
 })
 ```
 
-Branch creation accepts only Branch sources; omit `Source` for `main`, or use
-`BranchSourceAt` for a point-in-time cutoff. Tag creation still accepts Branch
-or Tag sources. Branch Create/List return nullable `ParentBranch` metadata
-(`BranchID`, `Name`), including for empty Branches; `main` and Branches without
-recorded parents return nil. See the [versioning guide](docs/sdks/versioning/README.md)
+Branch and Tag creation accept Branch or Tag sources; omit `Source` for `main`,
+or use `BranchSourceAt` for a point-in-time cutoff on a Branch source. Branch
+responses return nullable `ParentBranch` metadata (`BranchID`, `Name`),
+including for empty Branches; `main`, Branches created from a Tag, and Branches
+without recorded parents return nil.
+
+Every Branch, Tag, and Alias response carries `IndexConfigs`; Branches and Tags
+also carry `NumDocs` and `DataUpdatedAt`. A Branch owns its index schema: read
+one ref with `Get` and add fields to one Branch with `Branches().Update`.
+`List` returns every ref; `ListPage` and `ListIterator` page through them with
+`ListRefsOpts`. See the [versioning guide](docs/sdks/versioning/README.md)
 for examples and snapshot semantics.
 
 Select a branch, tag, or alias for reads with `Ref`. Simple document lists
@@ -223,8 +229,9 @@ _, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
 when `Ref` is omitted, or an Alias that currently targets a Branch, which the
 server resolves when the request is admitted. Tag reads and Aliases targeting
 Tags reject it with 400. False or omitted is valid for Branch, Tag, and Alias
-reads. Document List has no consistent-read option. Tags are immutable; Aliases
-resolve at request time and can be retargeted.
+reads. Document List has no consistent-read option and returns only the
+published snapshot for every ref. Tags are immutable; Aliases resolve at
+request time and can be retargeted.
 
 <!-- Start Pagination [pagination] -->
 ## Pagination
@@ -263,6 +270,21 @@ List endpoints return one page at a time. Use **iterators** to walk all pages wi
 			_ = c // Use collection metadata such as c.CollectionName.
 		}
 	}
+
+	// Branches (Tags and Aliases page the same way)
+	branchIter := client.Collection("my-collection").Branches().ListIterator(ctx, &lambdadb.ListRefsOpts{Size: lambdadb.Int64(100)})
+	for {
+		page, err := branchIter.Next(ctx)
+		if err != nil {
+			return err
+		}
+		if page == nil {
+			break
+		}
+		for _, b := range page.Branches {
+			_ = b // Use branch metadata such as b.Name and b.IndexConfigs.
+		}
+	}
 ```
 
 ### ListAll (fetch all pages)
@@ -273,6 +295,8 @@ Use when you need the full list in memory; avoid on very large datasets.
 	docs, err := client.Collection("my-collection").Docs().ListAll(ctx, &lambdadb.ListDocsOpts{Size: lambdadb.Int64(100)})
 	// ...
 	colls, err := client.Collections.ListAll(ctx, &lambdadb.ListCollectionsOpts{Size: lambdadb.Int64(20)})
+	// ...
+	branches, err := client.Collection("my-collection").Branches().List(ctx) // every page
 ```
 
 For filtered scans or field selection, pass the extended list options through `ListDocsOpts`; the SDK will use the extended list endpoint automatically.

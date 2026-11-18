@@ -56,6 +56,19 @@ Returned by `client.Collections.List` and each collection `ListIterator.Next` ca
 
 Collection `ListAll` returns `[]components.CollectionResponse`.
 
+## ListBranchesResult, ListTagsResult, ListAliasesResult
+
+Returned by `ListPage` on `collection.Branches()`, `collection.Tags()` and
+`collection.Aliases()`, and by each `ListIterator.Next` call. They are defined
+in [versioning.go](../versioning.go).
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `Branches` / `Tags` / `Aliases` | `[]BranchDetails` / `[]TagDetails` / `[]AliasDetails` | Refs in the current page, in name order. |
+| `NextPageToken` | `*string` | Opaque continuation token; nil on the last page. |
+
+`List` on the same handles returns every ref as a slice.
+
 ## GetBulkUpsertInfoResult
 
 Returned by `collection.Docs().GetBulkUpsertInfo` and `GetBulkUpsertInfoForBranch`.

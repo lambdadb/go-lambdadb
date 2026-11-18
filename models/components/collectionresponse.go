@@ -11,8 +11,10 @@ type CollectionResponse struct {
 	// Project name.
 	ProjectName string `json:"projectName"`
 	// Collection name.
-	CollectionName string                       `json:"collectionName"`
-	IndexConfigs   map[string]IndexConfigsUnion `json:"indexConfigs"`
+	CollectionName string `json:"collectionName"`
+	// Index schema of the default main branch. Other branches carry their own
+	// schema; read it from Collection.Branches().Get.
+	IndexConfigs map[string]IndexConfigsUnion `json:"indexConfigs"`
 	// Collection description.
 	Description string `json:"description"`
 	// Collection metadata tags.

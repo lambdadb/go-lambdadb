@@ -22,11 +22,13 @@ type QueryCollectionRequestBody struct {
 	// {"type":"text"|"image","value":...} parts) require a native embedding field;
 	// queryVector works on any vector field and skips inference.
 	Query map[string]any `json:"query"`
-	// True overlays eligible pending writes on the selected branch: a directly
-	// selected branch (or main when Ref is omitted) or an alias that currently
-	// targets a branch, resolved by the server when the request is admitted. Tag
-	// refs and aliases targeting tags reject true with 400. False or nil reads
-	// committed data.
+	// True overlays eligible inherited and own pending writes on the selected
+	// branch's committed snapshot: a directly selected branch (or main when Ref
+	// is omitted) or an alias that currently targets a branch, resolved by the
+	// server when the request is admitted. False or nil reads only the snapshot
+	// of a branch. Tag refs and aliases targeting tags always include the writes
+	// the tag captured at creation and reject true with 400. Pending bulk
+	// imports are excluded until a background build materializes them.
 	ConsistentRead *bool `default:"false" json:"consistentRead"`
 	// If your application need to include vector values in the response, set includeVectors to true.
 	IncludeVectors *bool `default:"false" json:"includeVectors"`

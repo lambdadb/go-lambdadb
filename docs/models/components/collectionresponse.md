@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | `ProjectName` | `string` | Yes | Project name. |
 | `CollectionName` | `string` | Yes | Collection name. |
-| `IndexConfigs` | `map[string]components.IndexConfigsUnion` | Yes | Collection index configuration. |
+| `IndexConfigs` | `map[string]components.IndexConfigsUnion` | Yes | Index schema of the default `main` Branch. Other Branches carry their own schema; read it with `collection.Branches().Get`. |
 | `Description` | `string` | Yes | Collection description. |
 | `Tags` | `map[string]string` | Yes | Collection metadata tags. |
 | `PartitionConfig` | `*components.PartitionConfig` | No | Partition configuration. |

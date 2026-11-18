@@ -60,11 +60,15 @@ func main() {
 
 Use `result.Collections` and `result.NextPageToken` directly. Pass
 `ListCollectionsOpts` for a page size from 1 to 100 or a continuation token.
+Pages are in name order. The server returns 400 for an out-of-range size or an
+empty or malformed page token; the SDK sends no `pageToken` when the option is
+nil or empty, which selects the first page.
 
 ### Errors
 
 | Error Type                      | Status Code                     | Content Type                    |
 | ------------------------------- | ------------------------------- | ------------------------------- |
+| apierrors.BadRequestError       | 400                             | application/json                |
 | apierrors.UnauthenticatedError  | 401                             | application/json                |
 | apierrors.ResourceNotFoundError | 404                             | application/json                |
 | apierrors.TooManyRequestsError  | 429                             | application/json                |
@@ -77,9 +81,10 @@ Use a nonempty `IndexConfigs`. Each field accepts an optional `Description`
 (at most 255 characters) that reads return only when set; see
 [field descriptions](../../models/components/indexconfigsunion.md#field-descriptions).
 Nil retention selects the server default of 30
-days; valid explicit values are 1–31. The compact 201 response confirms catalog
-creation. Use Get or List for the full model and actual reads to verify indexed
-data; there is no Collection readiness status to poll.
+days; valid explicit values are 1–31. The 201 response returns the created
+Collection in the same shape as Get, including the normalized `IndexConfigs` of
+its `main` Branch. Use actual reads to verify indexed data; there is no
+Collection readiness status to poll.
 
 Create a collection.
 
@@ -183,8 +188,8 @@ func main() {
 
 **[*components.CollectionResponse](../../models/components/collectionresponse.md), error**
 
-The high-level method unwraps the compact create response; use Get for complete
-metadata. [CreateCollectionResponse](../../models/operations/createcollectionresponse.md)
+The high-level method unwraps the create response, which has the same shape as
+Get. [CreateCollectionResponse](../../models/operations/createcollectionresponse.md)
 is the internal operation envelope.
 
 ### Errors
@@ -323,6 +328,12 @@ Configure a collection. Nil fields remain unchanged. An empty description
 clears it; a supplied metadata map replaces all tags, and `map[string]string{}`
 clears them. Send at least one non-nil field. Retention is 1–31 days. See the
 [PATCH field rules](../../models/operations/updatecollectionrequestbody.md).
+
+`IndexConfigs` on this method is deprecated: it updates the index schema of
+the default `main` Branch only and keeps working. Update a Branch's schema with
+[`collection.Branches().Update`](../versioning/README.md#branch-index-schemas)
+instead; the same rules apply there. The response keeps returning `main`'s
+`IndexConfigs`.
 
 Schema updates require the nonempty full schema, preserving every existing
 field and its settings. New top-level fields and children under existing objects

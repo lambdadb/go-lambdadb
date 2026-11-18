@@ -2,18 +2,24 @@
 
 SDK alignment is pinned to this immutable revision:
 
-- [OpenAPI: docs@1714009a2659a18b26cb68193dd7a071fd6efb42 `reference/api/openapi.json`](https://github.com/lambdadb/docs/blob/1714009a2659a18b26cb68193dd7a071fd6efb42/reference/api/openapi.json),
-  SHA-256 `604e6fdcf0e0a5af2c9ac8714e60d282d0ebfb9847a49371ff0452fac48be070`.
+- [OpenAPI: docs@7be299af9cac4195b75feb6e38b5cd7f8989f5a0 `reference/api/openapi.json`](https://github.com/lambdadb/docs/blob/7be299af9cac4195b75feb6e38b5cd7f8989f5a0/reference/api/openapi.json),
+  SHA-256 `ec499bb6ad4fd7359c1854359e9ecfd4cd8609420f440f7dcbf75566ccda8f32`,
+  `info.version` `1.3.0`.
+- Backend source of that copy:
+  [lambdadb@f9aa63c79cbac2ac477a76ec45e5015ce665afd1 `api/openapi.json`](https://github.com/lambdadb/lambdadb/blob/f9aa63c79cbac2ac477a76ec45e5015ce665afd1/api/openapi.json),
+  as recorded in `reference/api/openapi-source.json` of the same docs commit.
 
 The backend owns the API contract; the public reference copy is
 `reference/api/openapi.json` in [lambdadb/docs](https://github.com/lambdadb/docs),
-pinned by commit and SHA-256. The previous pin (SHA-256
-`8a78c2abb9f4169abed31176d9ee86deb1f4782bb2134bee513e52899a9c3aea`) differs
-from this revision only by optional index field descriptions and consistent
-reads through an Alias that targets a Branch; no paths changed. The OpenAPI
-`info.version` remains `1.1.1`; use the commit and SHA-256 to identify this
-contract. SDK source alignment is not a live environment test or release
-approval.
+pinned by commit and SHA-256. The previous pin (docs@1714009a,
+`info.version` `1.1.1`, SHA-256
+`604e6fdcf0e0a5af2c9ac8714e60d282d0ebfb9847a49371ff0452fac48be070`) differs
+from this revision by Branch-scoped index schemas with the individual Branch,
+Tag, and Alias routes, paginated ref listings, Branches created from Tags, the
+full Collection shape in the create response, and the Branch, Tag, and listing
+semantics of pending writes described below. Use the commit and SHA-256 to
+identify this contract. SDK source alignment is not a live environment test or
+release approval.
 
 ## Read limits
 
@@ -26,6 +32,7 @@ approval.
 | Fetch IDs | 1000 nonblank IDs | Required, nonempty list |
 | GET/POST document List `size` | 1000 | 100; POST null also uses the default |
 | Collection List and facet bucket size | 100 | Existing defaults unchanged |
+| Branch, Tag, and Alias list `size` | 100 | 10 |
 
 Each KNN query uses exactly one non-null `queryText`, `queryInputs` or
 `queryVector`. Query text and query inputs require native embeddings; query
@@ -68,6 +75,61 @@ the `id` rule remain server checks.
 a Branch; the server resolves the Alias when the request is admitted. Tag
 reads and an Alias that targets a Tag reject true with HTTP 400. The SDK
 performs no local ref validation and forwards the request unchanged.
+
+## Branch-scoped index schemas and ref reads
+
+A Branch owns its index schema. `GET` and `PATCH
+/collections/{collectionName}/branches/{branchName}` map to
+`Branches().Get` and `Branches().Update`; `GET .../tags/{tagName}` and
+`GET .../aliases/{aliasName}` map to `Tags().Get` and `Aliases().Get`. The
+Branch update body is `indexConfigs` only (`UpdateBranchInput`), required and
+nonempty, with the same additive rules as the Collection schema update.
+Naming a Tag or an Alias returns 400.
+
+Every Branch, Tag, and Alias response carries `indexConfigs`; Branches and
+Tags also carry `numDocs` and `dataUpdatedAt`. `BranchDetails.DataUpdatedAt`
+is a nullable pointer (null for an empty Branch) and
+`AliasDetails.IndexConfigs` is nil for a dangling Alias, which the single-Alias
+read still returns with 200. There is no schema version identifier in the
+contract or the SDK.
+
+Collection responses keep `IndexConfigs`, which mirror `main`, and
+`POST /collections` now returns the same shape as Get.
+`UpdateCollectionRequestBody.IndexConfigs` is deprecated: it still updates
+`main` only; use `Branches().Update`.
+
+## Ref and Collection list pagination
+
+`GET .../branches`, `.../tags` and `.../aliases` return one page in name order
+and take `size` (1 to 100, default 10) and `pageToken`; `nextPageToken` is
+absent on the last page. They reject any other query parameter, and these
+listings and `GET /collections` reject an empty or malformed `pageToken` with
+400. The SDK therefore sends `size` and `pageToken` only when set and treats a
+nil or empty `PageToken` as the first page, for `ListRefsOpts` and
+`ListCollectionsOpts` alike. `GET /collections` declares the 400 response,
+which the SDK returns as `BadRequestError`.
+
+`List` on Branches, Tags and Aliases keeps its signature and still returns
+every ref: it follows `nextPageToken` with the server's default page size.
+`ListPage` and `ListIterator` expose single pages.
+
+## Ref creation and pending writes
+
+Branch creation accepts a Branch or Tag source; `asOf` is valid only for a
+Branch source, and a Branch created from a Tag has a null `parentBranch`.
+The SDK rejects Alias and unknown source kinds locally and leaves the
+Tag-with-`asOf` rejection to the server.
+
+Without `asOf`, a new Branch starts from the source's committed snapshot and
+takes over the writes still pending on the source at creation; a new Tag pins
+the snapshot together with those writes. Ordinary Branch reads use only the
+snapshot, and `consistentRead: true` adds eligible inherited and own pending
+writes. Query and Fetch through a Tag or an Alias targeting a Tag include the
+captured writes but still reject `consistentRead: true`. Pending bulk imports
+become visible only after a background build materializes them. Document
+listing uses only the published snapshot for every ref. With `asOf`, only the
+latest retained committed snapshot at or before the cutoff is selected. These
+are server semantics; request bodies are unchanged.
 
 ## Vector dimensions and similarity
 
@@ -178,7 +240,13 @@ unchanged pass-through of a returned `id` field and an `id`-only schema.
 on nested object fields, omission when nil, `""` when cleared, and read
 round trips; `contract_alignment_test.go` checks that Alias refs forward
 `consistentRead: true` unchanged and preserve the server's 400 for Tag refs
-and Tag-targeting Aliases.
+and Tag-targeting Aliases. `versioning_contract_test.go` checks the single
+Branch, Tag and Alias reads and their 404, the Branch update body and its 400,
+the ref fields on every response, the null `dataUpdatedAt` of an empty Branch
+and null `indexConfigs` of a dangling Alias, ref list query parameters
+(nothing sent when unset or empty), `List` following every page, the 400 and
+omitted empty `pageToken` on the Collection listing, and the full create
+response; `versioning_test.go` checks Tag sources for Branch creation.
 `download_test.go` checks real HTTP gzip transfers,
 all high-level download callers, metadata, empty/null arrays and corrupted or
 interrupted downloads. These are local SDK tests, not server acceptance tests.
