@@ -126,8 +126,10 @@ release follows API contract 1.3.0: Branch-scoped index schemas, individual
 Branch, Tag and Alias reads, paginated ref listings, and Branches created from
 Tags. The publish workflow's dev live smoke on the feature merge commit and its
 production live smoke on the release commit and tag remain the gates, together
-with SDK checks, review, and metadata verification. Those live suites do not
-call the operations this release adds; they are covered by mocked HTTP tests.
+with SDK checks, review, and metadata verification. At the release commit those
+live suites did not call the operations this release adds; mocked HTTP tests
+covered them. `TestIntegrationDataVersioningSmoke` calls them from the next
+development commit on.
 
 ## Required sequence
 
@@ -314,7 +316,12 @@ LAMBDADB_RUN_VERSIONING_SMOKE=1 \
 The test creates a uniquely named temporary Collection, exercises collection
 metadata, Branch/Tag/Alias lifecycle operations, ref-scoped reads,
 Branch-scoped writes, and the signed bulk-upload flow, and then deletes the
-Collection. Run it only in an environment where creating and deleting that
+Collection. For the contract 1.3.0 ref operations it reads one Branch, Tag and
+Alias with `Get` and compares their `IndexConfigs` with `main` and the
+Collection, walks the Branch listing one entry per page with `ListPage` and
+`ListIterator` against the complete `List`, adds a field to one Branch with
+`Branches().Update` and checks that `main` and the Collection do not gain it,
+and creates a Branch from a Tag. Run it only in an environment where creating and deleting that
 temporary data is authorized. The API key must remain local and must not be
 printed in logs or review artifacts.
 

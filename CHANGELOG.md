@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The opt-in live smoke `TestIntegrationDataVersioningSmoke` now calls the
+  contract 1.3.0 ref operations against a deployed server: `Branches().Get`,
+  `Tags().Get` and `Aliases().Get` with their `IndexConfigs` and data
+  statistics, `Branches().ListPage` and `ListIterator` against the complete
+  `List`, `Branches().Update` scoped to one Branch, and a Branch created from
+  `TagSource`. Test-only; the SDK API and behavior are unchanged.
+
 ## [0.10.0] - 2026-11-18
 
 Aligned with the public API contract

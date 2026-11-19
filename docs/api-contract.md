@@ -250,7 +250,10 @@ response; `versioning_test.go` checks Tag sources for Branch creation.
 all high-level download callers, metadata, empty/null arrays and corrupted or
 interrupted downloads. These are local SDK tests, not server acceptance tests.
 
-The opt-in `TestIntegrationReadLimitsSmoke` checks real query/fetch/GET and POST
+The opt-in `TestIntegrationDataVersioningSmoke` calls the single Branch, Tag
+and Alias reads, the paged Branch listing, the Branch schema update and Branch
+creation from a Tag against a deployed server.
+`TestIntegrationReadLimitsSmoke` checks real query/fetch/GET and POST
 List boundaries with 1000 small documents and no model inference calls.
 `TestIntegrationBayesianNativeEmbeddingSmoke` checks unindexed nested source
 writes, sibling/empty-object vector reuse, changed-source regeneration, invalid
