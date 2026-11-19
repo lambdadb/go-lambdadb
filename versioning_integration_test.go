@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -377,6 +379,12 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 		t.Fatalf("list aliases: found=%v err=%v", containsIntegrationAlias(aliases, aliasName), err)
 	}
 
+	checkIntegrationRefReads(t, ctx, collection, branchName, tagName, aliasName)
+	checkIntegrationBranchPaging(t, ctx, collection, branches)
+	checkIntegrationBranchSchemaUpdate(t, ctx, collection, defaultBranchName)
+	checkIntegrationBranchFromTag(t, ctx, collection, "from-tag-"+suffix, tagName)
+	t.Log("ref reads, branch paging, branch schema update and branch from tag verified")
+
 	listed, err := collection.Docs().List(ctx, &lambdadb.ListDocsOpts{
 		Ref: &lambdadb.RefContext{Kind: lambdadb.RefKindAlias, Name: aliasName},
 	})
@@ -461,6 +469,199 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	}
 	collectionDeleted = true
 	t.Log("temporary collection deleted")
+}
+
+// checkIntegrationRefReads reads one branch, tag and alias with Get. No branch
+// schema has been updated yet, so each must report the schema of main, which
+// the collection mirrors.
+func checkIntegrationRefReads(t *testing.T, ctx context.Context, collection *lambdadb.Collection, branchName, tagName, aliasName string) {
+	t.Helper()
+	metadata, err := collection.Get(ctx)
+	if err != nil {
+		t.Fatalf("get collection for ref reads: %v", err)
+	}
+	main, err := collection.Branches().Get(ctx, "main")
+	if err != nil {
+		t.Fatalf("get main branch: %v", err)
+	}
+	schema := main.GetIndexConfigs()
+	if len(schema) == 0 || schema["title"].IndexConfigsText == nil || !reflect.DeepEqual(schema, metadata.GetIndexConfigs()) {
+		t.Fatalf("get main branch: indexConfigs = %#v, collection has %#v", schema, metadata.GetIndexConfigs())
+	}
+	if main.Name != "main" || main.ParentBranch != nil || main.NumDocs < 1 || main.DataUpdatedAt == nil || main.GetCreatedAt().IsZero() {
+		t.Fatalf("get main branch: unexpected details: %#v", main)
+	}
+
+	branch, err := collection.Branches().Get(ctx, branchName)
+	if err != nil {
+		t.Fatalf("get branch: %v", err)
+	}
+	requireIntegrationParentBranch(t, branch, "main")
+	// The branch inherited the committed seed, so it is not empty.
+	if branch.Name != branchName || branch.HeadSnapshot == nil || branch.NumDocs < 1 ||
+		branch.GetDataUpdatedAt().Year() < 2020 || branch.GetCreatedAt().Year() < 2020 {
+		t.Fatalf("get branch: unexpected details: %#v", branch)
+	}
+	if !reflect.DeepEqual(branch.GetIndexConfigs(), schema) {
+		t.Fatalf("get branch: indexConfigs = %#v, want main's %#v", branch.GetIndexConfigs(), schema)
+	}
+
+	tag, err := collection.Tags().Get(ctx, tagName)
+	if err != nil {
+		t.Fatalf("get tag: %v", err)
+	}
+	if tag.Name != tagName || tag.SnapshotID == "" || tag.NumDocs < 1 || tag.GetSnapshotCommittedAt().Year() < 2020 ||
+		tag.GetDataUpdatedAt().Year() < 2020 || tag.GetCreatedAt().Year() < 2020 {
+		t.Fatalf("get tag: unexpected details: %#v", tag)
+	}
+	if !reflect.DeepEqual(tag.GetIndexConfigs(), schema) {
+		t.Fatalf("get tag: indexConfigs = %#v, want main's %#v", tag.GetIndexConfigs(), schema)
+	}
+
+	alias, err := collection.Aliases().Get(ctx, aliasName)
+	if err != nil {
+		t.Fatalf("get alias: %v", err)
+	}
+	if alias.AliasName != aliasName || alias.AliasID == "" || alias.TargetID == "" || alias.Dangling ||
+		alias.TargetKind != lambdadb.AliasTargetKindTag || alias.TargetName != tagName || alias.GetCreatedAt().Year() < 2020 {
+		t.Fatalf("get alias: unexpected details: %#v", alias)
+	}
+	if !reflect.DeepEqual(alias.GetIndexConfigs(), schema) {
+		t.Fatalf("get alias: indexConfigs = %#v, want main's %#v", alias.GetIndexConfigs(), schema)
+	}
+}
+
+// checkIntegrationBranchPaging walks the branch listing one entry per page and
+// compares it, and ListIterator, with the complete set List returned.
+func checkIntegrationBranchPaging(t *testing.T, ctx context.Context, collection *lambdadb.Collection, all []lambdadb.BranchDetails) {
+	t.Helper()
+	want := integrationBranchNames(all)
+	if len(want) < 2 || !sort.StringsAreSorted(want) {
+		t.Fatalf("list branches: names = %v, want at least two in name order", want)
+	}
+
+	var paged []lambdadb.BranchDetails
+	pageOpts := &lambdadb.ListRefsOpts{Size: lambdadb.Int64(1)}
+	for page := 1; ; page++ {
+		result, err := collection.Branches().ListPage(ctx, pageOpts)
+		if err != nil || len(result.Branches) != 1 {
+			t.Fatalf("list branches page %d of size 1: %#v, %v", page, result, err)
+		}
+		paged = append(paged, result.Branches...)
+		if page == len(want) {
+			if result.NextPageToken != nil {
+				t.Fatalf("list branches page %d: last page has a nextPageToken", page)
+			}
+			break
+		}
+		if result.NextPageToken == nil || *result.NextPageToken == "" {
+			t.Fatalf("list branches page %d of %d: missing nextPageToken", page, len(want))
+		}
+		pageOpts.PageToken = result.NextPageToken
+	}
+	if got := integrationBranchNames(paged); !reflect.DeepEqual(got, want) {
+		t.Fatalf("list branches by page: names = %v, want %v", got, want)
+	}
+
+	var iterated []lambdadb.BranchDetails
+	pages := 0
+	it := collection.Branches().ListIterator(ctx, &lambdadb.ListRefsOpts{Size: lambdadb.Int64(1)})
+	for {
+		result, err := it.Next(ctx)
+		if err != nil {
+			t.Fatalf("iterate branches: %v", err)
+		}
+		if result == nil {
+			break
+		}
+		pages++
+		iterated = append(iterated, result.Branches...)
+	}
+	if got := integrationBranchNames(iterated); pages != len(want) || !reflect.DeepEqual(got, want) {
+		t.Fatalf("iterate branches: %d pages with names %v, want %d pages with %v", pages, got, len(want), want)
+	}
+}
+
+// checkIntegrationBranchSchemaUpdate adds one field to a branch's schema and
+// checks that main and the collection, which mirrors main, do not gain it.
+func checkIntegrationBranchSchemaUpdate(t *testing.T, ctx context.Context, collection *lambdadb.Collection, branchName string) {
+	t.Helper()
+	const newField = "category"
+	before, err := collection.Branches().Get(ctx, branchName)
+	if err != nil {
+		t.Fatalf("get branch before schema update: %v", err)
+	}
+	// The update must carry the branch's complete existing schema.
+	schema := map[string]components.IndexConfigsUnion{
+		newField: components.CreateIndexConfigsUnionKeyword(components.IndexConfigs{}),
+	}
+	for name, config := range before.GetIndexConfigs() {
+		schema[name] = config
+	}
+	if len(schema) != len(before.GetIndexConfigs())+1 {
+		t.Fatalf("branch schema already has %q: %#v", newField, before.GetIndexConfigs())
+	}
+
+	updated, err := collection.Branches().Update(ctx, branchName, lambdadb.UpdateBranchInput{IndexConfigs: schema})
+	if err != nil {
+		t.Fatalf("update branch schema: %v", err)
+	}
+	if updated.Name != branchName || !reflect.DeepEqual(updated.GetIndexConfigs(), schema) {
+		t.Fatalf("update branch schema: returned %q with %#v, want %#v", updated.GetName(), updated.GetIndexConfigs(), schema)
+	}
+	reread, err := collection.Branches().Get(ctx, branchName)
+	if err != nil || !reflect.DeepEqual(reread.GetIndexConfigs(), schema) {
+		t.Fatalf("get branch after schema update: %#v, %v", reread.GetIndexConfigs(), err)
+	}
+
+	main, err := collection.Branches().Get(ctx, "main")
+	if err != nil {
+		t.Fatalf("get main after branch schema update: %v", err)
+	}
+	if _, ok := main.GetIndexConfigs()[newField]; ok || !reflect.DeepEqual(main.GetIndexConfigs(), before.GetIndexConfigs()) {
+		t.Fatalf("branch schema update changed main: %#v", main.GetIndexConfigs())
+	}
+	metadata, err := collection.Get(ctx)
+	if err != nil {
+		t.Fatalf("get collection after branch schema update: %v", err)
+	}
+	if _, ok := metadata.GetIndexConfigs()[newField]; ok || !reflect.DeepEqual(metadata.GetIndexConfigs(), main.GetIndexConfigs()) {
+		t.Fatalf("branch schema update changed the collection: %#v", metadata.GetIndexConfigs())
+	}
+}
+
+// checkIntegrationBranchFromTag creates a branch from a tag, checks that it has
+// no parent branch and the tag's pinned schema, and deletes it.
+func checkIntegrationBranchFromTag(t *testing.T, ctx context.Context, collection *lambdadb.Collection, branchName, tagName string) {
+	t.Helper()
+	tag, err := collection.Tags().Get(ctx, tagName)
+	if err != nil {
+		t.Fatalf("get tag for branch from tag: %v", err)
+	}
+	branch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
+		BranchName: branchName,
+		Source:     lambdadb.TagSource(tagName),
+	})
+	if err != nil {
+		t.Fatalf("create branch from tag: %v", err)
+	}
+	if branch.Name != branchName || branch.ParentBranch != nil {
+		t.Errorf("create branch from tag: name %q, parentBranch %#v, want no parent", branch.GetName(), branch.ParentBranch)
+	}
+	if !reflect.DeepEqual(branch.GetIndexConfigs(), tag.GetIndexConfigs()) {
+		t.Errorf("create branch from tag: indexConfigs = %#v, want the tag's %#v", branch.GetIndexConfigs(), tag.GetIndexConfigs())
+	}
+	if _, err := collection.Branches().Delete(ctx, branchName); err != nil {
+		t.Fatalf("delete branch created from tag: %v", err)
+	}
+}
+
+func integrationBranchNames(branches []lambdadb.BranchDetails) []string {
+	names := make([]string, len(branches))
+	for i, branch := range branches {
+		names[i] = branch.Name
+	}
+	return names
 }
 
 func requireIntegrationBadRequest(t *testing.T, err error, operation string) {
