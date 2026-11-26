@@ -10,7 +10,9 @@ type ListDocsRequest struct {
 	CollectionName string `pathParam:"style=simple,explode=false,name=collectionName"`
 	// Number of documents per page, from 1 to 1000. The server default is 100.
 	Size *int64 `queryParam:"style=form,explode=true,name=size"`
-	// Next page token.
+	// Opaque position returned as nextPageToken. Repeat the other parameters
+	// to continue in the current data; a malformed token or a change to the
+	// request conditions returns 400.
 	PageToken *string `queryParam:"style=form,explode=true,name=pageToken"`
 	// Set to true to include vector values in the response. Defaults to false.
 	IncludeVectors *bool `default:"false" queryParam:"style=form,explode=true,name=includeVectors"`
@@ -47,8 +49,14 @@ func (l *ListDocsRequest) GetIncludeVectors() *bool {
 type ListDocsExtendedRequestBody struct {
 	// Number of documents per page, from 1 to 1000. The server default is 100.
 	Size *int64 `json:"size,omitzero"`
-	// Next page token.
+	// Opaque position in the requested order. Repeat the original request body
+	// with nextPageToken as pageToken; a malformed token, incompatible sort
+	// value or change to the request conditions returns 400.
 	PageToken *string `json:"pageToken,omitzero"`
+	// Order by up to four keyword, long, double or datetime fields: each object
+	// maps one field name to "asc" or "desc". Ascending document ID breaks ties
+	// and is the default order when sort is omitted.
+	Sort []map[string]any `json:"sort,omitzero"`
 	// Filter applied before pagination.
 	Filter map[string]any `json:"filter,omitzero"`
 	// Restricts the request to matching partition values.
@@ -60,6 +68,11 @@ type ListDocsExtendedRequestBody struct {
 	// Collection branch, tag, or alias to read. A missing ref returns
 	// ResourceNotFoundError; a dangling alias returns BadRequestError.
 	Ref *components.RefContext `json:"ref,omitzero"`
+	// Include pending ordinary writes from the branch and its inherited history
+	// as of this page request. Requires a branch or an alias that targets a
+	// branch; tags and aliases targeting tags reject true with 400. Nil omits
+	// the field (server default false).
+	ConsistentRead *bool `json:"consistentRead,omitzero"`
 }
 
 func (l ListDocsExtendedRequestBody) MarshalJSON() ([]byte, error) {
@@ -85,6 +98,13 @@ func (l *ListDocsExtendedRequestBody) GetPageToken() *string {
 		return nil
 	}
 	return l.PageToken
+}
+
+func (l *ListDocsExtendedRequestBody) GetSort() []map[string]any {
+	if l == nil {
+		return nil
+	}
+	return l.Sort
 }
 
 func (l *ListDocsExtendedRequestBody) GetFilter() map[string]any {
@@ -120,6 +140,13 @@ func (l *ListDocsExtendedRequestBody) GetRef() *components.RefContext {
 		return nil
 	}
 	return l.Ref
+}
+
+func (l *ListDocsExtendedRequestBody) GetConsistentRead() *bool {
+	if l == nil {
+		return nil
+	}
+	return l.ConsistentRead
 }
 
 type ListDocsExtendedRequest struct {

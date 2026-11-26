@@ -7,8 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Aligned with the public API contract
+[docs@9a1f563b9b53bc29e5278105f8fc8c25a17e0cb8](https://github.com/lambdadb/docs/blob/9a1f563b9b53bc29e5278105f8fc8c25a17e0cb8/reference/api/openapi.json)
+`reference/api/openapi.json` (SHA-256 `269590b8addc8e25785c222938b84e737a9f9dee0a5e8b45c0dde4779bde1b6d`,
+`info.version` `1.3.0`), synced from backend
+[lambdadb@16c6e46854b13cebd20c501e541bb030b33ca805](https://github.com/lambdadb/lambdadb/blob/16c6e46854b13cebd20c501e541bb030b33ca805/api/openapi.json)
+`api/openapi.json`. The contract changes since docs@7be299af are Branch
+rollback to a Tag, Tags created before the first snapshot, and sorted and
+consistent document listing with order-position page tokens; `info.version` is
+unchanged. This pins the source contract and does not establish deployment.
+
+### Added
+
+- `Branches().Rollback(ctx, branchName, RollbackBranchInput{Tag}, opts...)`
+  restores a Branch's data and index schema from a Tag and returns
+  `*RollbackBranchResponse{BranchID, HeadSnapshot}`. `HeadSnapshot` is nil when
+  the Tag had no published snapshot, which leaves the Branch head empty. A
+  repeated rollback can undo intervening writes, so `Rollback` sends exactly
+  one request and ignores the client retry configuration and `WithRetries`. A
+  concurrent rollback of the same write stream returns
+  `ResourceAlreadyExistsError` (409).
+- `ListDocsOpts.Sort` (`[]map[string]any`, 1 to 4 `{field: "asc"|"desc"}`
+  objects) and `ListDocsOpts.ConsistentRead` (`*bool`), with matching
+  `Sort` and `ConsistentRead` fields and getters on
+  `operations.ListDocsExtendedRequestBody`. Either selects the extended list
+  endpoint; nil sends nothing, so existing requests are unchanged.
+  `ConsistentRead: true` requires a Branch or an Alias targeting a Branch; the
+  server rejects it for a Tag or Tag Alias with 400. `ListIterator` and
+  `ListAll` repeat both on every page.
+
 ### Changed
 
+- **Breaking:** `TagDetails.SnapshotID` is now `*string`, and
+  `TagDetails.SnapshotCommittedAt` and `TagDetails.DataUpdatedAt` are now
+  `*types.UnixMilliTime`. They are nil for a Tag created before the first
+  snapshot, whose responses carry explicit null (previously decoded as `""`
+  and the Unix epoch), and encode back as null. `NumDocs` is then 0. Code that
+  reads these fields directly must check for nil; `GetSnapshotID()`,
+  `GetSnapshotCommittedAt()` and `GetDataUpdatedAt()` keep their signatures and
+  return `""` or the zero time when nil. A Tag's published snapshot can now
+  change as its captured writes are published.
+- Document listing semantics follow the pinned contract in doc comments and
+  guides: ascending document ID order by default, each page reads the current
+  data, listing through a Tag or Tag Alias includes the Tag's pending ordinary
+  writes, and a page token is a position in the requested order that returns
+  400 when the request conditions change. Tag creation captures the published
+  snapshot if any, and a source with neither a snapshot nor pending writes
+  returns 400. Request bodies of existing calls are unchanged.
+- The opt-in live smoke `TestIntegrationDataVersioningSmoke` also rolls a
+  Branch back to a Tag with `Branches().Rollback` and lists it with
+  `ConsistentRead: true`.
 - The opt-in live smoke `TestIntegrationDataVersioningSmoke` now calls the
   contract 1.3.0 ref operations against a deployed server: `Branches().Get`,
   `Tags().Get` and `Aliases().Get` with their `IndexConfigs` and data

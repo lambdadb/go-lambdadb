@@ -200,7 +200,7 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create tag with omitted source: %v", err)
 	}
-	if defaultTag == nil || defaultTag.Name != defaultTagName || defaultTag.SnapshotID == "" || defaultTag.GetSnapshotCommittedAt().IsZero() {
+	if defaultTag == nil || defaultTag.Name != defaultTagName || defaultTag.GetSnapshotID() == "" || defaultTag.GetSnapshotCommittedAt().IsZero() {
 		t.Fatalf("unexpected default-source tag: %#v", defaultTag)
 	}
 
@@ -317,7 +317,7 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create tag: %v", err)
 	}
-	if tag == nil || tag.Name != tagName || tag.SnapshotID == "" || tag.GetSnapshotCommittedAt().IsZero() {
+	if tag == nil || tag.Name != tagName || tag.GetSnapshotID() == "" || tag.GetSnapshotCommittedAt().IsZero() {
 		t.Fatalf("unexpected created tag: %#v", tag)
 	}
 
@@ -325,7 +325,7 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 		TagName: "copy-" + suffix,
 		Source:  lambdadb.TagSource(tagName),
 	})
-	if err != nil || copiedTag == nil || copiedTag.SnapshotID != tag.SnapshotID {
+	if err != nil || copiedTag == nil || copiedTag.GetSnapshotID() != tag.GetSnapshotID() {
 		t.Fatalf("create tag from tag: %#v, %v", copiedTag, err)
 	}
 	if _, err := collection.Tags().Delete(ctx, copiedTag.Name); err != nil {
@@ -383,7 +383,8 @@ func TestIntegrationDataVersioningSmoke(t *testing.T) {
 	checkIntegrationBranchPaging(t, ctx, collection, branches)
 	checkIntegrationBranchSchemaUpdate(t, ctx, collection, defaultBranchName)
 	checkIntegrationBranchFromTag(t, ctx, collection, "from-tag-"+suffix, tagName)
-	t.Log("ref reads, branch paging, branch schema update and branch from tag verified")
+	checkIntegrationBranchRollback(t, ctx, collection, defaultBranchName, tagName, docID)
+	t.Log("ref reads, branch paging, branch schema update, branch from tag and branch rollback verified")
 
 	listed, err := collection.Docs().List(ctx, &lambdadb.ListDocsOpts{
 		Ref: &lambdadb.RefContext{Kind: lambdadb.RefKindAlias, Name: aliasName},
@@ -510,7 +511,7 @@ func checkIntegrationRefReads(t *testing.T, ctx context.Context, collection *lam
 	if err != nil {
 		t.Fatalf("get tag: %v", err)
 	}
-	if tag.Name != tagName || tag.SnapshotID == "" || tag.NumDocs < 1 || tag.GetSnapshotCommittedAt().Year() < 2020 ||
+	if tag.Name != tagName || tag.GetSnapshotID() == "" || tag.NumDocs < 1 || tag.GetSnapshotCommittedAt().Year() < 2020 ||
 		tag.GetDataUpdatedAt().Year() < 2020 || tag.GetCreatedAt().Year() < 2020 {
 		t.Fatalf("get tag: unexpected details: %#v", tag)
 	}
@@ -654,6 +655,64 @@ func checkIntegrationBranchFromTag(t *testing.T, ctx context.Context, collection
 	if _, err := collection.Branches().Delete(ctx, branchName); err != nil {
 		t.Fatalf("delete branch created from tag: %v", err)
 	}
+}
+
+// checkIntegrationBranchRollback rolls a branch whose schema was updated back
+// to a tag with a published snapshot. The branch must get a new committed head
+// and the tag's schema and documents, and list them with ConsistentRead, which
+// a tag rejects.
+func checkIntegrationBranchRollback(t *testing.T, ctx context.Context, collection *lambdadb.Collection, branchName, tagName, docID string) {
+	t.Helper()
+	tag, err := collection.Tags().Get(ctx, tagName)
+	if err != nil {
+		t.Fatalf("get tag for rollback: %v", err)
+	}
+	if tag.SnapshotID == nil {
+		t.Fatalf("rollback tag %q has no published snapshot: %#v", tagName, tag)
+	}
+	before, err := collection.Branches().Get(ctx, branchName)
+	if err != nil {
+		t.Fatalf("get branch before rollback: %v", err)
+	}
+	if reflect.DeepEqual(before.GetIndexConfigs(), tag.GetIndexConfigs()) {
+		t.Fatalf("branch %q already has the tag's schema; the rollback would not be observable", branchName)
+	}
+
+	restored, err := collection.Branches().Rollback(ctx, branchName, lambdadb.RollbackBranchInput{Tag: tagName})
+	if err != nil {
+		t.Fatalf("roll back branch to tag: %v", err)
+	}
+	head := restored.GetHeadSnapshot()
+	if restored.GetBranchID() == "" || head == nil || head.GetSnapshotID() == "" || head.GetSnapshotCommittedAt().Year() < 2020 {
+		t.Fatalf("roll back branch to tag: unexpected result %#v", restored)
+	}
+	after, err := collection.Branches().Get(ctx, branchName)
+	if err != nil {
+		t.Fatalf("get branch after rollback: %v", err)
+	}
+	if after.HeadSnapshot == nil || after.HeadSnapshot.SnapshotID != head.SnapshotID {
+		t.Fatalf("branch head after rollback = %#v, want %q", after.HeadSnapshot, head.SnapshotID)
+	}
+	if !reflect.DeepEqual(after.GetIndexConfigs(), tag.GetIndexConfigs()) {
+		t.Fatalf("branch schema after rollback = %#v, want the tag's %#v", after.GetIndexConfigs(), tag.GetIndexConfigs())
+	}
+	waitForIntegrationDoc(t, ctx, collection, branchName, docID, "updated")
+
+	listed, err := collection.Docs().List(ctx, &lambdadb.ListDocsOpts{
+		Ref:            lambdadb.BranchRef(branchName),
+		ConsistentRead: lambdadb.Bool(true),
+	})
+	if err != nil {
+		t.Fatalf("consistent list of rolled-back branch: %v", err)
+	}
+	if !containsIntegrationListDoc(listed.Docs, docID) {
+		t.Fatalf("consistent list of rolled-back branch did not contain %q: %#v", docID, listed.Docs)
+	}
+	_, err = collection.Docs().List(ctx, &lambdadb.ListDocsOpts{
+		Ref:            lambdadb.TagRef(tagName),
+		ConsistentRead: lambdadb.Bool(true),
+	})
+	requireIntegrationBadRequest(t, err, "list tag with consistentRead")
 }
 
 func integrationBranchNames(branches []lambdadb.BranchDetails) []string {

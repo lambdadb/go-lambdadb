@@ -18,7 +18,10 @@
 
 List documents in a collection, up to 1000 per page with a server default of
 100. Pages can be shorter due to payload budgets; continue until
-`NextPageToken` is absent.
+`NextPageToken` is absent. Without `Sort`, documents are returned in ascending
+document ID order. Each page reads the current published Branch snapshot;
+listing through a Tag or an Alias targeting a Tag also includes the Tag's
+pending ordinary writes, and unpublished bulk imports are excluded.
 
 ### Example Usage
 
@@ -56,12 +59,12 @@ func main() {
 | Parameter                                                | Type                                                     | Required                                                 | Description                                              |
 | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `ctx`                                                    | [context.Context](https://pkg.go.dev/context#Context)    | :heavy_check_mark:                                       | The context to use for the request.                      |
-| `listOpts`                                               | *[ListDocsOpts](../../../options.go)                     | :heavy_minus_sign:                                       | Optional: Size, PageToken, IncludeVectors, Filter, PartitionFilter, Fields, Ref. Pass nil for defaults. isDocsInline and docsUrl are response-only (not request options). |
+| `listOpts`                                               | *[ListDocsOpts](../../../options.go)                     | :heavy_minus_sign:                                       | Optional: Size, PageToken, IncludeVectors, Filter, PartitionFilter, Fields, Ref, Sort, ConsistentRead. Pass nil for defaults. isDocsInline and docsUrl are response-only (not request options). |
 | `opts`                                                   | [][operations.Option](../../models/operations/option.md) | :heavy_minus_sign:                                       | The options for this request.                            |
 
 Use `client.Collection("name").Docs().List(ctx, nil)` or `List(ctx, &lambdadb.ListDocsOpts{...})`.
 
-When `Filter`, `PartitionFilter`, `Fields`, or `Ref` is set, the SDK uses the extended list endpoint (`POST /collections/{collectionName}/docs/list`) automatically:
+When `Filter`, `PartitionFilter`, `Fields`, `Ref`, `Sort`, or `ConsistentRead` is set, the SDK uses the extended list endpoint (`POST /collections/{collectionName}/docs/list`) automatically:
 
 ```go
 fields := components.CreateFieldsSelectorUnionFieldsSelector1(components.FieldsSelector1{
@@ -76,6 +79,33 @@ res, err := client.Collection("my-collection").Docs().List(ctx, &lambdadb.ListDo
     IncludeVectors:  lambdadb.Bool(false),
 })
 ```
+
+`Sort` orders by 1 to 4 keyword, long, double, or datetime fields, each object
+mapping one field name to `"asc"` or `"desc"`; ascending document ID breaks
+ties. For keyword arrays, `asc` uses the smallest indexed value and `desc` the
+largest. Missing keywords sort last for `asc` and first for `desc`; missing
+numeric and datetime values sort as zero (the Unix epoch for datetime).
+`ConsistentRead: true` also includes pending ordinary writes of the Branch and
+its inherited history as of each page request; it requires a Branch (including
+the default `main`) or an Alias targeting a Branch, and a Tag or Tag Alias
+rejects it with 400. Nil `Sort` and `ConsistentRead` send nothing, so existing
+requests are unchanged.
+
+```go
+it := client.Collection("my-collection").Docs().ListIterator(ctx, &lambdadb.ListDocsOpts{
+    Size:           lambdadb.Int64(10),
+    Sort:           []map[string]any{{"category": "asc"}},
+    ConsistentRead: lambdadb.Bool(true),
+})
+```
+
+A page token is a position in the requested order, not a snapshot pin. To
+continue, repeat the original options with `NextPageToken` as `PageToken`;
+`ListIterator` and `ListAll` do this. Each page reads the latest data visible
+to the ref, so documents added after the cursor can appear on later pages,
+deleted documents disappear, and a changed sort value can return a document
+again or skip it. A malformed token, an incompatible sort value, or a change to
+the other options returns 400.
 
 ### Response
 

@@ -2,24 +2,24 @@
 
 SDK alignment is pinned to this immutable revision:
 
-- [OpenAPI: docs@7be299af9cac4195b75feb6e38b5cd7f8989f5a0 `reference/api/openapi.json`](https://github.com/lambdadb/docs/blob/7be299af9cac4195b75feb6e38b5cd7f8989f5a0/reference/api/openapi.json),
-  SHA-256 `ec499bb6ad4fd7359c1854359e9ecfd4cd8609420f440f7dcbf75566ccda8f32`,
+- [OpenAPI: docs@9a1f563b9b53bc29e5278105f8fc8c25a17e0cb8 `reference/api/openapi.json`](https://github.com/lambdadb/docs/blob/9a1f563b9b53bc29e5278105f8fc8c25a17e0cb8/reference/api/openapi.json),
+  SHA-256 `269590b8addc8e25785c222938b84e737a9f9dee0a5e8b45c0dde4779bde1b6d`,
   `info.version` `1.3.0`.
 - Backend source of that copy:
-  [lambdadb@f9aa63c79cbac2ac477a76ec45e5015ce665afd1 `api/openapi.json`](https://github.com/lambdadb/lambdadb/blob/f9aa63c79cbac2ac477a76ec45e5015ce665afd1/api/openapi.json),
+  [lambdadb@16c6e46854b13cebd20c501e541bb030b33ca805 `api/openapi.json`](https://github.com/lambdadb/lambdadb/blob/16c6e46854b13cebd20c501e541bb030b33ca805/api/openapi.json),
   as recorded in `reference/api/openapi-source.json` of the same docs commit.
 
 The backend owns the API contract; the public reference copy is
 `reference/api/openapi.json` in [lambdadb/docs](https://github.com/lambdadb/docs),
-pinned by commit and SHA-256. The previous pin (docs@1714009a,
-`info.version` `1.1.1`, SHA-256
-`604e6fdcf0e0a5af2c9ac8714e60d282d0ebfb9847a49371ff0452fac48be070`) differs
-from this revision by Branch-scoped index schemas with the individual Branch,
-Tag, and Alias routes, paginated ref listings, Branches created from Tags, the
-full Collection shape in the create response, and the Branch, Tag, and listing
-semantics of pending writes described below. Use the commit and SHA-256 to
-identify this contract. SDK source alignment is not a live environment test or
-release approval.
+pinned by commit and SHA-256. The `info.version` stays `1.3.0`; use the commit
+and SHA-256 to identify this contract. The previous pin (docs@7be299af,
+SHA-256 `ec499bb6ad4fd7359c1854359e9ecfd4cd8609420f440f7dcbf75566ccda8f32`)
+differs from this revision by the Branch rollback operation, Tags created
+before the first snapshot with nullable snapshot fields, sorted and consistent
+document listing with order-position page tokens, and the listing and Tag
+semantics described below. These two contract steps were published as
+docs@054c799c (#89) and docs@9a1f563b (#90). SDK source alignment is not a live environment
+test or release approval.
 
 ## Read limits
 
@@ -119,16 +119,73 @@ Branch source, and a Branch created from a Tag has a null `parentBranch`.
 The SDK rejects Alias and unknown source kinds locally and leaves the
 Tag-with-`asOf` rejection to the server.
 
-Without `asOf`, a new Branch starts from the source's committed snapshot and
-takes over the writes still pending on the source at creation; a new Tag pins
-the snapshot together with those writes. Ordinary Branch reads use only the
-snapshot, and `consistentRead: true` adds eligible inherited and own pending
-writes. Query and Fetch through a Tag or an Alias targeting a Tag include the
-captured writes but still reject `consistentRead: true`. Pending bulk imports
-become visible only after a background build materializes them. Document
-listing uses only the published snapshot for every ref. With `asOf`, only the
-latest retained committed snapshot at or before the cutoff is selected. These
-are server semantics; request bodies are unchanged.
+Without `asOf`, a new Branch starts from the source's committed snapshot, if
+any, and takes over the writes still pending on the source at creation; a new
+Tag captures the published snapshot, if any, together with those writes.
+Ordinary Branch reads use only the snapshot, and `consistentRead: true` adds
+eligible inherited and own pending writes. Query, Fetch and document List
+through a Tag or an Alias targeting a Tag include the captured writes but
+reject `consistentRead: true`. Bulk imports become visible only after they are
+published. With `asOf`, only the latest retained committed snapshot at or
+before the cutoff is selected. These are server semantics; request bodies are
+unchanged.
+
+## Tags before the first snapshot
+
+A Tag can be created before its source's first snapshot when it captures
+pending writes; a source with neither a snapshot nor pending writes returns
+400. Until a build publishes the Tag's own snapshot, Tag create, get and list
+responses carry explicit null `snapshotId`, `snapshotCommittedAt` and
+`dataUpdatedAt` and `numDocs` 0, and the snapshot ID can change as the
+captured writes are published. The SDK models the three fields as pointers
+(`*string`, `*types.UnixMilliTime`), as it does for an empty Branch's
+`DataUpdatedAt` and `HeadSnapshot`; nil means no published snapshot and
+encodes back as null. The getters keep their signatures and return `""` or the
+zero time. Direct reads of the fields need a nil check; this is a
+source-incompatible change for that code.
+
+## Branch rollback
+
+`POST .../branches/{branchName}/rollback` maps to `Branches().Rollback`. The
+strict body is `{"tag": "<name>"}` (`RollbackBranchInput`); the SDK sends the
+name unchanged and leaves its validation to the server. The 200 response is
+`{"branchId", "headSnapshot"}` (`RollbackBranchResponse`), where the required
+`headSnapshot` is null when the Tag had no published snapshot: the Branch head
+is then empty and the Branch inherits the Tag's captured writes. Otherwise the
+Branch records a new committed snapshot. Each request resolves the Branch by
+name, and a repeated request performs another rollback that can undo
+intervening writes, so `Rollback` never retries: it ignores the client retry
+configuration and `WithRetries`. If two requests replace the same active write
+stream, one returns 409 (`ResourceAlreadyExistsError`). The rollback time is
+not recorded, so `asOf` on the Branch returns 400 for cutoffs between the
+Branch's last snapshot before the rollback and the first one after it.
+
+## Document listing order, consistency and page tokens
+
+Both listings return documents in ascending document ID order by default.
+Each page reads the current published Branch snapshot; listing through a Tag
+or an Alias targeting a Tag also includes the Tag's pending ordinary writes,
+and unpublished bulk imports are excluded. The extended listing adds:
+
+- `sort` (`ListDocsOpts.Sort`): 1 to 4 objects, each mapping one keyword,
+  long, double or datetime field to `asc` or `desc`; ascending document ID
+  breaks ties. Null or omitted keeps the default order. Missing keywords sort
+  last for `asc` and first for `desc`; missing numeric and datetime values sort
+  as zero.
+- `consistentRead` (`ListDocsOpts.ConsistentRead`, default false): includes
+  pending ordinary writes of the Branch and its inherited history as of each
+  page request. When true, `ref.kind` must be `branch` or `alias`; a Tag or an
+  Alias targeting a Tag returns 400.
+
+A page token is an opaque position in the requested order, not a snapshot pin.
+Continue by repeating the original request with `nextPageToken` as
+`pageToken`; later pages include currently visible documents after the cursor,
+and a changed sort value can return a document again or skip it. A malformed
+token, an incompatible sort value or a changed request condition returns 400.
+The SDK sends `sort` and `consistentRead` only when set (a non-nil empty `Sort`
+is sent as `[]` and rejected by the server) and uses the extended endpoint
+when either is set; the iterators repeat every option on each page. It
+performs no local ref or sort validation.
 
 ## Vector dimensions and similarity
 
@@ -246,13 +303,23 @@ and null `indexConfigs` of a dangling Alias, ref list query parameters
 (nothing sent when unset or empty), `List` following every page, the 400 and
 omitted empty `pageToken` on the Collection listing, and the full create
 response; `versioning_test.go` checks Tag sources for Branch creation.
-`download_test.go` checks real HTTP gzip transfers,
+`versioning_contract_test.go` also checks the rollback body, both rollback
+response shapes, the single request under client and per-call retry
+configuration with 409, 429 and 503, and Tags with null snapshot fields in
+create, get and list responses; `contract_alignment_test.go` checks the
+extended list body with and without `sort` and `consistentRead`, the GET
+endpoint when neither is set, the iterator repeating them with the page
+token, and preserved server 400s for Tag consistent reads and changed
+conditions. `download_test.go` checks real HTTP gzip transfers,
 all high-level download callers, metadata, empty/null arrays and corrupted or
 interrupted downloads. These are local SDK tests, not server acceptance tests.
 
 The opt-in `TestIntegrationDataVersioningSmoke` calls the single Branch, Tag
-and Alias reads, the paged Branch listing, the Branch schema update and Branch
-creation from a Tag against a deployed server.
+and Alias reads, the paged Branch listing, the Branch schema update, Branch
+creation from a Tag, and a Branch rollback to a Tag with a published snapshot
+followed by a consistent document listing (and its 400 through a Tag) against
+a deployed server. It does not create a Tag before the first snapshot, which
+depends on build timing, or list with `sort`.
 `TestIntegrationReadLimitsSmoke` checks real query/fetch/GET and POST
 List boundaries with 1000 small documents and no model inference calls.
 `TestIntegrationBayesianNativeEmbeddingSmoke` checks unindexed nested source

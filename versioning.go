@@ -34,6 +34,13 @@ type UpdateBranchInput struct {
 	IndexConfigs map[string]components.IndexConfigsUnion `json:"indexConfigs"`
 }
 
+// RollbackBranchInput selects the tag a branch is rolled back to. Tag is
+// required and names a tag in the same collection; the body has no other
+// fields.
+type RollbackBranchInput struct {
+	Tag string `json:"tag"`
+}
+
 // CreateTagInput configures a new immutable tag. Source may be omitted to
 // create the tag from main. An explicit Source may be a branch or tag in the
 // same collection; AsOf is valid only for a branch source.
@@ -141,9 +148,9 @@ type CollectionBranches struct {
 }
 
 // Create creates a writable branch from a branch or tag. Without AsOf the new
-// branch starts from the source's committed snapshot and takes over the writes
-// still pending on the source at creation; ordinary reads see them after the
-// branch's own build commits them. A branch created from a tag inherits the
+// branch starts from the source's committed snapshot, if any, and takes over
+// the writes still pending on the source at creation; ordinary reads see them
+// after the branch's own build commits them. A branch created from a tag inherits the
 // tag's pinned schema and captured writes and has a nil ParentBranch.
 func (b *CollectionBranches) Create(ctx context.Context, input CreateBranchInput, opts ...operations.Option) (*BranchDetails, error) {
 	if input.Source != nil && input.Source.Kind != RefSourceKindBranch && input.Source.Kind != RefSourceKindTag {
@@ -213,6 +220,42 @@ func (b *CollectionBranches) Update(ctx context.Context, branchName string, inpu
 		return nil, err
 	}
 	return &response.Branch, nil
+}
+
+// Rollback restores a branch's data and index schema from a tag in the same
+// collection and returns the committed result. The branch keeps its identity.
+// When the tag has a published snapshot, the branch records a new committed
+// snapshot, returned as HeadSnapshot. When the tag has no published snapshot
+// yet, HeadSnapshot is nil: the branch head becomes empty and the branch
+// inherits the tag's captured writes, like a branch created from that tag, so
+// ordinary reads and document listing return no documents until a build
+// publishes them, while ConsistentRead includes the eligible ones.
+//
+// Each request resolves the branch by name, and sending it again performs
+// another rollback that can undo intervening writes. Rollback therefore never
+// retries automatically: the client retry configuration and WithRetries are
+// ignored, and a failed or timed-out call may already have been applied, so
+// check the branch with Get before repeating it. Writes admitted before the
+// rollback may still complete on the previous stream. If two requests replace
+// the same write stream, one returns ResourceAlreadyExistsError (409).
+func (b *CollectionBranches) Rollback(ctx context.Context, branchName string, input RollbackBranchInput, opts ...operations.Option) (*RollbackBranchResponse, error) {
+	// The last retry option wins; copy opts so the caller's slice is not modified.
+	opts = append(opts[:len(opts):len(opts)], operations.WithRetries(retry.Config{Strategy: "none"}))
+	var response RollbackBranchResponse
+	err := b.collection.client.doVersioningRequest(
+		ctx,
+		http.MethodPost,
+		"rollbackBranch",
+		[]string{"collections", b.collection.name, "branches", branchName, "rollback"},
+		input,
+		http.StatusOK,
+		&response,
+		opts...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
 }
 
 // List lists all branches in the collection, in name order. The listing is
@@ -316,11 +359,15 @@ type CollectionTags struct {
 	collection *Collection
 }
 
-// Create creates an immutable tag from a branch or tag. Without AsOf the tag
-// pins the source's committed snapshot together with the writes still pending
-// on the source at that moment; query and fetch reads of the tag include those
-// captured writes, except pending bulk imports. With AsOf the tag pins only the
-// selected committed snapshot.
+// Create creates a fixed, read-only tag from a branch or tag. Without AsOf the
+// tag captures the source's published snapshot, if any, together with the
+// writes still pending on the source at that moment; query, fetch and document
+// listing through the tag include those captured writes, except bulk imports
+// until they are published. A tag can therefore be created before the first
+// snapshot: its SnapshotID, SnapshotCommittedAt and DataUpdatedAt are then nil
+// and NumDocs is 0. A source with neither a snapshot nor pending writes
+// returns BadRequestError. With AsOf the tag pins only the selected committed
+// snapshot.
 func (t *CollectionTags) Create(ctx context.Context, input CreateTagInput, opts ...operations.Option) (*TagDetails, error) {
 	var response struct {
 		Tag TagDetails `json:"tag"`
@@ -341,8 +388,10 @@ func (t *CollectionTags) Create(ctx context.Context, input CreateTagInput, opts 
 	return &response.Tag, nil
 }
 
-// Get returns one tag with the index schema and data statistics of the
-// snapshot it pins. A name that is not a tag returns ResourceNotFoundError.
+// Get returns one tag with its fixed index schema and the statistics of its
+// current published snapshot. Before the first publication NumDocs is 0 and
+// SnapshotID, SnapshotCommittedAt and DataUpdatedAt are nil. A name that is
+// not a tag returns ResourceNotFoundError.
 func (t *CollectionTags) Get(ctx context.Context, tagName string, opts ...operations.Option) (*TagDetails, error) {
 	var response struct {
 		Tag TagDetails `json:"tag"`

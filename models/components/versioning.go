@@ -202,17 +202,47 @@ func (r *BranchDetails) GetCreatedAt() time.Time {
 	return r.CreatedAt.Time
 }
 
-// TagDetails describes an immutable tag: the snapshot it pins with that
-// snapshot's index schema and data statistics.
+// RollbackBranchResponse is the committed result of a branch rollback.
+type RollbackBranchResponse struct {
+	// Identity of the rolled-back branch, which keeps its identity.
+	BranchID string `json:"branchId"`
+	// New head committed on the branch by this rollback; nil when the tag had
+	// no published snapshot, which leaves the branch head empty.
+	HeadSnapshot *SnapshotDetails `json:"headSnapshot"`
+}
+
+func (r *RollbackBranchResponse) GetBranchID() string {
+	if r == nil {
+		return ""
+	}
+	return r.BranchID
+}
+
+func (r *RollbackBranchResponse) GetHeadSnapshot() *SnapshotDetails {
+	if r == nil {
+		return nil
+	}
+	return r.HeadSnapshot
+}
+
+// TagDetails describes a fixed, read-only tag: its index schema and the
+// statistics of its current published snapshot. A tag can be created before
+// its first snapshot is published; SnapshotID, SnapshotCommittedAt and
+// DataUpdatedAt are then nil and NumDocs is 0.
 type TagDetails struct {
-	Name       string `json:"name"`
-	SnapshotID string `json:"snapshotId"`
-	// Pinned snapshot commit time, independent of tag creation time.
-	SnapshotCommittedAt types.UnixMilliTime `json:"snapshotCommittedAt"`
-	// Document count in the pinned snapshot.
+	Name string `json:"name"`
+	// Current published snapshot; nil before the first publication. It may
+	// change as the writes the tag captured are published.
+	SnapshotID *string `json:"snapshotId"`
+	// Current snapshot commit time, independent of tag creation time; nil
+	// before the first publication.
+	SnapshotCommittedAt *types.UnixMilliTime `json:"snapshotCommittedAt"`
+	// Document count in the current published snapshot; 0 before the first
+	// publication.
 	NumDocs int64 `json:"numDocs"`
-	// Last data update of the pinned snapshot.
-	DataUpdatedAt types.UnixMilliTime `json:"dataUpdatedAt"`
+	// Last data update in the current snapshot; nil before the first
+	// publication.
+	DataUpdatedAt *types.UnixMilliTime `json:"dataUpdatedAt"`
 	// Index schema pinned by the tag. It does not change when branches are
 	// updated afterwards.
 	IndexConfigs map[string]IndexConfigsUnion `json:"indexConfigs"`
@@ -226,15 +256,19 @@ func (r *TagDetails) GetName() string {
 	return r.Name
 }
 
+// GetSnapshotID returns the current published snapshot ID, or "" before the
+// first publication.
 func (r *TagDetails) GetSnapshotID() string {
-	if r == nil {
+	if r == nil || r.SnapshotID == nil {
 		return ""
 	}
-	return r.SnapshotID
+	return *r.SnapshotID
 }
 
+// GetSnapshotCommittedAt returns the current snapshot commit time, or the zero
+// time before the first publication.
 func (r *TagDetails) GetSnapshotCommittedAt() time.Time {
-	if r == nil {
+	if r == nil || r.SnapshotCommittedAt == nil {
 		return time.Time{}
 	}
 	return r.SnapshotCommittedAt.Time
@@ -247,9 +281,10 @@ func (r *TagDetails) GetNumDocs() int64 {
 	return r.NumDocs
 }
 
-// GetDataUpdatedAt returns the last data update of the pinned snapshot.
+// GetDataUpdatedAt returns the last data update in the current snapshot, or
+// the zero time before the first publication.
 func (r *TagDetails) GetDataUpdatedAt() time.Time {
-	if r == nil {
+	if r == nil || r.DataUpdatedAt == nil {
 		return time.Time{}
 	}
 	return r.DataUpdatedAt.Time

@@ -143,8 +143,8 @@ func main() {
 Use `client.Collection("name")` for operations on a single collection (no need to pass the collection name on every call):
 
 * **Collection**: Get, Update, Delete, **Query** (metadata and search). When the API returns `isDocsInline=false` and `docsUrl`, Query automatically fetches docs from the presigned URL so `result.Docs` is always populated.
-* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, GetBulkUpsertInfoForBranch, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, `Fields`, or `Ref` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete); it applies the same Branch to both bulk control calls. Bulk upload size is governed by `SizeLimitBytes` from the server; `lambdadb.MaxBulkUpsertPayloadBytes` is a 200 MiB reference value. See the [document API guide](docs/sdks/docs/README.md) for details.
-* **Collection.Branches()**: Create, Get, Update (index schema), List, ListPage, ListIterator, and Delete writable branches.
+* **Collection.Docs()**: List, Upsert, **Fetch**, Update, Delete, GetBulkUpsertInfo, GetBulkUpsertInfoForBranch, BulkUpsert, **BulkUpsertDocuments** (document operations). List supports `includeVectors` and uses the extended list endpoint automatically when `Filter`, `PartitionFilter`, `Fields`, `Ref`, `Sort`, or `ConsistentRead` is set. List and Fetch do the same presigned-URL resolution for docs when the API returns `isDocsInline=false` and `docsUrl`. Use `BulkUpsertDocuments` for a one-step bulk upload (presigned URL + upload + complete); it applies the same Branch to both bulk control calls. Bulk upload size is governed by `SizeLimitBytes` from the server; `lambdadb.MaxBulkUpsertPayloadBytes` is a 200 MiB reference value. See the [document API guide](docs/sdks/docs/README.md) for details.
+* **Collection.Branches()**: Create, Get, Update (index schema), Rollback (to a tag), List, ListPage, ListIterator, and Delete writable branches.
 * **Collection.Tags()**: Create, Get, List, ListPage, ListIterator, and Delete immutable tags.
 * **Collection.Aliases()**: Create, Get, List, ListPage, ListIterator, Retarget, and Delete aliases. See the [Data Versioning API guide](docs/sdks/versioning/README.md).
 
@@ -170,7 +170,7 @@ branch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 	Source:     lambdadb.BranchSource("main"),
 })
 
-// Tag creation requires a nonempty committed head; verify committed reads first.
+// The tag captures the published snapshot and the writes still pending on the branch.
 tag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
 	TagName: "validated-2026-09",
 	Source:  lambdadb.BranchSource(branch.Name),
@@ -192,8 +192,12 @@ Every Branch, Tag, and Alias response carries `IndexConfigs`; Branches and Tags
 also carry `NumDocs` and `DataUpdatedAt`. A Branch owns its index schema: read
 one ref with `Get` and add fields to one Branch with `Branches().Update`.
 `List` returns every ref; `ListPage` and `ListIterator` page through them with
-`ListRefsOpts`. See the [versioning guide](docs/sdks/versioning/README.md)
-for examples and snapshot semantics.
+`ListRefsOpts`. `Branches().Rollback` restores a Branch's data and index
+schema from a Tag; it is never retried automatically, because a repeat can
+undo intervening writes. A Tag created before the first snapshot has nil
+`SnapshotID`, `SnapshotCommittedAt` and `DataUpdatedAt` and `NumDocs` 0. See
+the [versioning guide](docs/sdks/versioning/README.md) for examples and
+snapshot semantics.
 
 Select a branch, tag, or alias for reads with `Ref`. Simple document lists
 automatically use the extended list endpoint when a ref is supplied.
@@ -229,8 +233,9 @@ _, err := collection.Docs().Upsert(ctx, lambdadb.UpsertDocsInput{
 when `Ref` is omitted, or an Alias that currently targets a Branch, which the
 server resolves when the request is admitted. Tag reads and Aliases targeting
 Tags reject it with 400. False or omitted is valid for Branch, Tag, and Alias
-reads. Document List has no consistent-read option and returns only the
-published snapshot for every ref. Tags are immutable; Aliases resolve at
+reads. Document List accepts the same `ConsistentRead` option in
+`ListDocsOpts`; listing through a Tag or an Alias targeting a Tag always
+includes the Tag's pending ordinary writes. Tags are fixed; Aliases resolve at
 request time and can be retargeted.
 
 <!-- Start Pagination [pagination] -->
@@ -299,7 +304,7 @@ Use when you need the full list in memory; avoid on very large datasets.
 	branches, err := client.Collection("my-collection").Branches().List(ctx) // every page
 ```
 
-For filtered scans or field selection, pass the extended list options through `ListDocsOpts`; the SDK will use the extended list endpoint automatically.
+For filtered or sorted scans, consistent reads, or field selection, pass the extended list options through `ListDocsOpts`; the SDK will use the extended list endpoint automatically. A page token is a position in the requested order: the iterators repeat the other options unchanged on every page, and each page reads the current data.
 
 <!-- End Pagination [pagination] -->
 
@@ -407,7 +412,9 @@ for 413. Inspect `APIError.StatusCode` / `RawResponse`, or a typed error's
 a name collision. A 429 can also mean too much pending data for a consistent
 read; `Retry-After` is honored when present and is not guaranteed.
 
-The existing retry policy retries 429 and 5xx responses. A failed or timed-out
+The existing retry policy retries 429 and 5xx responses. `Branches().Rollback`
+is the exception: a repeated rollback can undo intervening writes, so it sends
+one request and ignores every retry configuration. A failed or timed-out
 write may already have been applied. To check the outcome before repeating a
 mutation, disable automatic retries for that call with
 `operations.WithRetries(retry.Config{Strategy: "none"})`, then verify its

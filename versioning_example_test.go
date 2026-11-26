@@ -59,3 +59,38 @@ func ExampleBranchDetails_parentBranch() {
 	// main-id main
 	// true true
 }
+
+func ExampleRollbackBranchResponse() {
+	// A tag without a published snapshot leaves the branch head empty.
+	var restored lambdadb.RollbackBranchResponse
+	if err := json.Unmarshal([]byte(`{"branchId":"main-branch-id","headSnapshot":null}`), &restored); err != nil {
+		panic(err)
+	}
+	if head := restored.GetHeadSnapshot(); head != nil {
+		fmt.Println(restored.BranchID, "restored to", head.SnapshotID)
+	} else {
+		fmt.Println(restored.BranchID, "has an empty head")
+	}
+	// Output: main-branch-id has an empty head
+}
+
+func ExampleTagDetails_beforeFirstSnapshot() {
+	// A tag created before the first snapshot has no snapshot fields yet.
+	var tag lambdadb.TagDetails
+	if err := json.Unmarshal([]byte(`{"name":"pending","snapshotId":null,"snapshotCommittedAt":null,"numDocs":0,"dataUpdatedAt":null,"indexConfigs":{"id":{"type":"keyword"}},"createdAt":1788336000123}`), &tag); err != nil {
+		panic(err)
+	}
+	fmt.Println(tag.SnapshotID == nil, tag.GetSnapshotID() == "", tag.GetSnapshotCommittedAt().IsZero(), tag.NumDocs)
+	// Output: true true true 0
+}
+
+func ExampleListDocsOpts_sort() {
+	opts := lambdadb.ListDocsOpts{
+		Size:           lambdadb.Int64(10),
+		Sort:           []map[string]any{{"category": "asc"}, {"publishedAt": "desc"}},
+		ConsistentRead: lambdadb.Bool(true),
+	}
+
+	fmt.Println(opts.Sort[0]["category"], opts.Sort[1]["publishedAt"], *opts.ConsistentRead)
+	// Output: asc desc true
+}
