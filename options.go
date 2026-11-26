@@ -14,7 +14,9 @@ import (
 type ListDocsOpts struct {
 	// Number of documents per page, from 1 to 1000. The server default is 100.
 	Size *int64
-	// Next page token for pagination.
+	// Opaque position in the requested order, returned as NextPageToken.
+	// Repeat the other options unchanged with it; a malformed token or a
+	// change to the request conditions returns 400.
 	PageToken *string
 	// Include vector values in the response.
 	IncludeVectors *bool
@@ -28,6 +30,18 @@ type ListDocsOpts struct {
 	// extended list endpoint. A missing ref returns ResourceNotFoundError; a
 	// dangling alias returns BadRequestError.
 	Ref *RefContext
+	// Sort order: 1 to 4 objects, each mapping one keyword, long, double or
+	// datetime field name to "asc" or "desc", applied in the given order.
+	// Ascending document ID breaks ties and is the order when Sort is nil.
+	// When set, the SDK uses the extended list endpoint. Nil sends no sort; a
+	// non-nil empty slice is sent as [] and rejected by the server.
+	Sort []map[string]any
+	// Include pending ordinary writes of the branch and its inherited history
+	// as of each page request. Valid for a branch (including the default main)
+	// or an alias that targets a branch; tags and aliases targeting tags
+	// reject true with 400. When set, the SDK uses the extended list endpoint.
+	// Nil sends no consistentRead (server default false).
+	ConsistentRead *bool
 }
 
 // ListCollectionsOpts holds optional parameters for listing collections.
@@ -93,8 +107,11 @@ type ParentBranchDetails = components.ParentBranchDetails
 // BranchDetails describes a branch and its current head and fixed creation source.
 type BranchDetails = components.BranchDetails
 
-// TagDetails describes a tag and its pinned snapshot.
+// TagDetails describes a tag and its current published snapshot, if any.
 type TagDetails = components.TagDetails
+
+// RollbackBranchResponse is the committed result of Branches().Rollback.
+type RollbackBranchResponse = components.RollbackBranchResponse
 
 // AliasDetails describes an alias returned by the Data Versioning API.
 type AliasDetails = components.AliasDetails

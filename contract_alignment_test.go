@@ -257,3 +257,112 @@ func TestPublicAPI_ConsistentReadRefConditions(t *testing.T) {
 		}
 	}
 }
+
+// Contract: lambdadb/docs@9a1f563b9b53bc29e5278105f8fc8c25a17e0cb8. Sort and
+// ConsistentRead select the extended list endpoint and are sent only when set;
+// an unset value adds no key, so existing extended list bodies are unchanged.
+func TestPublicAPI_ListDocsSortAndConsistentRead(t *testing.T) {
+	const listURL = "https://api.example.com/projects/project-list/collections/articles/docs/list"
+	for _, tc := range []struct {
+		name     string
+		listOpts *lambdadb.ListDocsOpts
+		want     map[string]any // nil means the GET endpoint
+	}{
+		{"neither", &lambdadb.ListDocsOpts{Size: lambdadb.Int64(10)}, nil},
+		{"sort", &lambdadb.ListDocsOpts{Sort: []map[string]any{{"category": "asc"}, {"publishedAt": "desc"}}},
+			map[string]any{"sort": []any{map[string]any{"category": "asc"}, map[string]any{"publishedAt": "desc"}}, "includeVectors": false}},
+		{"empty_sort", &lambdadb.ListDocsOpts{Sort: []map[string]any{}}, map[string]any{"sort": []any{}, "includeVectors": false}},
+		{"consistent_read", &lambdadb.ListDocsOpts{ConsistentRead: lambdadb.Bool(true)}, map[string]any{"consistentRead": true, "includeVectors": false}},
+		{"consistent_read_false", &lambdadb.ListDocsOpts{ConsistentRead: lambdadb.Bool(false)}, map[string]any{"consistentRead": false, "includeVectors": false}},
+		{"ref_without_new_fields", &lambdadb.ListDocsOpts{Ref: lambdadb.BranchRef("candidate")},
+			map[string]any{"ref": map[string]any{"kind": "branch", "name": "candidate"}, "includeVectors": false}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+				func(req *http.Request) *http.Response {
+					if tc.want == nil {
+						assertRequest(t, req, http.MethodGet, "https://api.example.com/projects/project-list/collections/articles/docs")
+					} else {
+						assertRequest(t, req, http.MethodPost, listURL)
+						if body := decodeJSONBody(t, req); !reflect.DeepEqual(body, tc.want) {
+							t.Fatalf("body = %#v, want %#v", body, tc.want)
+						}
+					}
+					return jsonResponse(http.StatusOK, `{"total":0,"docs":[],"isDocsInline":true}`)
+				},
+			}}
+			client := lambdadb.New(lambdadb.WithBaseURL("https://api.example.com"), lambdadb.WithProjectName("project-list"), lambdadb.WithClient(mock))
+			if _, err := client.Collection("articles").Docs().List(context.Background(), tc.listOpts); err != nil {
+				t.Fatal(err)
+			}
+			mock.assertDone()
+		})
+	}
+}
+
+// A page token is a position in the requested order, so every page repeats the
+// original request body, including Sort and ConsistentRead, with the token.
+func TestPublicAPI_ListDocsIteratorRepeatsSortAndConsistentRead(t *testing.T) {
+	sortOrder := []any{map[string]any{"category": "asc"}}
+	wantTokens := []any{nil, "page-2"}
+	nextTokens := []string{`,"nextPageToken":"page-2"`, ""}
+	var handlers []func(*http.Request) *http.Response
+	for i := range wantTokens {
+		handlers = append(handlers, func(req *http.Request) *http.Response {
+			want := map[string]any{"size": float64(10), "sort": sortOrder, "consistentRead": true, "includeVectors": false,
+				"ref": map[string]any{"kind": "alias", "name": "serving"}}
+			if wantTokens[i] != nil {
+				want["pageToken"] = wantTokens[i]
+			}
+			if body := decodeJSONBody(t, req); !reflect.DeepEqual(body, want) {
+				t.Fatalf("page %d body = %#v, want %#v", i+1, body, want)
+			}
+			return jsonResponse(http.StatusOK, `{"total":2,"docs":[{"collection":"articles","doc":{"id":"doc-`+strconv.Itoa(i+1)+`"}}],"isDocsInline":true`+nextTokens[i]+`}`)
+		})
+	}
+	mock := &publicAPIMockClient{t: t, handlers: handlers}
+	docs, err := lambdadb.New(lambdadb.WithClient(mock)).Collection("articles").Docs().ListAll(context.Background(), &lambdadb.ListDocsOpts{
+		Size:           lambdadb.Int64(10),
+		Sort:           []map[string]any{{"category": "asc"}},
+		ConsistentRead: lambdadb.Bool(true),
+		Ref:            lambdadb.AliasRef("serving"),
+	})
+	if err != nil || len(docs) != 2 || docs[0]["id"] != "doc-1" || docs[1]["id"] != "doc-2" {
+		t.Fatalf("ListAll() = %#v, %v", docs, err)
+	}
+	mock.assertDone()
+}
+
+// consistentRead: true on a tag or tag alias, a changed request condition and an
+// incompatible sort are rejected by the server; the SDK forwards them unchanged
+// and preserves the 400.
+func TestPublicAPI_ListDocsServerRejections(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		listOpts *lambdadb.ListDocsOpts
+	}{
+		{"consistent_read_tag", &lambdadb.ListDocsOpts{Ref: lambdadb.TagRef("release"), ConsistentRead: lambdadb.Bool(true)}},
+		{"consistent_read_tag_alias", &lambdadb.ListDocsOpts{Ref: lambdadb.AliasRef("tag-alias"), ConsistentRead: lambdadb.Bool(true)}},
+		{"changed_condition", &lambdadb.ListDocsOpts{Sort: []map[string]any{{"category": "desc"}}, PageToken: lambdadb.String("token-for-asc")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+				func(req *http.Request) *http.Response {
+					body := decodeJSONBody(t, req)
+					if tc.listOpts.Ref != nil {
+						assertRef(t, body, string(tc.listOpts.Ref.Kind), tc.listOpts.Ref.Name)
+						if body["consistentRead"] != true {
+							t.Fatalf("consistentRead = %v, want true", body["consistentRead"])
+						}
+					} else if body["pageToken"] != "token-for-asc" {
+						t.Fatalf("pageToken = %v", body["pageToken"])
+					}
+					return jsonResponse(http.StatusBadRequest, `{"message":"invalid list request"}`)
+				},
+			}}
+			_, err := lambdadb.New(lambdadb.WithClient(mock)).Collection("articles").Docs().List(context.Background(), tc.listOpts)
+			assertRefReadError(t, err, http.StatusBadRequest, "invalid list request")
+			mock.assertDone()
+		})
+	}
+}

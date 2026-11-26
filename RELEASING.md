@@ -321,7 +321,11 @@ Alias with `Get` and compares their `IndexConfigs` with `main` and the
 Collection, walks the Branch listing one entry per page with `ListPage` and
 `ListIterator` against the complete `List`, adds a field to one Branch with
 `Branches().Update` and checks that `main` and the Collection do not gain it,
-and creates a Branch from a Tag. Run it only in an environment where creating and deleting that
+and creates a Branch from a Tag. It rolls the schema-updated Branch back to a
+Tag with a published snapshot with `Branches().Rollback`, checks the new head,
+the restored schema and a restored document, lists the Branch with
+`ConsistentRead: true`, and checks that the same listing through the Tag
+returns 400. Run it only in an environment where creating and deleting that
 temporary data is authorized. The API key must remain local and must not be
 printed in logs or review artifacts.
 

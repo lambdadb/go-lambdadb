@@ -225,6 +225,8 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 	var partitionFilter *components.PartitionFilter
 	var fields *components.FieldsSelectorUnion
 	var ref *components.RefContext
+	var sort []map[string]any
+	var consistentRead *bool
 	if listOpts != nil {
 		size = listOpts.Size
 		pageToken = listOpts.PageToken
@@ -233,18 +235,22 @@ func (d *CollectionDocs) List(ctx context.Context, listOpts *ListDocsOpts, opts 
 		partitionFilter = listOpts.PartitionFilter
 		fields = listOpts.Fields
 		ref = listOpts.Ref
+		sort = listOpts.Sort
+		consistentRead = listOpts.ConsistentRead
 	}
 	var res *operations.ListDocsResponse
 	var err error
-	if filter != nil || partitionFilter != nil || fields != nil || ref != nil {
+	if filter != nil || partitionFilter != nil || fields != nil || ref != nil || sort != nil || consistentRead != nil {
 		res, err = d.client.docs.ListExtended(ctx, d.name, operations.ListDocsExtendedRequestBody{
 			Size:            size,
 			PageToken:       pageToken,
+			Sort:            sort,
 			Filter:          filter,
 			PartitionFilter: partitionFilter,
 			Fields:          fields,
 			IncludeVectors:  includeVectors,
 			Ref:             ref,
+			ConsistentRead:  consistentRead,
 		}, opts...)
 	} else {
 		res, err = d.client.docs.List(ctx, d.name, size, pageToken, includeVectors, opts...)
@@ -283,6 +289,8 @@ type DocListIterator struct {
 	partitionFilter *components.PartitionFilter
 	fields          *components.FieldsSelectorUnion
 	ref             *components.RefContext
+	sort            []map[string]any
+	consistentRead  *bool
 	done            bool
 	callOpts        []operations.Option
 }
@@ -305,6 +313,8 @@ func (d *CollectionDocs) ListIterator(ctx context.Context, listOpts *ListDocsOpt
 		it.partitionFilter = listOpts.PartitionFilter
 		it.fields = listOpts.Fields
 		it.ref = listOpts.Ref
+		it.sort = listOpts.Sort
+		it.consistentRead = listOpts.ConsistentRead
 	}
 	return it
 }
@@ -316,15 +326,17 @@ func (it *DocListIterator) Next(ctx context.Context) (*ListDocsResult, error) {
 	}
 	var res *operations.ListDocsResponse
 	var err error
-	if it.filter != nil || it.partitionFilter != nil || it.fields != nil || it.ref != nil {
+	if it.filter != nil || it.partitionFilter != nil || it.fields != nil || it.ref != nil || it.sort != nil || it.consistentRead != nil {
 		res, err = it.docs.ListExtended(ctx, it.name, operations.ListDocsExtendedRequestBody{
 			Size:            it.size,
 			PageToken:       it.nextToken,
+			Sort:            it.sort,
 			Filter:          it.filter,
 			PartitionFilter: it.partitionFilter,
 			Fields:          it.fields,
 			IncludeVectors:  it.includeVectors,
 			Ref:             it.ref,
+			ConsistentRead:  it.consistentRead,
 		}, it.callOpts...)
 	} else {
 		res, err = it.docs.List(ctx, it.name, it.size, it.nextToken, it.includeVectors, it.callOpts...)

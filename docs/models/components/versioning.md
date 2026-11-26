@@ -85,15 +85,19 @@ a `*ListTagsResult`.
 | Field | Type | Description |
 | --- | --- | --- |
 | `Name` | `string` | Tag name. |
-| `SnapshotID` | `string` | Immutable pinned snapshot; a Tag cannot pin an empty head. |
-| `SnapshotCommittedAt` | `types.UnixMilliTime` | Pinned snapshot commit time. |
-| `NumDocs` | `int64` | Document count in the pinned snapshot. |
-| `DataUpdatedAt` | `types.UnixMilliTime` | Last data update of the pinned snapshot. |
+| `SnapshotID` | `*string` | Current published snapshot; nil before the first publication. It can change as the Tag's captured writes are published. `GetSnapshotID()` returns `""` when nil. |
+| `SnapshotCommittedAt` | `*types.UnixMilliTime` | Current snapshot commit time; nil before the first publication. |
+| `NumDocs` | `int64` | Document count in the current published snapshot; 0 before the first publication. |
+| `DataUpdatedAt` | `*types.UnixMilliTime` | Last data update in the current snapshot; nil before the first publication. |
 | `IndexConfigs` | `map[string]components.IndexConfigsUnion` | Index schema pinned by the Tag; with a source `AsOf`, the selected snapshot's schema. |
 | `CreatedAt` | `types.UnixMilliTime` | Tag creation time, independent of snapshot commit time. |
 
 `GetSnapshotCommittedAt()`, `GetDataUpdatedAt()` and `GetCreatedAt()` return
-`time.Time`.
+`time.Time`; the first two return the zero time when the field is nil. A Tag
+can be created before its source's first snapshot when it captures pending
+writes; `SnapshotID`, `SnapshotCommittedAt` and `DataUpdatedAt` then decode
+from explicit JSON null to nil and encode back as null. Before contract
+`docs@9a1f563`, these fields were `string` and `types.UnixMilliTime`.
 
 ## AliasTarget
 
@@ -120,6 +124,24 @@ Alias, which `Aliases().Get` still returns.
 
 It is the whole request body of `Branches().Update`; description, tags and
 snapshot retention stay on the Collection.
+
+## RollbackBranchInput
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `Tag` | `string` | Yes | Tag in the same Collection whose data and index schema the Branch is restored to. |
+
+It is the whole request body of `Branches().Rollback`.
+
+## RollbackBranchResponse
+
+`Branches().Rollback` returns `*RollbackBranchResponse`, available from both
+the root package and `models/components`, with nil-safe getters.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `BranchID` | `string` | Identity of the rolled-back Branch, which is unchanged. |
+| `HeadSnapshot` | `*SnapshotDetails` | New head committed by the rollback; nil, and encoded as explicit JSON null, when the Tag had no published snapshot, which leaves the Branch head empty. |
 
 ## ListRefsOpts
 

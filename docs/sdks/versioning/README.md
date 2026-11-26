@@ -7,13 +7,14 @@ and read targets.
 
 | Resource | Operations |
 | --- | --- |
-| `collection.Branches()` | `Create`, `Get`, `Update`, `List`, `ListPage`, `ListIterator`, `Delete` |
+| `collection.Branches()` | `Create`, `Get`, `Update`, `Rollback`, `List`, `ListPage`, `ListIterator`, `Delete` |
 | `collection.Tags()` | `Create`, `Get`, `List`, `ListPage`, `ListIterator`, `Delete` |
 | `collection.Aliases()` | `Create`, `Get`, `List`, `ListPage`, `ListIterator`, `Retarget`, `Delete` |
 
 All methods are synchronous and accept `context.Context` and optional
 `operations.Option` values. There is no separate async client or method set.
-Branch Create/Get/Update return `*BranchDetails`; Tag Create/Get return
+Branch Create/Get/Update return `*BranchDetails`, Branch Rollback a
+`*RollbackBranchResponse`; Tag Create/Get return
 `*TagDetails`; Alias Create/Get/Retarget return `*AliasDetails`. `List` returns
 every ref as a slice, `ListPage` one page (`*ListBranchesResult`,
 `*ListTagsResult`, `*ListAliasesResult`). Delete methods return a
@@ -29,8 +30,8 @@ branch, err := collection.Branches().Create(ctx, lambdadb.CreateBranchInput{
 	Source:     lambdadb.BranchSource("main"),
 })
 
-// First verify the intended committed data on candidate with ConsistentRead: false.
-// Tag creation requires a nonempty committed head.
+// The tag captures the published snapshot of candidate, if any, and the writes
+// still pending on it.
 tag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
 	TagName: "validated-2026-09",
 	Source:  lambdadb.BranchSource(branch.Name),
@@ -98,20 +99,23 @@ copiedTag, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{
 })
 ```
 
-Tags are immutable. Without `AsOf`, a new Branch starts from the source's
-committed snapshot and also takes over the writes still pending on the source
+Tags are fixed and read-only. Without `AsOf`, a new Branch starts from the
+source's committed snapshot, if any, and also takes over the writes still pending on the source
 at creation. They are not part of its snapshot yet: ordinary reads see them
 after the Branch's own build commits them, and `ConsistentRead: true` on the
 Branch includes the eligible ones immediately. Writes that reach the source
-afterwards do not appear on the new Branch. A Tag created without `AsOf` pins
-the source's committed snapshot together with the writes still pending at that
-moment; Query and Fetch through the Tag include those captured writes, except
-pending bulk imports, which appear after a background build materializes them.
+afterwards do not appear on the new Branch. A Tag created without `AsOf`
+captures the source's published snapshot, if any, together with the writes
+still pending at that moment; Query, Fetch, and document List through the Tag,
+or an Alias targeting it, include those captured writes, except bulk imports,
+which appear after they are published.
 With `AsOf`, a Branch or Tag takes only the latest retained committed snapshot
 at or before the cutoff, without pending or inherited writes.
 
 An empty source can produce an empty Branch with a non-nil `ParentBranch` and
-nil snapshots; a Tag requires a nonempty committed head.
+nil snapshots. A Tag can be created before the source's first snapshot if it
+captures pending writes; a source with neither a snapshot nor pending writes
+returns 400 for Tag creation.
 Unavailable `asOf` history returns 400 for either Branch or Tag creation.
 Retention is Collection scoped. Index schemas are Branch scoped; Tag reads
 retain their pinned schema.
@@ -134,8 +138,21 @@ entries) carries `IndexConfigs`. Branches and Tags also carry `NumDocs` and
 - A Branch reports its own schema and the statistics of its committed head.
   An empty Branch has `NumDocs` 0 and a nil `DataUpdatedAt`;
   `GetDataUpdatedAt()` then returns the zero time.
-- A Tag reports the schema and statistics of the snapshot it pins. Both are
-  immutable.
+- A Tag reports its fixed schema and the statistics of its current published
+  snapshot, which can change as the writes the Tag captured are published.
+  Before the first publication its `NumDocs` is 0 and `SnapshotID`,
+  `SnapshotCommittedAt` and `DataUpdatedAt` are nil; `GetSnapshotID()` then
+  returns `""` and the time getters return the zero time:
+
+  ```go
+  tag, err := collection.Tags().Get(ctx, "validated-2026-09")
+  if err != nil {
+      return err
+  }
+  if tag.SnapshotID == nil {
+      // No published snapshot yet; reads through the tag still include its captured writes.
+  }
+  ```
 - An Alias reports the schema its readers currently get: the target Branch's
   current schema or the target Tag's pinned schema. A dangling Alias is still
   returned by `Get`, with `Dangling` true and nil `IndexConfigs`.
@@ -217,6 +234,48 @@ only when they are set and never sends an empty `pageToken`; the server
 rejects an empty or malformed token, an out-of-range size, and any other query
 parameter with 400. Each entry has the same shape as the single-ref response.
 
+## Roll back a branch
+
+`Rollback` restores a Branch's data and index schema from a Tag in the same
+Collection. The Branch keeps its identity (`BranchID`).
+
+```go
+restored, err := collection.Branches().Rollback(ctx, "main", lambdadb.RollbackBranchInput{
+	Tag: "validated-2026-09",
+})
+if err != nil {
+	return err
+}
+if restored.HeadSnapshot == nil {
+	// The tag had no published snapshot: the head is empty and the branch
+	// inherits the tag's captured writes.
+}
+```
+
+- When the Tag has a published snapshot, the Branch records a new committed
+  snapshot, returned as `HeadSnapshot`. Ordinary reads show the restored
+  snapshot; `ConsistentRead: true` also includes eligible inherited and new
+  writes. Bulk writes appear after they are built.
+- When the Tag has no published snapshot yet, `HeadSnapshot` is nil in the
+  response and in the Branch details. The Branch inherits the Tag's captured
+  writes, like a Branch created from that Tag: ordinary reads and document
+  List return no documents until a build publishes them, while
+  `ConsistentRead: true` includes the eligible ones.
+- The rollback time is not recorded: `AsOf` on this Branch returns 400 for
+  cutoffs between its last snapshot before the rollback and the first
+  snapshot published after it.
+- Writes admitted before the rollback may still complete on the previous
+  write stream.
+
+Each request resolves the Branch by name, and sending it again performs another
+rollback that can undo intervening writes. `Rollback` therefore sends exactly
+one request: it ignores the client retry configuration and `WithRetries`, for
+429, 5xx and connection errors alike. A failed or timed-out call may already
+have been applied; read the Branch with `Get` before deciding to repeat it. If
+two requests replace the same write stream, one succeeds and the other returns
+`ResourceAlreadyExistsError` (409). `RollbackBranchInput` has only `Tag`; the
+server validates the name.
+
 ## Retarget an alias
 
 Aliases bind to target identity. Deleting a non-default Branch or a Tag returns
@@ -268,14 +327,16 @@ snapshot, excludes pending bulk imports until a background build materializes
 them, and can return 429 when the eligible pending payload exceeds the limit.
 Ordinary Branch reads use only the snapshot. Tag reads and an Alias that
 targets a Tag always include the writes the Tag captured at creation and
-reject true with 400. Document List does not support consistent reads: every
-ref, including Tags and Aliases targeting Tags, lists only the currently
-published snapshot.
+reject true with 400. Document List follows the same rules: `ListDocsOpts`
+takes `ConsistentRead`, and listing through a Tag or an Alias targeting a Tag
+includes the Tag's pending ordinary writes.
 
-Page tokens are opaque search positions and do not pin a Snapshot. For a stable
-export, keep the same immutable Tag and unchanged filters/projection on every
-page, as in the `ListAll` example above. Tags are immutable, while Aliases
-resolve at request time and may be retargeted. `List`
+Document List page tokens are positions in the requested order (ascending
+document ID, or `Sort`) and do not pin a Snapshot: each page reads the current
+data of the ref. Repeat the same options on every page, as `ListIterator` and
+`ListAll` do; a changed condition returns 400. For an export of fixed content,
+list through a Tag, whose captured writes do not change. Aliases resolve at
+request time and may be retargeted. `List`
 and iterator pages return `ListDocsDoc` wrappers; `ListAll` returns document
 content directly as `[]map[string]any`.
 
@@ -312,7 +373,8 @@ need a custom proxy, TLS configuration, timeout, or instrumentation.
 
 Lifecycle operations preserve server messages and HTTP response metadata.
 Their 409 errors use `ResourceAlreadyExistsError`, including conditional
-catalog conflicts and deletion of alias-referenced targets. For an in-use
+catalog conflicts, concurrent rollbacks of one Branch, and deletion of
+alias-referenced targets. For an in-use
 target, delete or retarget all referencing Aliases before retrying; the SDK
 does not automatically retry 409. Deleting `main` returns 400.
 See [Error Handling](../../../README.md#error-handling) for Gateway status

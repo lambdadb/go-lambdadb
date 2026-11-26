@@ -11,14 +11,17 @@ import (
 	lambdadb "github.com/lambdadb/go-lambdadb"
 	"github.com/lambdadb/go-lambdadb/models/apierrors"
 	"github.com/lambdadb/go-lambdadb/models/components"
+	"github.com/lambdadb/go-lambdadb/models/operations"
+	"github.com/lambdadb/go-lambdadb/retry"
 )
 
-// Contract: lambdadb/docs@7be299af9cac4195b75feb6e38b5cd7f8989f5a0 reference/api/openapi.json
-// (SHA-256 ec499bb6ad4fd7359c1854359e9ecfd4cd8609420f440f7dcbf75566ccda8f32, info.version 1.3.0),
-// synced from lambdadb/lambdadb@f9aa63c79cbac2ac477a76ec45e5015ce665afd1.
+// Contract: lambdadb/docs@9a1f563b9b53bc29e5278105f8fc8c25a17e0cb8 reference/api/openapi.json
+// (SHA-256 269590b8addc8e25785c222938b84e737a9f9dee0a5e8b45c0dde4779bde1b6d, info.version 1.3.0),
+// synced from lambdadb/lambdadb@16c6e46854b13cebd20c501e541bb030b33ca805.
 // These tests exercise the public SDK wire boundary for the individual ref
-// routes, branch schema updates, paginated ref listings and the ref fields
-// added to every branch, tag and alias response.
+// routes, branch schema updates, paginated ref listings, the ref fields of
+// every branch, tag and alias response, branch rollback, and tags created
+// before the first snapshot.
 
 const (
 	contractRefBase   = "https://api.example.com/projects/project-versioning/collections/articles"
@@ -583,5 +586,193 @@ func TestVersioningContract_CreateCollectionReturnsFullShape(t *testing.T) {
 		t.Fatalf("created collection = %#v", created)
 	}
 	assertContractSchema(t, created.GetIndexConfigs())
+	mock.assertDone()
+}
+
+// The rollback body is strict: tag is its only key. The response head is a
+// snapshot, or explicit null when the tag had no published snapshot.
+func TestVersioningContract_RollbackBranch(t *testing.T) {
+	assertRollbackRequest := func(req *http.Request) {
+		assertRequest(t, req, http.MethodPost, contractRefBase+"/branches/main/rollback")
+		if req.URL.RawQuery != "" {
+			t.Fatalf("query = %q, want none", req.URL.RawQuery)
+		}
+		if got := req.Header.Get("Content-Type"); got != "application/json" {
+			t.Fatalf("content type = %q, want application/json", got)
+		}
+		if body := decodeJSONBody(t, req); !reflect.DeepEqual(body, map[string]any{"tag": "release-42"}) {
+			t.Fatalf("body = %#v, want only the tag", body)
+		}
+	}
+	mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+		func(req *http.Request) *http.Response {
+			assertRollbackRequest(req)
+			return jsonResponse(http.StatusOK, `{"branchId":"main-branch-id","headSnapshot":{"snapshotId":"rollback-snapshot-id","snapshotCommittedAt":1788336000000}}`)
+		},
+		func(req *http.Request) *http.Response {
+			assertRollbackRequest(req)
+			return jsonResponse(http.StatusOK, `{"branchId":"main-branch-id","headSnapshot":null}`)
+		},
+	}}
+	collection := contractCollection(mock)
+	input := lambdadb.RollbackBranchInput{Tag: "release-42"}
+
+	restored, err := collection.Branches().Rollback(context.Background(), "main", input)
+	if err != nil {
+		t.Fatalf("Branches().Rollback() error = %v", err)
+	}
+	head := restored.GetHeadSnapshot()
+	if restored.GetBranchID() != "main-branch-id" || head == nil || head.GetSnapshotID() != "rollback-snapshot-id" || head.GetSnapshotCommittedAt().UnixMilli() != 1788336000000 {
+		t.Fatalf("rollback = %#v", restored)
+	}
+
+	empty, err := collection.Branches().Rollback(context.Background(), "main", input)
+	if err != nil {
+		t.Fatalf("Branches().Rollback() to a tag without a snapshot error = %v", err)
+	}
+	if empty.GetBranchID() != "main-branch-id" || empty.HeadSnapshot != nil || empty.GetHeadSnapshot() != nil {
+		t.Fatalf("rollback without a snapshot = %#v, want nil HeadSnapshot", empty)
+	}
+	encoded, err := json.Marshal(empty)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != `{"branchId":"main-branch-id","headSnapshot":null}` {
+		t.Fatalf("encoded rollback = %s, want explicit null headSnapshot", encoded)
+	}
+
+	var nilResult *lambdadb.RollbackBranchResponse
+	if nilResult.GetBranchID() != "" || nilResult.GetHeadSnapshot() != nil {
+		t.Fatal("rollback getters must be nil-safe")
+	}
+	mock.assertDone()
+}
+
+// A repeated rollback can undo intervening writes, so Rollback sends exactly
+// one request whatever the client or per-call retry configuration says, and
+// preserves the server's error.
+func TestVersioningContract_RollbackBranchIsNotRetried(t *testing.T) {
+	backoff := retry.Config{
+		Strategy:              "backoff",
+		Backoff:               &retry.BackoffStrategy{InitialInterval: 1, MaxInterval: 2, Exponent: 1.1, MaxElapsedTime: 1000},
+		RetryConnectionErrors: true,
+	}
+	for _, tc := range []struct {
+		name    string
+		status  int
+		perCall bool
+	}{
+		{"conflict", http.StatusConflict, false},
+		{"rate_limited", http.StatusTooManyRequests, false},
+		{"unavailable", http.StatusServiceUnavailable, false},
+		{"unavailable_with_per_call_retries", http.StatusServiceUnavailable, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+				func(req *http.Request) *http.Response {
+					assertRequest(t, req, http.MethodPost, contractRefBase+"/branches/main/rollback")
+					return jsonResponse(tc.status, `{"message":"server context"}`)
+				},
+			}}
+			collection := lambdadb.New(
+				lambdadb.WithBaseURL("https://api.example.com"),
+				lambdadb.WithProjectName("project-versioning"),
+				lambdadb.WithClient(mock),
+				lambdadb.WithRetryConfig(backoff),
+			).Collection("articles")
+			opts := make([]operations.Option, 0, 4)
+			if tc.perCall {
+				opts = append(opts, operations.WithRetries(backoff))
+			}
+			_, err := collection.Branches().Rollback(context.Background(), "main", lambdadb.RollbackBranchInput{Tag: "release-42"}, opts...)
+			if spare := opts[:cap(opts)]; spare[len(opts)] != nil {
+				t.Fatal("Rollback wrote into the caller's option slice")
+			}
+			var conflict *apierrors.ResourceAlreadyExistsError
+			var tooMany *apierrors.TooManyRequestsError
+			var internal *apierrors.InternalServerError
+			switch tc.status {
+			case http.StatusConflict:
+				if !errors.As(err, &conflict) {
+					t.Fatalf("error = %T %v, want ResourceAlreadyExistsError", err, err)
+				}
+			case http.StatusTooManyRequests:
+				if !errors.As(err, &tooMany) {
+					t.Fatalf("error = %T %v, want TooManyRequestsError", err, err)
+				}
+			default:
+				if !errors.As(err, &internal) || internal.HTTPMeta.Response.StatusCode != tc.status {
+					t.Fatalf("error = %T %v, want InternalServerError with status %d", err, err, tc.status)
+				}
+			}
+			mock.assertDone()
+		})
+	}
+}
+
+// A tag created before the first snapshot has explicit null snapshot fields
+// and numDocs 0 in create, get and list responses. They decode to nil, the
+// getters return the zero values, and they encode back as null.
+func TestVersioningContract_TagBeforeFirstSnapshot(t *testing.T) {
+	const pendingTag = `{"name":"pending","snapshotId":null,"snapshotCommittedAt":null,"numDocs":0,"dataUpdatedAt":null,"indexConfigs":` + contractSchema + `,"createdAt":1788336000123}`
+	mock := &publicAPIMockClient{t: t, handlers: []func(*http.Request) *http.Response{
+		func(req *http.Request) *http.Response {
+			return jsonResponse(http.StatusCreated, `{"tag":`+pendingTag+`}`)
+		},
+		func(req *http.Request) *http.Response {
+			return jsonResponse(http.StatusOK, `{"tag":`+pendingTag+`}`)
+		},
+		func(req *http.Request) *http.Response {
+			return jsonResponse(http.StatusOK, `{"tags":[`+pendingTag+`,`+contractTag+`]}`)
+		},
+	}}
+	collection := contractCollection(mock)
+	ctx := context.Background()
+
+	created, err := collection.Tags().Create(ctx, lambdadb.CreateTagInput{TagName: "pending"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := collection.Tags().Get(ctx, "pending")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tags, err := collection.Tags().List(ctx)
+	if err != nil || len(tags) != 2 {
+		t.Fatalf("tags = %#v, %v", tags, err)
+	}
+
+	for _, tag := range []*lambdadb.TagDetails{created, got, &tags[0]} {
+		if tag.SnapshotID != nil || tag.SnapshotCommittedAt != nil || tag.DataUpdatedAt != nil ||
+			tag.GetSnapshotID() != "" || !tag.GetSnapshotCommittedAt().IsZero() || !tag.GetDataUpdatedAt().IsZero() ||
+			tag.GetNumDocs() != 0 || tag.GetCreatedAt().UnixMilli() != 1788336000123 {
+			t.Fatalf("tag before the first snapshot = %#v", tag)
+		}
+		assertContractSchema(t, tag.GetIndexConfigs())
+	}
+	published := &tags[1]
+	if published.SnapshotID == nil || published.GetSnapshotID() != "snapshot-1" || published.SnapshotCommittedAt == nil ||
+		published.GetSnapshotCommittedAt().UnixMilli() != 1788335940456 || published.GetDataUpdatedAt().UnixMilli() != contractDataMilli {
+		t.Fatalf("published tag = %#v", published)
+	}
+
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(encoded, &body); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"snapshotId", "snapshotCommittedAt", "dataUpdatedAt"} {
+		if value, exists := body[name]; !exists || value != nil {
+			t.Fatalf("%s must encode as explicit null: %s", name, encoded)
+		}
+	}
+
+	var nilTag *lambdadb.TagDetails
+	if nilTag.GetSnapshotID() != "" || !nilTag.GetSnapshotCommittedAt().IsZero() || !nilTag.GetDataUpdatedAt().IsZero() {
+		t.Fatal("tag getters must be nil-safe")
+	}
 	mock.assertDone()
 }

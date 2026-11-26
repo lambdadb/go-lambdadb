@@ -432,7 +432,7 @@ func TestPublicAPI_CreateSourceWireContract(t *testing.T) {
 				collection := lambdadb.New(lambdadb.WithClient(mock)).Collection("articles")
 				if resource == "tags" {
 					tag, err := collection.Tags().Create(context.Background(), lambdadb.CreateTagInput{TagName: "candidate", Source: tc.source})
-					if err != nil || tag == nil || tag.SnapshotID != "snapshot-main" {
+					if err != nil || tag == nil || tag.GetSnapshotID() != "snapshot-main" {
 						t.Fatalf("tag = %#v, %v", tag, err)
 					}
 				} else {
