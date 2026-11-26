@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.11.0] - 2026-11-26
 
 Aligned with the public API contract
 [docs@9a1f563b9b53bc29e5278105f8fc8c25a17e0cb8](https://github.com/lambdadb/docs/blob/9a1f563b9b53bc29e5278105f8fc8c25a17e0cb8/reference/api/openapi.json)
@@ -16,6 +16,9 @@ Aligned with the public API contract
 rollback to a Tag, Tags created before the first snapshot, and sorted and
 consistent document listing with order-position page tokens; `info.version` is
 unchanged. This pins the source contract and does not establish deployment.
+Published directly as a stable release without a release candidate, as
+authorized by the maintainer on 2026-11-26; the publish workflow's production
+live smoke suite is the release gate.
 
 ### Added
 
