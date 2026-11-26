@@ -131,6 +131,18 @@ live suites did not call the operations this release adds; mocked HTTP tests
 covered them. `TestIntegrationDataVersioningSmoke` calls them from the next
 development commit on.
 
+For `0.11.0`, the maintainer explicitly authorized direct stable publication on
+2026-11-26, skipping RC publication and RC feedback for this release only. The
+release follows the contract published as docs@9a1f563b (`info.version` still
+1.3.0): Branch rollback to a Tag, nullable Tag snapshot fields for Tags created
+before the first snapshot (a breaking change to `TagDetails`), and sorted and
+consistent document listing. The publish workflow's dev live smoke on the
+feature merge commit and its production live smoke on the release commit and
+tag remain the gates, together with SDK checks, review, and metadata
+verification. `TestIntegrationDataVersioningSmoke` calls `Branches().Rollback`
+and a consistent document listing; it does not create a Tag before the first
+snapshot or list with a sort, which mocked HTTP tests cover.
+
 ## Required sequence
 
 1. Pin the API contract revision used for the SDK implementation.
